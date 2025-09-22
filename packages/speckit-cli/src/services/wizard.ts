@@ -10,7 +10,7 @@ const Answers = z.object({
   git: z.boolean(),
 });
 export type CreateAnswers = z.infer<typeof Answers>;
-type WizardOpts = Partial<CreateAnswers> & { yes?: boolean; stdout?: NodeJS.WriteStream };
+type WizardOpts = Partial<CreateAnswers> & { yes?: boolean; stdout?: NodeJS.WritableStream };
 
 export async function runCreateWizard(opts: WizardOpts = {}) {
   const yes = opts.yes ?? false;
