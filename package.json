@@ -1,0 +1,27 @@
+{
+  "name": "speckit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.12.0",
+  "description": "TUI + optional AI assistant for spec-driven development: edit specs, propose patches, review diffs, commit. AI/analytics OFF by default.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @speckit/cli dev",
+    "tui": "pnpm --filter @speckit/tui dev",
+    "start": "pnpm --filter @speckit/cli start"
+  },
+  "keywords": [
+    "spec-driven-development",
+    "sdd",
+    "tui",
+    "cli",
+    "ai",
+    "agent",
+    "repl",
+    "ink"
+  ]
+}

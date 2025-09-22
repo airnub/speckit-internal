@@ -1,0 +1,32 @@
+{
+  "name": "@speckit/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "spec": "dist/cli.js"
+  },
+  "main": "dist/cli.cjs",
+  "module": "dist/cli.mjs",
+  "types": "dist/cli.d.ts",
+  "scripts": {
+    "build": "tsup src/cli.ts --format esm,cjs --dts --clean --target node18",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "boxen": "^8.0.1",
+    "cfonts": "^3.3.0",
+    "clipanion": "^4.0.0-rc.4",
+    "zod": "^3.23.8",
+    "fs-extra": "^11.2.0",
+    "execa": "^9.3.0",
+    "globby": "^14.0.2",
+    "@speckit/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.2"
+  }
+}
