@@ -23,5 +23,8 @@
     "agent",
     "repl",
     "ink"
-  ]
+  ],
+  "devDependencies": {
+    "@types/node": "^24.5.2"
+  }
 }

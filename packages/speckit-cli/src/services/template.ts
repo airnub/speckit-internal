@@ -3,7 +3,7 @@ import { TemplateEntry } from "@speckit/core";
 import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
-import globby from "globby";
+import { globby } from "globby";
 
 type UseOptions = { mergeIntoCwd: boolean; promptVars: boolean; runPostInit: boolean };
 
