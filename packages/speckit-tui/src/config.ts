@@ -10,24 +10,26 @@ const DEFAULTS: SpeckitConfig = {
   analytics: { enabled: false },
   provider: "openai",
   openai: {
-    model: "gpt-4o-mini",
+    model: "gpt-5-2025-08-07",
     models: [
-      "gpt-4o-mini",
-      "gpt-4o",
-      "o4-mini",
-      "gpt-4.1",
-      "gpt-4o-realtime-preview"
+      "gpt-5-2025-08-07",
+      "gpt-5-mini-2025-08-07",
+      "gpt-5-nano-2025-08-07",
+      "gpt-4.1-2025-04-14",
+      "codex-mini-latest"
     ]
   },
   github: {
-    model: "openai/gpt-4.1-mini",
+    model: "openai/gpt-5",
     endpoint: "https://models.inference.ai.azure.com",
     models: [
-      "openai/gpt-4.1-mini",
+      "openai/gpt-5",
+      "openai/gpt-5-mini",
+      "openai/gpt-5-nano",
+      "openai/gpt-5-chat",
       "openai/gpt-4.1",
       "openai/gpt-4.1-nano",
-      "openai/gpt-4o-mini",
-      "openai/gpt-4o"
+      "openai/gpt-4.1-mini"
     ]
   },
   repo: { mode: "local", localPath: process.cwd(), branch: "main", specRoot: "docs/specs" },
