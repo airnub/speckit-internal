@@ -40,19 +40,6 @@ pnpm --filter @speckit/tui dev
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
 
-### Fix “Failed to create cache directory” on macOS/Linux
-
-If `pnpm install` prints `Failed to create cache directory. Please ensure the user has write access to .../.cache/node/corepack/v1`,
-create the directory once (or choose your own location) and retry:
-
-```bash
-mkdir -p ~/.cache/node/corepack/v1
-# optionally customise the cache location:
-# export COREPACK_HOME="$HOME/.cache/node/corepack"
-corepack enable pnpm
-pnpm install
-```
-
 ### Update model lists
 Edit `~/.config/spec-studio/config.json`:
 ```jsonc
