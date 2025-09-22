@@ -14,7 +14,8 @@
   - **next-supabase** — Next.js + Supabase SpecKit template (`airnub/next-supabase-speckit-template`)
   - **speckit-template** — generic, app-agnostic SpecKit template (`airnub/speckit-template`)
 - **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
-- **AI loop (optional)**: **A** to propose a patch (only active when `cfg.ai.enabled = true`).
+- **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
+- **Settings (S)**: choose AI provider (`openai`/`github`) and pick a model from configurable lists stored in `~/.config/spec-studio/config.json`.
 - **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
 
 ## Quick start
@@ -33,6 +34,32 @@ spec init --template speckit-template
 # TUI
 pnpm --filter @speckit/tui dev
 # N → pick a template (Blank, Next + Supabase, or Generic)
-# K → Spectral lint, B → docs/RTM build
-# A → AI propose patch (only when AI is enabled in config)
+# K → Spectral lint, B → docs/RTM build, A → AI propose (if enabled), S → Settings (provider/model)
+```
+
+### Update model lists
+Edit `~/.config/spec-studio/config.json`:
+```jsonc
+{
+  "ai": { "enabled": true },
+  "provider": "openai",
+  "openai": { "apiKey": "sk-...", "model": "gpt-5-2025-08-07" },
+  "github": { "pat": "", "model": "openai/gpt-5" },
+  "openaiModels": [
+    "gpt-5-2025-08-07",
+    "gpt-5-mini-2025-08-07",
+    "gpt-5-nano-2025-08-07",
+    "gpt-4.1-2025-04-14",
+    "codex-mini-latest"
+  ],
+  "githubModels": [
+    "openai/gpt-5",
+    "openai/gpt-5-mini",
+    "openai/gpt-5-nano",
+    "openai/gpt-5-chat",
+    "openai/gpt-4.1",
+    "openai/gpt-4.1-nano",
+    "openai/gpt-4.1-mini"
+  ]
+}
 ```

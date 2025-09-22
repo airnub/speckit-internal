@@ -19,19 +19,19 @@ export async function generatePatch(
 ): Promise<AiPlan> {
   if (cfg.provider === "openai") {
     const apiKey = cfg.openai?.apiKey || process.env.OPENAI_API_KEY;
-    const model = cfg.openai?.model || process.env.OPENAI_MODEL || "gpt-4o-mini";
+    const model = cfg.openai?.model || process.env.OPENAI_MODEL || "gpt-5-2025-08-07";
     if (!apiKey) throw new Error("OpenAI API key missing (OPENAI_API_KEY or cfg.openai.apiKey).");
     const { OpenAI } = await import("openai");
     const client = new OpenAI({ apiKey });
 
-    // NOTE: For now we return a stub plan.
-    // TODO: wire prompt → patch diff logic.
+    // TODO: implement prompt → patch logic; return a unified diff in patch
     return { summary: "stub", patch: "", rationale: `Would call ${model} with requirement/context.` };
   }
 
   if (cfg.provider === "github") {
     // TODO: lazy import GitHub models client here when you wire it up
-    return { summary: "stub", patch: "", rationale: "GitHub provider pending." };
+    const model = cfg.github?.model || "openai/gpt-5";
+    return { summary: "stub", patch: "", rationale: `Would call ${model} (GitHub Models) with requirement/context.` };
   }
 
   return { summary: "stub", patch: "" };

@@ -16,6 +16,8 @@ export type SpeckitConfig = {
   provider?: "openai"|"github";
   openai?: { apiKey?: string; model?: string };
   github?: { pat?: string; model?: string; endpoint?: string };
+  openaiModels?: string[];
+  githubModels?: string[];
   repo: { mode: "local"|"github"; localPath?: string; githubRepo?: string; branch: string; specRoot: string };
   workspaces: { root: string };
   recent?: any[];

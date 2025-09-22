@@ -6,13 +6,13 @@ import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
 import { getDefaultTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
-import { loadConfig } from "../config.js";
+import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd } from "../git.js";
 import { execa } from "execa";
 import { generatePatch, AgentConfig } from "@speckit/agent";
 
 type FileInfo = { path: string; title?: string };
-type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai";
+type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings";
 
 export default function App() {
   const [cfg, setCfg] = useState<SpeckitConfig|null>(null);
@@ -35,6 +35,10 @@ export default function App() {
   const [taskTitle, setTaskTitle] = useState<string>("");
   const [taskOutput, setTaskOutput] = useState<string>("");
   const [aiPrompt, setAiPrompt] = useState<string>("");
+
+  // settings
+  const [settingsProvider, setSettingsProvider] = useState<"openai"|"github">("openai");
+  const [settingsIndex, setSettingsIndex] = useState<number>(0);
 
   async function refreshRepo(rootOverride?: string) {
     const r = rootOverride || await gitRoot() || process.cwd();
@@ -63,6 +67,21 @@ export default function App() {
   })(); }, [idx, files.length]);
 
   useInput(async (input, key) => {
+    // When in Settings mode, override navigation keys
+    if (mode === "settings") {
+      if (key.upArrow) setSettingsIndex(i => Math.max(0, i-1));
+      if (key.downArrow) setSettingsIndex(i => Math.min(getModels().length-1, i+1));
+      if (key.leftArrow || key.rightArrow || input === "\t") {
+        toggleProvider();
+      }
+      if (key.return) {
+        await saveSettings();
+        setMode("preview");
+      }
+      if (input === "q") setMode("preview");
+      return;
+    }
+
     if (key.upArrow) {
       if (mode === "new-template") setTplIndex(i => Math.max(0, i-1));
       else setIdx(i => Math.max(0, i-1));
@@ -76,6 +95,7 @@ export default function App() {
     if (input === "p") setMode("preview");
     if (input === "d") setMode("diff");
     if (input === "c") setMode("commit");
+    if (input === "s") { openSettings(); return; }
     if (input === "g") setStatus(await gitStatus(repoPath));
     if (input === "e" && files[idx]) { await openInEditor(files[idx].path); await refreshRepo(); }
     if (input === "n") { setMode("new-template"); }
@@ -93,7 +113,7 @@ export default function App() {
         setMode("ai");
       }
     }
-    if (input === "\r" && mode === "new-template") {
+    if (key.return && mode === "new-template") {
       const sel = templates[tplIndex];
       if (sel.name === "blank") {
         await createBlankSpec(repoPath, specRoot);
@@ -107,6 +127,50 @@ export default function App() {
       }
     }
   });
+
+  function openSettings() {
+    if (!cfg) return;
+    const prov = (cfg.provider || "openai") as "openai"|"github";
+    setSettingsProvider(prov);
+    const models = getModelsFor(cfg, prov);
+    const current = prov === "openai" ? (cfg.openai?.model || models[0]) : (cfg.github?.model || models[0]);
+    setSettingsIndex(Math.max(0, models.indexOf(current)));
+    setMode("settings");
+  }
+
+  function getModelsFor(c: SpeckitConfig, prov: "openai"|"github") {
+    return prov === "openai" ? (c.openaiModels || []) : (c.githubModels || []);
+  }
+
+  function getModels() {
+    return cfg ? getModelsFor(cfg, settingsProvider) : [];
+  }
+
+  function toggleProvider() {
+    if (!cfg) return;
+    const next = settingsProvider === "openai" ? "github" : "openai";
+    setSettingsProvider(next);
+    const models = getModelsFor(cfg, next);
+    const current = next === "openai" ? (cfg.openai?.model || models[0]) : (cfg.github?.model || models[0]);
+    setSettingsIndex(Math.max(0, models.indexOf(current)));
+  }
+
+  async function saveSettings() {
+    if (!cfg) return;
+    const models = getModels();
+    const selected = models[settingsIndex] || models[0] || "";
+    const updated: SpeckitConfig = { ...cfg, provider: settingsProvider };
+    if (settingsProvider === "openai") {
+      updated.openai = { ...(cfg.openai || {}), model: selected };
+    } else {
+      updated.github = { ...(cfg.github || {}), model: selected };
+    }
+    await saveConfig(updated);
+    setCfg(updated);
+    setTaskTitle("Settings saved");
+    setTaskOutput(`Provider: ${updated.provider}\nModel: ${selected}`);
+    setMode("tasks");
+  }
 
   async function runSpectral(cwd: string) {
     setTaskTitle("Spectral Lint (docs/srs.yaml)");
@@ -129,8 +193,8 @@ export default function App() {
         setTaskOutput("No postInit scripts detected (looked for 'docs:gen' and 'rtm:build').");
         return;
       }
-      for (const [bin, *args] of cmds) {
-        out += `\n$ ${bin} ${' '.join(args)}\n`;
+      for (const [bin, ...args] of cmds) {
+        out += `\n$ ${bin} ${args.join(' ')}\n`;
         out += await runCmd(cwd, bin, args);
       }
     } else {
@@ -158,6 +222,7 @@ export default function App() {
   }
 
   const current = files[idx];
+  const boxHeight = Math.max(10, (((process.stdout as any).rows ?? 40) - 8));
 
   return (
     <Box flexDirection="column">
@@ -166,8 +231,10 @@ export default function App() {
         <Text>  </Text>
         <Text>Repo: </Text><Text bold>{repoPath}</Text><Text>  </Text><Text dimColor>{branch}</Text><Text>  </Text><Text>Spec Root: {specRoot}</Text>
         <Text>  </Text><Text>AI: {cfg?.ai?.enabled ? "ON" : "OFF"}</Text>
+        <Text>  </Text><Text>Provider: {cfg?.provider || "openai"}</Text>
+        <Text>  </Text><Text>Model: {(cfg?.provider === "openai" ? cfg?.openai?.model : cfg?.github?.model) || "-"}</Text>
       </Box>
-      <Box borderStyle="round" height={process.stdout.rows - 8}>
+      <Box borderStyle="round" height={boxHeight}>
         <Box width={40} borderStyle="single" flexDirection="column">
           <Text underline>Specs</Text>
           {files.length === 0 && <Text dimColor>(none) Press 'n' to start from template</Text>}
@@ -188,6 +255,7 @@ export default function App() {
           {mode === "new-template" && <TemplatePicker templates={templates} index={tplIndex} targetDir={targetDir} setTargetDir={setTargetDir}/>}
           {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
           {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} />}
+          {mode === "settings" && <SettingsUI provider={settingsProvider} index={settingsIndex} models={getModels()} />}
         </Box>
       </Box>
       <Box>
@@ -221,7 +289,7 @@ function HelpUI() {
   return (
     <>
       <Text>Keys:</Text>
-      <Text>↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · G status · ? help · Q quit</Text>
+      <Text>↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · S Settings · G status · ? help · Q quit</Text>
     </>
   );
 }
@@ -241,6 +309,18 @@ function AiUI({ prompt, setPrompt, onSubmit }: { prompt: string; setPrompt: (s:s
       <Text>Describe your requirement or change:</Text>
       <TextInput value={prompt} onChange={setPrompt} onSubmit={() => onSubmit(prompt)} placeholder="e.g., Add audit trail to user actions" />
       <Text dimColor>Enter to run AI (only if AI is enabled in config).</Text>
+    </>
+  );
+}
+
+function SettingsUI({ provider, index, models }: { provider: "openai"|"github"; index: number; models: string[] }) {
+  return (
+    <>
+      <Text>Settings — Provider: {provider}  (Tab/←/→ to toggle, ↑/↓ to pick model, Enter to save, q to cancel)</Text>
+      {models.length === 0 && <Text dimColor>(no models configured in config)</Text>}
+      {models.map((m,i) => (
+        <Text key={m} color={i===index ? "black":undefined} backgroundColor={i===index ? "cyan":undefined}> {m} </Text>
+      ))}
     </>
   );
 }
