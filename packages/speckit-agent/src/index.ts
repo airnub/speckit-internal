@@ -17,8 +17,8 @@ const SYSTEM_PROMPT = [
   "Do not wrap the JSON in Markdown fences or include additional commentary."
 ].join(" ");
 
-const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-const DEFAULT_GITHUB_MODEL = "openai/gpt-4.1-mini";
+const DEFAULT_OPENAI_MODEL = "gpt-5-2025-08-07";
+const DEFAULT_GITHUB_MODEL = "openai/gpt-5";
 const DEFAULT_GITHUB_ENDPOINT = "https://models.inference.ai.azure.com";
 
 /**
