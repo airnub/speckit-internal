@@ -61,7 +61,7 @@ async function applyVars(base: string, vars: Record<string,string>) {
     if (buf.length > 2_000_000) continue;
     const text = buf.toString("utf8");
     if (!text) continue;
-    const replaced = text.replace(/\{\{([A-Z0-9_\-]+)\}\}/g, (_, k) => vars[k] ?? `{{${k}}}`);
+    const replaced = text.replace(/\{\{([A-Z0-9_\-]+)\}\}/g, (_match, key: string) => vars[key] ?? `{{${key}}}`);
     if (replaced !== text) await fs.writeFile(fp, replaced, "utf8");
   }
 }
