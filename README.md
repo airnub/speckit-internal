@@ -15,12 +15,14 @@
   - **speckit-template** — generic, app-agnostic SpecKit template (`airnub/speckit-template`)
 - **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
 - **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
-- **Settings (S)**: choose AI provider (`openai`/`github`) and pick a model from configurable lists stored in `~/.config/spec-studio/config.json`.
+- **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
 - **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
 
 ## Quick start
 ```bash
-pnpm i
+# Install pnpm via Corepack (Node 18+ ships with it)
+corepack enable pnpm
+pnpm install
 
 # CLI
 pnpm --filter @speckit/cli dev
@@ -34,7 +36,21 @@ spec init --template speckit-template
 # TUI
 pnpm --filter @speckit/tui dev
 # N → pick a template (Blank, Next + Supabase, or Generic)
-# K → Spectral lint, B → docs/RTM build, A → AI propose (if enabled), S → Settings (provider/model)
+# K → Spectral lint, B → docs/RTM build, A → AI propose (if enabled),
+#   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
+```
+
+### Fix “Failed to create cache directory” on macOS/Linux
+
+If `pnpm install` prints `Failed to create cache directory. Please ensure the user has write access to .../.cache/node/corepack/v1`,
+create the directory once (or choose your own location) and retry:
+
+```bash
+mkdir -p ~/.cache/node/corepack/v1
+# optionally customise the cache location:
+# export COREPACK_HOME="$HOME/.cache/node/corepack"
+corepack enable pnpm
+pnpm install
 ```
 
 ### Update model lists
@@ -43,23 +59,29 @@ Edit `~/.config/spec-studio/config.json`:
 {
   "ai": { "enabled": true },
   "provider": "openai",
-  "openai": { "apiKey": "sk-...", "model": "gpt-5-2025-08-07" },
-  "github": { "pat": "", "model": "openai/gpt-5" },
-  "openaiModels": [
-    "gpt-5-2025-08-07",
-    "gpt-5-mini-2025-08-07",
-    "gpt-5-nano-2025-08-07",
-    "gpt-4.1-2025-04-14",
-    "codex-mini-latest"
-  ],
-  "githubModels": [
-    "openai/gpt-5",
-    "openai/gpt-5-mini",
-    "openai/gpt-5-nano",
-    "openai/gpt-5-chat",
-    "openai/gpt-4.1",
-    "openai/gpt-4.1-nano",
-    "openai/gpt-4.1-mini"
-  ]
+  "openai": {
+    "apiKey": "sk-...",
+    "model": "gpt-5-2025-08-07",
+    "models": [
+      "gpt-5-2025-08-07",
+      "gpt-5-mini-2025-08-07",
+      "gpt-5-nano-2025-08-07",
+      "gpt-4.1-2025-04-14",
+      "codex-mini-latest"
+    ]
+  },
+  "github": {
+    "pat": "",
+    "model": "openai/gpt-5",
+    "models": [
+      "openai/gpt-5",
+      "openai/gpt-5-mini",
+      "openai/gpt-5-nano",
+      "openai/gpt-5-chat",
+      "openai/gpt-4.1",
+      "openai/gpt-4.1-nano",
+      "openai/gpt-4.1-mini"
+    ]
+  }
 }
 ```

@@ -14,6 +14,18 @@ import { generatePatch, AgentConfig } from "@speckit/agent";
 type FileInfo = { path: string; title?: string };
 type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings";
 
+type SettingFieldType = "boolean"|"select"|"text"|"list"|"action";
+type SettingField = {
+  id: string;
+  label: string;
+  type: SettingFieldType;
+  options?: string[];
+  mask?: boolean;
+  placeholder?: string;
+  help?: string;
+};
+type SettingsFieldWithValue = SettingField & { value: any };
+
 export default function App() {
   const [cfg, setCfg] = useState<SpeckitConfig|null>(null);
   const [repoPath, setRepoPath] = useState<string>(process.cwd());
@@ -37,8 +49,11 @@ export default function App() {
   const [aiPrompt, setAiPrompt] = useState<string>("");
 
   // settings
-  const [settingsProvider, setSettingsProvider] = useState<"openai"|"github">("openai");
-  const [settingsIndex, setSettingsIndex] = useState<number>(0);
+  const [settingsDraft, setSettingsDraft] = useState<SpeckitConfig|null>(null);
+  const [settingsCursor, setSettingsCursor] = useState(0);
+  const [settingsEditing, setSettingsEditing] = useState(false);
+  const [settingsEditValue, setSettingsEditValue] = useState<string>("");
+  const [settingsEditField, setSettingsEditField] = useState<SettingsFieldWithValue|null>(null);
 
   async function refreshRepo(rootOverride?: string) {
     const r = rootOverride || await gitRoot() || process.cwd();
@@ -61,24 +76,27 @@ export default function App() {
     setIdx(0);
   }
 
+  const settingsFields = React.useMemo(
+    () => settingsDraft ? buildSettingsFields(settingsDraft) : [],
+    [settingsDraft]
+  );
+
   useEffect(() => { refreshRepo(); }, []);
   useEffect(() => { (async () => {
     if (files[idx]) setContent(await fs.readFile(files[idx].path, "utf8"));
   })(); }, [idx, files.length]);
 
+  useEffect(() => {
+    if (mode !== "settings") return;
+    setSettingsCursor(cursor => {
+      if (settingsFields.length === 0) return 0;
+      return Math.min(cursor, settingsFields.length - 1);
+    });
+  }, [mode, settingsFields.length]);
+
   useInput(async (input, key) => {
-    // When in Settings mode, override navigation keys
     if (mode === "settings") {
-      if (key.upArrow) setSettingsIndex(i => Math.max(0, i-1));
-      if (key.downArrow) setSettingsIndex(i => Math.min(getModels().length-1, i+1));
-      if (key.leftArrow || key.rightArrow || input === "\t") {
-        toggleProvider();
-      }
-      if (key.return) {
-        await saveSettings();
-        setMode("preview");
-      }
-      if (input === "q") setMode("preview");
+      await handleSettingsInput(input, key);
       return;
     }
 
@@ -104,7 +122,7 @@ export default function App() {
     if (input === "u") { await gitPush(repoPath); setStatus(await gitStatus(repoPath)); }
     if (input === "k") { await runSpectral(repoPath); }
     if (input === "b") { await runPostInit(repoPath); }
-    if (input === "a") { 
+    if (input === "a") {
       if (!cfg?.ai?.enabled) {
         setTaskTitle("AI disabled");
         setTaskOutput("AI is OFF. Enable it in ~/.config/spec-studio/config.json (ai.enabled: true).");
@@ -130,46 +148,157 @@ export default function App() {
 
   function openSettings() {
     if (!cfg) return;
-    const prov = (cfg.provider || "openai") as "openai"|"github";
-    setSettingsProvider(prov);
-    const models = getModelsFor(cfg, prov);
-    const current = prov === "openai" ? (cfg.openai?.model || models[0]) : (cfg.github?.model || models[0]);
-    setSettingsIndex(Math.max(0, models.indexOf(current)));
+    const draft = cloneConfig(cfg);
+    setSettingsDraft(draft);
+    setSettingsCursor(0);
+    cancelSettingsEdit();
     setMode("settings");
   }
 
-  function getModelsFor(c: SpeckitConfig, prov: "openai"|"github") {
-    return prov === "openai" ? (c.openaiModels || []) : (c.githubModels || []);
-  }
-
-  function getModels() {
-    return cfg ? getModelsFor(cfg, settingsProvider) : [];
-  }
-
-  function toggleProvider() {
-    if (!cfg) return;
-    const next = settingsProvider === "openai" ? "github" : "openai";
-    setSettingsProvider(next);
-    const models = getModelsFor(cfg, next);
-    const current = next === "openai" ? (cfg.openai?.model || models[0]) : (cfg.github?.model || models[0]);
-    setSettingsIndex(Math.max(0, models.indexOf(current)));
-  }
-
-  async function saveSettings() {
-    if (!cfg) return;
-    const models = getModels();
-    const selected = models[settingsIndex] || models[0] || "";
-    const updated: SpeckitConfig = { ...cfg, provider: settingsProvider };
-    if (settingsProvider === "openai") {
-      updated.openai = { ...(cfg.openai || {}), model: selected };
-    } else {
-      updated.github = { ...(cfg.github || {}), model: selected };
+  async function handleSettingsInput(input: string, key: any) {
+    if (!settingsDraft) {
+      if (input === "q") setMode("preview");
+      return;
     }
-    await saveConfig(updated);
-    setCfg(updated);
-    setTaskTitle("Settings saved");
-    setTaskOutput(`Provider: ${updated.provider}\nModel: ${selected}`);
-    setMode("tasks");
+
+    if (settingsEditing) {
+      if (key.escape) {
+        cancelSettingsEdit();
+      }
+      return;
+    }
+
+    if (input === "q") {
+      cancelSettings();
+      return;
+    }
+
+    if (key.upArrow) {
+      setSettingsCursor(i => Math.max(0, i-1));
+      return;
+    }
+    if (key.downArrow) {
+      if (settingsFields.length === 0) return;
+      setSettingsCursor(i => Math.min(settingsFields.length-1, i+1));
+      return;
+    }
+
+    const field = settingsFields[settingsCursor];
+    if (!field) return;
+
+    switch (field.type) {
+      case "boolean": {
+        if (input === " " || key.return || key.leftArrow || key.rightArrow) {
+          applySetting(field.id, !field.value);
+        }
+        break;
+      }
+      case "select": {
+        if (!field.options?.length) break;
+        let dir = 0;
+        if (key.leftArrow) dir = -1;
+        else if (key.rightArrow || key.return) dir = 1;
+        if (dir !== 0) {
+          applySetting(field.id, cycleOption(field.options, field.value, dir));
+        }
+        break;
+      }
+      case "text": {
+        if (field.options?.length && (key.leftArrow || key.rightArrow)) {
+          const dir = key.leftArrow ? -1 : 1;
+          applySetting(field.id, cycleOption(field.options, field.value, dir));
+          break;
+        }
+        if (key.return) {
+          startSettingsEdit(field);
+        }
+        break;
+      }
+      case "list": {
+        if (key.return) {
+          startSettingsEdit(field);
+        }
+        break;
+      }
+      case "action": {
+        if (key.return) {
+          if (field.id === "action.save") {
+            await commitSettingsChanges();
+          } else if (field.id === "action.cancel") {
+            cancelSettings();
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  function startSettingsEdit(field: SettingsFieldWithValue) {
+    setSettingsEditing(true);
+    setSettingsEditField(field);
+    if (field.type === "list") {
+      const items = Array.isArray(field.value) ? field.value : [];
+      setSettingsEditValue(items.join("\n"));
+    } else {
+      setSettingsEditValue(
+        field.value == null ? "" : String(field.value)
+      );
+    }
+  }
+
+  function cancelSettingsEdit() {
+    setSettingsEditing(false);
+    setSettingsEditField(null);
+    setSettingsEditValue("");
+  }
+
+  function cancelSettings() {
+    cancelSettingsEdit();
+    setSettingsDraft(null);
+    setSettingsCursor(0);
+    setMode("preview");
+  }
+
+  function applySetting(id: string, value: any) {
+    setSettingsDraft(prev => {
+      if (!prev) return prev;
+      const next = cloneConfig(prev);
+      setValueAtPath(next, id, value);
+      return next;
+    });
+  }
+
+  function handleSettingsEditSubmit(value: string) {
+    if (!settingsDraft || !settingsEditField) return;
+    if (settingsEditField.type === "list") {
+      applySetting(settingsEditField.id, parseList(value));
+    } else {
+      const trimmed = value.trim();
+      applySetting(settingsEditField.id, trimmed === "" ? undefined : trimmed);
+    }
+    cancelSettingsEdit();
+  }
+
+  async function commitSettingsChanges() {
+    if (!settingsDraft) return;
+    const draft = cloneConfig(settingsDraft);
+    try {
+      await saveConfig(draft);
+      cancelSettingsEdit();
+      setSettingsDraft(null);
+      setSettingsCursor(0);
+      const repoOverride = draft.repo?.mode === "local" && draft.repo?.localPath
+        ? draft.repo.localPath
+        : undefined;
+      await refreshRepo(repoOverride);
+      setTaskTitle("Settings saved");
+      setTaskOutput(formatSettingsSummary(draft));
+      setMode("tasks");
+    } catch (error: any) {
+      setTaskTitle("Settings error");
+      setTaskOutput(error?.message || String(error));
+      setMode("tasks");
+    }
   }
 
   async function runSpectral(cwd: string) {
@@ -255,7 +384,17 @@ export default function App() {
           {mode === "new-template" && <TemplatePicker templates={templates} index={tplIndex} targetDir={targetDir} setTargetDir={setTargetDir}/>}
           {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
           {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} />}
-          {mode === "settings" && <SettingsUI provider={settingsProvider} index={settingsIndex} models={getModels()} />}
+          {mode === "settings" && (
+            <SettingsUI
+              fields={settingsFields}
+              cursor={settingsCursor}
+              editing={settingsEditing}
+              editValue={settingsEditValue}
+              editField={settingsEditField}
+              onChangeEditValue={setSettingsEditValue}
+              onSubmitEdit={handleSettingsEditSubmit}
+            />
+          )}
         </Box>
       </Box>
       <Box>
@@ -313,14 +452,53 @@ function AiUI({ prompt, setPrompt, onSubmit }: { prompt: string; setPrompt: (s:s
   );
 }
 
-function SettingsUI({ provider, index, models }: { provider: "openai"|"github"; index: number; models: string[] }) {
+type SettingsUIProps = {
+  fields: SettingsFieldWithValue[];
+  cursor: number;
+  editing: boolean;
+  editValue: string;
+  editField: SettingsFieldWithValue|null;
+  onChangeEditValue: (value: string) => void;
+  onSubmitEdit: (value: string) => void;
+};
+
+function renderSettingRow(field: SettingsFieldWithValue): string {
+  if (field.type === "action") {
+    if (field.id === "action.save") return "Save changes";
+    if (field.id === "action.cancel") return "Discard changes";
+    return field.label;
+  }
+  return `${field.label}: ${formatSettingValue(field)}`;
+}
+
+function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEditValue, onSubmitEdit }: SettingsUIProps) {
+  const active = fields[cursor];
   return (
     <>
-      <Text>Settings — Provider: {provider}  (Tab/←/→ to toggle, ↑/↓ to pick model, Enter to save, q to cancel)</Text>
-      {models.length === 0 && <Text dimColor>(no models configured in config)</Text>}
-      {models.map((m,i) => (
-        <Text key={m} color={i===index ? "black":undefined} backgroundColor={i===index ? "cyan":undefined}> {m} </Text>
+      <Text>Settings — ↑/↓ move · Space toggle · ←/→ cycle · Enter edit/save · q cancel</Text>
+      {fields.length === 0 && <Text dimColor>(config not loaded)</Text>}
+      {fields.map((field, i) => (
+        <Text
+          key={field.id}
+          color={i === cursor ? "black" : undefined}
+          backgroundColor={i === cursor ? "cyan" : undefined}
+        >
+          {renderSettingRow(field)}
+        </Text>
       ))}
+      {active?.help && <Text dimColor>{active.help}</Text>}
+      {editing && editField && (
+        <>
+          <Text>{editField.label}:</Text>
+          <TextInput
+            value={editValue}
+            onChange={onChangeEditValue}
+            onSubmit={onSubmitEdit}
+            placeholder={editField.placeholder}
+          />
+          <Text dimColor>Enter to apply · Esc to cancel</Text>
+        </>
+      )}
     </>
   );
 }
@@ -365,4 +543,227 @@ async function cloneTemplate(tpl: TemplateEntry, targetDir: string) {
   if (tpl.type !== "github" || !tpl.repo) return;
   await fs.ensureDir(path.dirname(targetDir));
   await execa("git", ["clone", "--depth", "1", "--branch", tpl.branch || "main", `https://github.com/${tpl.repo}.git`, targetDir], { stdio: "inherit" });
+}
+
+function buildSettingsFields(cfg: SpeckitConfig): SettingsFieldWithValue[] {
+  const openaiModels = cfg.openai?.models || [];
+  const githubModels = cfg.github?.models || [];
+  return [
+    {
+      id: "ai.enabled",
+      label: "AI enabled",
+      type: "boolean",
+      value: !!cfg.ai?.enabled,
+      help: "Toggle access to the AI agent (A key)."
+    },
+    {
+      id: "analytics.enabled",
+      label: "Analytics enabled",
+      type: "boolean",
+      value: !!cfg.analytics?.enabled,
+      help: "Telemetry remains off unless explicitly enabled."
+    },
+    {
+      id: "provider",
+      label: "AI provider",
+      type: "select",
+      options: ["openai", "github"],
+      value: cfg.provider || "openai",
+      help: "Provider used for patch generation."
+    },
+    {
+      id: "openai.apiKey",
+      label: "OpenAI API key",
+      type: "text",
+      mask: true,
+      placeholder: "sk-...",
+      value: cfg.openai?.apiKey || "",
+      help: "Stored locally in ~/.config/spec-studio/config.json."
+    },
+    {
+      id: "openai.model",
+      label: "OpenAI default model",
+      type: "text",
+      options: openaiModels.length ? openaiModels : undefined,
+      value: cfg.openai?.model || "",
+      help: openaiModels.length ? "Press ←/→ to cycle preset models or Enter to edit." : "Enter to edit model name."
+    },
+    {
+      id: "openai.models",
+      label: "OpenAI models list",
+      type: "list",
+      value: openaiModels,
+      help: "Comma or newline separated list of OpenAI models to pick from."
+    },
+    {
+      id: "github.pat",
+      label: "GitHub token (Models)",
+      type: "text",
+      mask: true,
+      placeholder: "ghp_...",
+      value: cfg.github?.pat || "",
+      help: "GitHub Models/Azure token (never uploaded)."
+    },
+    {
+      id: "github.endpoint",
+      label: "GitHub models endpoint",
+      type: "text",
+      placeholder: "https://models.inference.ai.azure.com",
+      value: cfg.github?.endpoint || "",
+      help: "Override if using a private inference endpoint."
+    },
+    {
+      id: "github.model",
+      label: "GitHub default model",
+      type: "text",
+      options: githubModels.length ? githubModels : undefined,
+      value: cfg.github?.model || "",
+      help: githubModels.length ? "Press ←/→ to cycle preset models or Enter to edit." : "Enter to edit model name."
+    },
+    {
+      id: "github.models",
+      label: "GitHub models list",
+      type: "list",
+      value: githubModels,
+      help: "Comma or newline separated list of GitHub-hosted models."
+    },
+    {
+      id: "repo.mode",
+      label: "Repository mode",
+      type: "select",
+      options: ["local", "github"],
+      value: cfg.repo?.mode || "local",
+      help: "Local uses the current checkout; GitHub targets a remote repo."
+    },
+    {
+      id: "repo.localPath",
+      label: "Local repo path",
+      type: "text",
+      value: cfg.repo?.localPath || "",
+      placeholder: process.cwd(),
+      help: "Absolute or relative path used when repo.mode=local."
+    },
+    {
+      id: "repo.githubRepo",
+      label: "GitHub repo (owner/name)",
+      type: "text",
+      value: cfg.repo?.githubRepo || "",
+      placeholder: "org/project",
+      help: "Repository name when repo.mode=github."
+    },
+    {
+      id: "repo.branch",
+      label: "Repo branch",
+      type: "text",
+      value: cfg.repo?.branch || "main",
+      help: "Default branch for git operations."
+    },
+    {
+      id: "repo.specRoot",
+      label: "Spec root",
+      type: "text",
+      value: cfg.repo?.specRoot || "docs/specs",
+      help: "Relative directory containing specs."
+    },
+    {
+      id: "workspaces.root",
+      label: "Workspaces root",
+      type: "text",
+      value: cfg.workspaces?.root || "",
+      help: "Scratch directory for generated workspaces."
+    },
+    {
+      id: "action.save",
+      label: "Save changes",
+      type: "action",
+      value: undefined,
+      help: "Write settings to config.json and refresh."
+    },
+    {
+      id: "action.cancel",
+      label: "Discard changes",
+      type: "action",
+      value: undefined,
+      help: "Exit settings without saving."
+    }
+  ];
+}
+
+function formatSettingValue(field: SettingsFieldWithValue): string {
+  if (field.type === "boolean") {
+    return field.value ? "ON" : "OFF";
+  }
+  if (field.type === "list") {
+    const list = Array.isArray(field.value) ? field.value : [];
+    if (list.length === 0) return "(empty)";
+    return truncate(list.join(", "), 60);
+  }
+  if (field.mask) {
+    return maskSecret(field.value);
+  }
+  if (field.value == null || field.value === "") {
+    return "(empty)";
+  }
+  return String(field.value);
+}
+
+function maskSecret(value: unknown): string {
+  const text = value == null ? "" : String(value);
+  if (!text) return "(not set)";
+  const masked = "•".repeat(Math.min(text.length, 8));
+  return masked + (text.length > 8 ? "…" : "");
+}
+
+function parseList(raw: string): string[] {
+  return raw
+    .split(/[\n,]/)
+    .map(part => part.trim())
+    .filter(Boolean);
+}
+
+function cycleOption(options: string[], current: unknown, direction: number): string {
+  if (options.length === 0) return "";
+  const currentValue = typeof current === "string" ? current : "";
+  const index = options.indexOf(currentValue);
+  const nextIndex = index === -1
+    ? (direction > 0 ? 0 : options.length - 1)
+    : (index + direction + options.length) % options.length;
+  return options[nextIndex];
+}
+
+function cloneConfig<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function setValueAtPath(obj: any, path: string, value: any) {
+  const segments = path.split(".");
+  let target = obj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const key = segments[i];
+    if (!target[key] || typeof target[key] !== "object") {
+      target[key] = {};
+    }
+    target = target[key];
+  }
+  const last = segments[segments.length - 1];
+  if (value === undefined) {
+    delete target[last];
+  } else {
+    target[last] = value;
+  }
+}
+
+function formatSettingsSummary(cfg: SpeckitConfig): string {
+  const lines = [
+    `AI enabled: ${cfg.ai?.enabled ? "true" : "false"}`,
+    `Analytics enabled: ${cfg.analytics?.enabled ? "true" : "false"}`,
+    `Provider: ${cfg.provider || "openai"}`,
+    `OpenAI model: ${cfg.openai?.model || "-"}`,
+    `GitHub model: ${cfg.github?.model || "-"}`,
+    `OpenAI key: ${cfg.openai?.apiKey ? "set" : "not set"}`,
+    `GitHub token: ${cfg.github?.pat ? "set" : "not set"}`,
+    `Spec root: ${cfg.repo?.specRoot || "docs/specs"}`,
+    `Workspaces root: ${cfg.workspaces?.root || "(default)"}`
+  ];
+  return lines.join("\n");
 }

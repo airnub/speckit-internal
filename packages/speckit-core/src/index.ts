@@ -14,10 +14,8 @@ export type SpeckitConfig = {
   ai: { enabled: boolean };
   analytics: { enabled: boolean };
   provider?: "openai"|"github";
-  openai?: { apiKey?: string; model?: string };
-  github?: { pat?: string; model?: string; endpoint?: string };
-  openaiModels?: string[];
-  githubModels?: string[];
+  openai?: { apiKey?: string; model?: string; models?: string[] };
+  github?: { pat?: string; model?: string; endpoint?: string; models?: string[] };
   repo: { mode: "local"|"github"; localPath?: string; githubRepo?: string; branch: string; specRoot: string };
   workspaces: { root: string };
   recent?: any[];
