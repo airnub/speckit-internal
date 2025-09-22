@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
-import globby from "globby";
+import { globby } from "globby";
 import matter from "gray-matter";
 import fs from "fs-extra";
 import path from "node:path";

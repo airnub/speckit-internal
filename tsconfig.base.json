@@ -11,6 +11,13 @@
     "outDir": "dist",
     "types": [
       "node"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@speckit/core": ["packages/speckit-core/src/index.ts"],
+      "@speckit/agent": ["packages/speckit-agent/src/index.ts"],
+      "@speckit/tui": ["packages/speckit-tui/src/index.tsx"],
+      "@speckit/cli": ["packages/speckit-cli/src/cli.ts"]
+    }
   }
 }

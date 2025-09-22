@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import { Cli, Builtins } from "clipanion";
-import { render } from "cfonts";
+import cfonts from "cfonts";
 import boxen from "boxen";
 import { CreateCommand } from "./commands/create.js";
 import { ReplCommand } from "./commands/repl.js";
 import { TemplateListCommand, TemplateUseCommand } from "./commands/template.js";
 import { InitFromTemplateCommand } from "./commands/init.js";
 
-render("SpecKit", { font: "block" });
+cfonts.say("SpecKit", { font: "block" });
 console.log(boxen("SpecKit v0.0.1: `spec template list` · `spec init --template next-supabase` · `spec init --template speckit-template`", { padding: 1, borderStyle: "round" }));
 
 const [, , ...args] = process.argv;
