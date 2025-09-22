@@ -4,3 +4,6 @@ dist
 .env
 pnpm-lock.yaml
 coverage
+docs/website/node_modules
+docs/website/.docusaurus
+docs/website/build

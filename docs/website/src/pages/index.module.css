@@ -1,0 +1,42 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.features {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 3rem auto;
+  max-width: 960px;
+}
+
+.feature {
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: left;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='dark'] .feature {
+  background: var(--ifm-color-emphasis-200);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem 1rem;
+  }
+
+  .buttons {
+    flex-direction: column;
+  }
+}
