@@ -5,6 +5,8 @@ import type { SpeckitConfig } from "@speckit/core";
 const paths = envPaths("spec-studio");
 const configPath = `${paths.config}/config.json`;
 
+const CONFIG_FILE_MODE = 0o600; // Restrict config file permissions to protect stored secrets.
+
 const DEFAULTS: SpeckitConfig = {
   ai: { enabled: false },
   analytics: { enabled: false },
@@ -40,7 +42,8 @@ const DEFAULTS: SpeckitConfig = {
 export async function loadConfig(): Promise<SpeckitConfig> {
   await fs.ensureDir(paths.config);
   if (!(await fs.pathExists(configPath))) {
-    await fs.writeJson(configPath, DEFAULTS, { spaces: 2 });
+    await fs.writeJson(configPath, DEFAULTS, { spaces: 2, mode: CONFIG_FILE_MODE });
+    await enforceConfigPermissions();
     return DEFAULTS;
   }
   const raw = await fs.readJson(configPath);
@@ -73,5 +76,14 @@ export async function saveConfig(cfg: SpeckitConfig): Promise<void> {
     openaiModels?: string[];
     githubModels?: string[];
   };
-  await fs.writeJson(configPath, rest, { spaces: 2 });
+  await fs.writeJson(configPath, rest, { spaces: 2, mode: CONFIG_FILE_MODE });
+  await enforceConfigPermissions();
+}
+
+async function enforceConfigPermissions(): Promise<void> {
+  try {
+    await fs.chmod(configPath, CONFIG_FILE_MODE);
+  } catch {
+    // Ignore errors on platforms that do not support chmod for this file.
+  }
 }
