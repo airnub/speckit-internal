@@ -84,9 +84,19 @@ export default function App() {
   async function refreshRepo(rootOverride?: string, options?: RefreshOptions) {
     const conf = await loadConfig();
     const repoMode = conf.repo?.mode;
-    const configRepoPath = repoMode === "local" && conf.repo?.localPath
-      ? path.resolve(conf.repo.localPath)
-      : undefined;
+    let configRepoPath: string | undefined;
+    if (repoMode === "local" && typeof conf.repo?.localPath === "string") {
+      const trimmedLocalPath = conf.repo.localPath.trim();
+      if (trimmedLocalPath) {
+        const resolvedLocalPath = path.resolve(trimmedLocalPath);
+        const initialResolved = initialRepoPathRef.current
+          ? path.resolve(initialRepoPathRef.current)
+          : undefined;
+        if (!initialResolved || resolvedLocalPath !== initialResolved) {
+          configRepoPath = resolvedLocalPath;
+        }
+      }
+    }
     const initialRepoPath = initialRepoPathRef.current;
     const currentRepoPath = repoPath ? path.resolve(repoPath) : undefined;
     const overridePath = rootOverride ? path.resolve(rootOverride) : undefined;
