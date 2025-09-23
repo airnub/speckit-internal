@@ -35,12 +35,21 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
     await fs.ensureDir(base);
     await copyInto(base, t.localPath);
   } else if (t.type === "github" && t.repo) {
+    const branchArgs = t.branch ? ["--branch", t.branch] : [];
     if (!opts.mergeIntoCwd) {
       await fs.ensureDir(path.dirname(targetDir));
-      await execa("git", ["clone", "--depth", "1", "--branch", t.branch || "main", `https://github.com/${t.repo}.git`, targetDir], { stdio: "inherit" });
+      await execa(
+        "git",
+        ["clone", "--depth", "1", ...branchArgs, `https://github.com/${t.repo}.git`, targetDir],
+        { stdio: "inherit" }
+      );
     } else {
       const tmp = path.join(process.cwd(), `.speckit-tpl-${Date.now()}`);
-      await execa("git", ["clone", "--depth", "1", "--branch", t.branch || "main", `https://github.com/${t.repo}.git`, tmp], { stdio: "inherit" });
+      await execa(
+        "git",
+        ["clone", "--depth", "1", ...branchArgs, `https://github.com/${t.repo}.git`, tmp],
+        { stdio: "inherit" }
+      );
       await copyInto(base, tmp);
       await fs.remove(tmp);
     }

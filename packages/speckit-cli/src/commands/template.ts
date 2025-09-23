@@ -1,5 +1,5 @@
 import { Command, Option } from "clipanion";
-import { loadTemplates } from "@speckit/core";
+import { loadTemplates, templateFromGithubUrl, TemplateEntry } from "@speckit/core";
 import { useTemplateIntoDir } from "../services/template.js";
 
 export class TemplateListCommand extends Command {
@@ -19,7 +19,10 @@ export class TemplateUseCommand extends Command {
   targetDir = Option.String({ name: "targetDir" });
   async execute() {
     const list = await loadTemplates({ repoRoot: process.cwd() });
-    const t = list.find(x => x.name === this.name);
+    let t: TemplateEntry | null | undefined = list.find(x => x.name === this.name);
+    if (!t) {
+      t = templateFromGithubUrl(this.name);
+    }
     if (!t) { this.context.stderr.write(`Template '${this.name}' not found.\n`); return 1; }
     await useTemplateIntoDir(t, this.targetDir, { mergeIntoCwd: false, promptVars: true, runPostInit: true });
     this.context.stdout.write(`\nTemplate '${t.name}' ready at ${this.targetDir}.\n`);
