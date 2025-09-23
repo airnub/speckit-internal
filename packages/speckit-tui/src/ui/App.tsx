@@ -5,7 +5,7 @@ import matter from "gray-matter";
 import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
-import { getDefaultTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
+import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
 import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult } from "../git.js";
 import { execa } from "execa";
@@ -52,7 +52,7 @@ export default function App() {
 
   // template modal
   const [tplIndex, setTplIndex] = useState(0);
-  const templates = getDefaultTemplates().filter(t => ["blank","next-supabase","speckit-template"].includes(t.name));
+  const [templates, setTemplates] = useState<TemplateEntry[]>([]);
   const [targetDir, setTargetDir] = useState<string>("");
 
   // tasks/ai
@@ -70,8 +70,14 @@ export default function App() {
   async function refreshRepo(rootOverride?: string) {
     const r = rootOverride || await gitRoot() || process.cwd();
     const conf = await loadConfig();
+    const availableTemplates = await loadTemplates({ repoRoot: r });
     setCfg(conf);
     setRepoPath(r);
+    setTemplates(availableTemplates);
+    setTplIndex(prev => {
+      if (availableTemplates.length === 0) return 0;
+      return Math.min(prev, availableTemplates.length - 1);
+    });
     setBranch(await gitBranch(r));
     setStatus(await gitStatus(r));
     const resolvedSpecRoot = conf.repo?.specRoot || "docs/specs";
@@ -127,11 +133,22 @@ export default function App() {
       await createBlankSpec(repoPath, specRoot);
       setMode("preview");
       await refreshRepo();
-    } else {
+      setTargetDir("");
+      return;
+    }
+    if (sel.type === "local") {
+      await copyLocalTemplate(sel, repoPath);
+      setMode("preview");
+      await refreshRepo();
+      setTargetDir("");
+      return;
+    }
+    if (sel.type === "github") {
       if (!targetDir) return;
       await cloneTemplate(sel, targetDir);
       await refreshRepo(targetDir);
       setMode("preview");
+      setTargetDir("");
     }
   }
 
@@ -483,6 +500,7 @@ export default function App() {
               setTargetDir={setTargetDir}
               onConfirm={confirmTemplateSelection}
               onCancel={() => setMode("preview")}
+              repoPath={repoPath}
             />
           )}
           {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
@@ -702,7 +720,7 @@ function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEdi
   );
 }
 
-function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, onCancel }: { templates: TemplateEntry[]; index: number; targetDir: string; setTargetDir: (s:string)=>void; onConfirm: () => Promise<void>; onCancel: () => void }) {
+function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, onCancel, repoPath }: { templates: TemplateEntry[]; index: number; targetDir: string; setTargetDir: (s:string)=>void; onConfirm: () => Promise<void>; onCancel: () => void; repoPath: string }) {
   const active = templates[index];
   const requiresTarget = active?.type === "github";
   useInput((input, key) => {
@@ -710,15 +728,30 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, 
       onCancel();
     }
   });
+  const sourceLabel = active?.type === "local" && active.localPath
+    ? (() => {
+        const rel = path.relative(repoPath, active.localPath);
+        return rel && !rel.startsWith("..") ? rel : active.localPath;
+      })()
+    : null;
   return (
     <>
       <Text>Select a template (Enter to confirm):</Text>
-      {templates.map((t,i) => (
-        <Text key={t.name} color={i===index ? "black":undefined} backgroundColor={i===index ? "cyan":undefined}>
-          {t.name === "next-supabase" ? "Next + Supabase (official)" :
-           t.name === "speckit-template" ? "Generic SpecKit template" : t.name}
-        </Text>
-      ))}
+      {templates.map((t,i) => {
+        const isActive = i === index;
+        const typeLabel = t.type === "local" ? "local" : t.type;
+        return (
+          <React.Fragment key={t.name}>
+            <Text color={isActive ? "black":undefined} backgroundColor={isActive ? "cyan":undefined}>
+              {`${t.name} [${typeLabel}]`}
+            </Text>
+            {isActive && t.description && <Text dimColor>{t.description}</Text>}
+            {isActive && t.type === "local" && t.localPath && (
+              <Text dimColor>{`Source: ${sourceLabel}`}</Text>
+            )}
+          </React.Fragment>
+        );
+      })}
       {requiresTarget && (
         <>
           <Text>Target directory for clone:</Text>
@@ -733,6 +766,7 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, 
         </>
       )}
       {active?.type === "blank" && <Text dimColor>Press Enter to create a blank spec in current repo.</Text>}
+      {active?.type === "local" && <Text dimColor>Press Enter to copy files into the current repo.</Text>}
     </>
   );
 }
@@ -752,9 +786,23 @@ async function createBlankSpec(repoPath: string, specRoot: string) {
 }
 
 async function cloneTemplate(tpl: TemplateEntry, targetDir: string) {
-  if (tpl.type !== "github" || !tpl.repo) return;
+  if (tpl.type !== "github") return;
+  const cloneUrl = tpl.gitUrl || (tpl.repo ? `https://github.com/${tpl.repo}.git` : null);
+  if (!cloneUrl) return;
   await fs.ensureDir(path.dirname(targetDir));
-  await execa("git", ["clone", "--depth", "1", "--branch", tpl.branch || "main", `https://github.com/${tpl.repo}.git`, targetDir], { stdio: "inherit" });
+  const args = ["clone", "--depth", "1"];
+  if (tpl.branch) {
+    args.push("--branch", tpl.branch);
+  }
+  await execa("git", [...args, cloneUrl, targetDir], { stdio: "inherit" });
+}
+
+async function copyLocalTemplate(tpl: TemplateEntry, repoPath: string) {
+  if (tpl.type !== "local" || !tpl.localPath) return;
+  const files = await globby(["**/*", "!**/.git/**"], { cwd: tpl.localPath, dot: true });
+  for (const file of files) {
+    await fs.copy(path.join(tpl.localPath, file), path.join(repoPath, file), { overwrite: true });
+  }
 }
 
 function buildSettingsFields(cfg: SpeckitConfig): SettingsFieldWithValue[] {

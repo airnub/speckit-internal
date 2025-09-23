@@ -26,33 +26,51 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
     await fs.copyFile(base, dest);
     return;
   }
-  if (t.type === "github" && t.repo) {
+  const base = opts.mergeIntoCwd ? process.cwd() : targetDir;
+
+  if (t.type === "local") {
+    if (!t.localPath) {
+      throw new Error(`Template '${t.name}' is missing a localPath.`);
+    }
+    await fs.ensureDir(base);
+    await copyInto(base, t.localPath);
+  } else if (t.type === "github") {
+    const cloneUrl = t.gitUrl || (t.repo ? `https://github.com/${t.repo}.git` : null);
+    if (!cloneUrl) {
+      throw new Error(`Template '${t.name}' is missing a git URL.`);
+    }
+    const cloneArgs = ["clone", "--depth", "1"];
+    if (t.branch) {
+      cloneArgs.push("--branch", t.branch);
+    }
     if (!opts.mergeIntoCwd) {
       await fs.ensureDir(path.dirname(targetDir));
-      await execa("git", ["clone", "--depth", "1", "--branch", t.branch || "main", `https://github.com/${t.repo}.git`, targetDir], { stdio: "inherit" });
+      await execa("git", [...cloneArgs, cloneUrl, targetDir], { stdio: "inherit" });
     } else {
       const tmp = path.join(process.cwd(), `.speckit-tpl-${Date.now()}`);
-      await execa("git", ["clone", "--depth", "1", "--branch", t.branch || "main", `https://github.com/${t.repo}.git`, tmp], { stdio: "inherit" });
-      await copyInto(process.cwd(), tmp);
+      await execa("git", [...cloneArgs, cloneUrl, tmp], { stdio: "inherit" });
+      await copyInto(base, tmp);
       await fs.remove(tmp);
     }
-    const base = opts.mergeIntoCwd ? process.cwd() : targetDir;
-    const varsPath = t.varsFile ? path.join(base, t.varsFile) : undefined;
-    let vars: Record<string,string> = {};
-    if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
-      const json = await fs.readJson(varsPath);
-      for (const [key, meta] of Object.entries<any>(json)) {
-        const def = typeof meta === "object" ? meta.default ?? "" : "";
-        const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
-        vars[key] = await input({ message: prompt, default: def });
-      }
-      await applyVars(base, vars);
+  } else {
+    throw new Error(`Unsupported template type: ${t.type}`);
+  }
+
+  const varsPath = t.varsFile ? path.join(base, t.varsFile) : undefined;
+  let vars: Record<string,string> = {};
+  if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
+    const json = await fs.readJson(varsPath);
+    for (const [key, meta] of Object.entries<any>(json)) {
+      const def = typeof meta === "object" ? meta.default ?? "" : "";
+      const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
+      vars[key] = await input({ message: prompt, default: def });
     }
-    if (opts.runPostInit && t.postInit?.length) {
-      for (const cmd of t.postInit) {
-        const [bin, ...args] = cmd.split(" ");
-        await execa(bin, args, { cwd: base, stdio: "inherit" });
-      }
+    await applyVars(base, vars);
+  }
+  if (opts.runPostInit && t.postInit?.length) {
+    for (const cmd of t.postInit) {
+      const [bin, ...args] = cmd.split(" ");
+      await execa(bin, args, { cwd: base, stdio: "inherit" });
     }
   }
 }
@@ -76,4 +94,79 @@ async function applyVars(base: string, vars: Record<string,string>) {
     const replaced = text.replace(/\{\{([A-Z0-9_\-]+)\}\}/g, (_match, key: string) => vars[key] ?? `{{${key}}}`);
     if (replaced !== text) await fs.writeFile(fp, replaced, "utf8");
   }
+}
+
+export function createGitTemplateEntry(spec: string): TemplateEntry | null {
+  const trimmed = spec.trim();
+  if (!trimmed) return null;
+
+  const { target, branch } = splitBranch(trimmed);
+  if (!target) return null;
+
+  const ownerRepoMatch = target.match(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/);
+  if (ownerRepoMatch) {
+    const repo = ownerRepoMatch[0];
+    return {
+      name: repo,
+      description: `GitHub template (${repo})`,
+      type: "github",
+      repo,
+      branch,
+      gitUrl: `https://github.com/${repo}.git`,
+      varsFile: "template.vars.json"
+    };
+  }
+
+  const githubUrlMatch = target.match(/^(?:https?:\/\/|git@)github\.com[/:]([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\.git)?$/);
+  if (githubUrlMatch) {
+    const repo = githubUrlMatch[1];
+    return {
+      name: repo,
+      description: `GitHub template (${repo})`,
+      type: "github",
+      repo,
+      branch,
+      gitUrl: target,
+      varsFile: "template.vars.json"
+    };
+  }
+
+  if (/^(?:https?:\/\/|git@)/.test(target)) {
+    const normalized = stripGitSuffix(target);
+    return {
+      name: deriveNameFromGitTarget(normalized),
+      description: `Git template (${normalized})`,
+      type: "github",
+      branch,
+      gitUrl: target,
+      varsFile: "template.vars.json"
+    };
+  }
+
+  return null;
+}
+
+function splitBranch(input: string): { target: string; branch?: string } {
+  const hashIndex = input.indexOf("#");
+  if (hashIndex === -1) {
+    return { target: input };
+  }
+  const target = input.slice(0, hashIndex).trim();
+  const branch = input.slice(hashIndex + 1).trim();
+  return { target, branch: branch || undefined };
+}
+
+function stripGitSuffix(url: string): string {
+  return url.replace(/\.git$/, "");
+}
+
+function deriveNameFromGitTarget(target: string): string {
+  const cleaned = target.replace(/\.git$/, "");
+  const parts = cleaned.split(/[/:]/).filter(Boolean);
+  if (parts.length >= 2) {
+    const owner = parts[parts.length - 2];
+    const repo = parts[parts.length - 1];
+    return `${owner}/${repo}`;
+  }
+  return parts[parts.length - 1] || cleaned;
 }
