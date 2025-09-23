@@ -45,3 +45,38 @@ Use this to define the minimum-but-sufficient validation run before merging.
 ```
 Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Based on the code you plan to touch, assemble a prioritized checklist of automated tests and manual spot checks that will cover the affected behavior while keeping iteration tight. Group tests by scope (unit, integration, CLI smoke, TUI) and call out any expensive suites that can be deferred to CI, so local runs stay fast without sacrificing coverage.
 ```
+
+### 6. Cross-cutting dependency alignment
+Use this when harmonizing shared dependencies across workspaces or packages.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Inventory the workspaces or packages that share cross-cutting dependencies relevant to your planned change. For each dependency, capture current versions, peer or engine constraints, and key consumers. Highlight mismatches or upgrade blockers, note sequencing or compatibility checks required, and propose an alignment plan that minimizes downtime and parallel-edit conflicts.
+```
+
+### 7. Interface change blast radius planner
+Use this before adjusting a public interface to map every impacted surface.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Describe the interface change in one sentence, then enumerate direct consumers across code, tests, tooling, and docs. For each touchpoint, outline the adaptation steps, risk level, fallback strategy, and validation hooks. Identify automation or targeted searches that confirm coverage, and spell out coordination tasks or timelines needed to keep dependent workstreams unblocked.
+```
+
+### 8. Conflict-aware refactor sketch
+Use this to storyboard a multi-stage refactor while staying ahead of merge pressure.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Summarize the refactor objective, then scan recent commits, TODOs, and known feature branches to spot overlapping areas. Draft a staged plan where each step lists the files or modules touched, the rationale for sequencing, and conflict-mitigation tactics such as shims, feature flags, or helper wrappers. Call out required sync points with teammates and the targeted tests or checks that must pass before advancing to the next stage.
+```
+
+### 9. Coordinated documentation sync
+Use this when keeping multiple documents aligned with an evolving implementation.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Identify every spec, README, guide, and changelog entry touched by the planned change, noting the source-of-truth section for each. Detail the required updates, dependencies on other edits, review or approval owners, and ideal sequencing. Recommend supporting artifacts—such as announcements or issue updates—that keep stakeholders aware of the coordinated documentation sweep.
+```
+
+### 10. Release-cut readiness sweep
+Use this before declaring a release candidate to expose any final blockers.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Compile a release-readiness checklist that covers code freeze status, outstanding migrations, documentation completeness, changelog accuracy, and required test suites (unit, integration, CLI, TUI). For each item, note the current status, responsible owner, next action, and deadline. Flag gating risks, propose mitigation steps, and call out any approvals or sign-offs needed before cutting the release.
+```
