@@ -7,9 +7,21 @@ import path from "node:path";
 import TextInput from "ink-text-input";
 import { getDefaultTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
 import { loadConfig, saveConfig } from "../config.js";
-import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd } from "../git.js";
+import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult } from "../git.js";
 import { execa } from "execa";
 import { generatePatch, AgentConfig } from "@speckit/agent";
+
+const TUI_VERSION = "v0.0.1";
+const SPECKIT_ASCII = String.raw`
+  _____                  _      _   _ _
+ / ____|                | |    | | (_) |
+| (___  ___  ___   ___  | | ___| |_ _| |_ ___
+ \___ \/ _ \/ _ \ / _ \ | |/ _ \ __| | __/ _ \
+ ____) |  __/ (_) |  __/ | |  __/ |_| | ||  __/
+|_____/ \___|\___/ \___| |_|\___|\__|_|\__\___|
+`.trim().split("\n");
+const SPECKIT_TAGLINE = "Spec-driven commits from your terminal";
+const KEY_HINTS = "↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · S Settings · G status · ? help · Q quit";
 
 type FileInfo = { path: string; title?: string };
 type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings";
@@ -117,9 +129,9 @@ export default function App() {
     if (input === "g") setStatus(await gitStatus(repoPath));
     if (input === "e" && files[idx]) { await openInEditor(files[idx].path); await refreshRepo(); }
     if (input === "n") { setMode("new-template"); }
-    if (input === "f") { await gitFetch(repoPath); setStatus(await gitStatus(repoPath)); }
-    if (input === "l") { await gitPull(repoPath); setStatus(await gitStatus(repoPath)); }
-    if (input === "u") { await gitPush(repoPath); setStatus(await gitStatus(repoPath)); }
+    if (input === "f") { await handleGitAction("Git fetch", () => gitFetch(repoPath)); return; }
+    if (input === "l") { await handleGitAction("Git pull", () => gitPull(repoPath)); return; }
+    if (input === "u") { await handleGitAction("Git push", () => gitPush(repoPath)); return; }
     if (input === "k") { await runSpectral(repoPath); }
     if (input === "b") { await runPostInit(repoPath); }
     if (input === "a") {
@@ -301,6 +313,27 @@ export default function App() {
     }
   }
 
+  async function handleGitAction(title: string, action: () => Promise<GitCommandResult>) {
+    setTaskTitle(title);
+    setTaskOutput("(running...)");
+    setMode("tasks");
+    let result: GitCommandResult | null = null;
+    let errorText = "";
+    try {
+      result = await action();
+    } catch (error: any) {
+      errorText = error?.message || String(error);
+    }
+    setStatus(await gitStatus(repoPath));
+    if (result) {
+      setTaskTitle(`${title}${result.ok ? " ✓" : " ✗"}`);
+      setTaskOutput(result.output || "(no output)");
+    } else {
+      setTaskTitle(`${title} ✗`);
+      setTaskOutput(errorText || "(no output)");
+    }
+  }
+
   async function runSpectral(cwd: string) {
     setTaskTitle("Spectral Lint (docs/srs.yaml)");
     setMode("tasks");
@@ -350,19 +383,26 @@ export default function App() {
     }
   }
 
+  const provider = cfg?.provider || "openai";
+  const model = provider === "github"
+    ? (cfg?.github?.model || "-")
+    : (cfg?.openai?.model || "-");
+  const aiEnabled = !!cfg?.ai?.enabled;
   const current = files[idx];
-  const boxHeight = Math.max(10, (((process.stdout as any).rows ?? 40) - 8));
+  const terminalRows = (process.stdout as any).rows ?? 40;
+  const headerRows = SPECKIT_ASCII.length + 5;
+  const boxHeight = Math.max(10, terminalRows - headerRows);
 
   return (
     <Box flexDirection="column">
-      <Box>
-        <Text inverse> SpecKit v0.0.1 </Text>
-        <Text>  </Text>
-        <Text>Repo: </Text><Text bold>{repoPath}</Text><Text>  </Text><Text dimColor>{branch}</Text><Text>  </Text><Text>Spec Root: {specRoot}</Text>
-        <Text>  </Text><Text>AI: {cfg?.ai?.enabled ? "ON" : "OFF"}</Text>
-        <Text>  </Text><Text>Provider: {cfg?.provider || "openai"}</Text>
-        <Text>  </Text><Text>Model: {(cfg?.provider === "openai" ? cfg?.openai?.model : cfg?.github?.model) || "-"}</Text>
-      </Box>
+      <Header
+        repoPath={repoPath}
+        branch={branch}
+        specRoot={specRoot}
+        aiEnabled={aiEnabled}
+        provider={provider}
+        model={model}
+      />
       <Box borderStyle="round" height={boxHeight}>
         <Box width={40} borderStyle="single" flexDirection="column">
           <Text underline>Specs</Text>
@@ -404,6 +444,50 @@ export default function App() {
   );
 }
 
+type HeaderProps = {
+  repoPath: string;
+  branch: string;
+  specRoot: string;
+  aiEnabled: boolean;
+  provider: string;
+  model: string;
+};
+
+function Header({ repoPath, branch, specRoot, aiEnabled, provider, model }: HeaderProps) {
+  const metadata = [
+    { label: "Version", value: TUI_VERSION, bold: true },
+    { label: "Repo", value: repoPath },
+    { label: "Branch", value: branch },
+    { label: "Spec root", value: specRoot },
+    { label: "AI", value: aiEnabled ? "ON" : "OFF", bold: true, color: aiEnabled ? "green" : "red" },
+    { label: "Provider", value: provider },
+    { label: "Model", value: model || "-" }
+  ];
+
+  return (
+    <Box flexDirection="column" marginBottom={1}>
+      <Box flexDirection="column">
+        {SPECKIT_ASCII.map(line => (
+          <Text key={line} color="cyan">{line}</Text>
+        ))}
+      </Box>
+      <Text dimColor>{SPECKIT_TAGLINE}</Text>
+      <Box marginTop={1} flexDirection="row" flexWrap="wrap" columnGap={3} rowGap={0}>
+        {metadata.map(item => (
+          <Box key={item.label} marginRight={2}>
+            <Text color="gray">{item.label}:</Text>
+            <Text> </Text>
+            <Text color={item.color} bold={item.bold}>
+              {item.value}
+            </Text>
+          </Box>
+        ))}
+      </Box>
+      <Text dimColor>{KEY_HINTS}</Text>
+    </Box>
+  );
+}
+
 function truncate(s: string, n: number) {
   return s.length <= n ? s : s.slice(0, n-1) + "…";
 }
@@ -428,7 +512,7 @@ function HelpUI() {
   return (
     <>
       <Text>Keys:</Text>
-      <Text>↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · S Settings · G status · ? help · Q quit</Text>
+      <Text>{KEY_HINTS}</Text>
     </>
   );
 }

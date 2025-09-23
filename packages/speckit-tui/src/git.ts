@@ -1,5 +1,7 @@
 import { execa } from "execa";
 
+export type GitCommandResult = { ok: boolean; output: string };
+
 export async function gitRoot(): Promise<string|null> {
   try {
     const { stdout } = await execa("git", ["rev-parse", "--show-toplevel"]);
@@ -30,14 +32,14 @@ export async function gitCommitAll(msg: string, cwd?: string) {
   await execa("git", ["add","-A"], { cwd });
   await execa("git", ["commit","-m", msg], { cwd });
 }
-export async function gitFetch(cwd?: string) {
-  await execa("git", ["fetch","--prune"], { cwd, stdio: "inherit" });
+export async function gitFetch(cwd?: string): Promise<GitCommandResult> {
+  return runGitCommand(["fetch", "--prune"], cwd);
 }
-export async function gitPull(cwd?: string) {
-  await execa("git", ["pull","--ff-only"], { cwd, stdio: "inherit" });
+export async function gitPull(cwd?: string): Promise<GitCommandResult> {
+  return runGitCommand(["pull", "--ff-only"], cwd);
 }
-export async function gitPush(cwd?: string) {
-  await execa("git", ["push"], { cwd, stdio: "inherit" });
+export async function gitPush(cwd?: string): Promise<GitCommandResult> {
+  return runGitCommand(["push"], cwd);
 }
 export async function runCmd(cwd: string, bin: string, args: string[]) {
   try {
@@ -45,5 +47,16 @@ export async function runCmd(cwd: string, bin: string, args: string[]) {
     return stdout;
   } catch (e:any) {
     return (e?.stdout || e?.stderr || String(e)) as string;
+  }
+}
+
+async function runGitCommand(args: string[], cwd?: string): Promise<GitCommandResult> {
+  try {
+    const { stdout, stderr } = await execa("git", args, { cwd });
+    const output = [stdout, stderr].filter(Boolean).join("\n").trim();
+    return { ok: true, output };
+  } catch (error: any) {
+    const message = (error?.stderr || error?.stdout || error?.shortMessage || error?.message || String(error)).trim();
+    return { ok: false, output: message };
   }
 }
