@@ -6,9 +6,9 @@ import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
 import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
+import { useTemplateIntoDir, TemplateVarPrompt, TemplatePostInitEvent } from "@speckit/cli/template";
 import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult } from "../git.js";
-import { execa } from "execa";
 import { generatePatch, AgentConfig } from "@speckit/agent";
 
 const TUI_VERSION = "v0.0.1";
@@ -25,6 +25,12 @@ const KEY_HINTS = "↑/↓ select · E edit · N new (template) · P preview · 
 
 type FileInfo = { path: string; title?: string };
 type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings";
+
+type TemplatePromptState = {
+  prompt: TemplateVarPrompt;
+  onSubmit: (value: string) => void;
+  onCancel?: () => void;
+};
 
 type SettingFieldType = "boolean"|"select"|"text"|"list"|"action";
 type SettingField = {
@@ -54,6 +60,8 @@ export default function App() {
   const [tplIndex, setTplIndex] = useState(0);
   const [templates, setTemplates] = useState<TemplateEntry[]>([]);
   const [targetDir, setTargetDir] = useState<string>("");
+  const [templatePromptState, setTemplatePromptState] = useState<TemplatePromptState|null>(null);
+  const [templatePromptValue, setTemplatePromptValue] = useState<string>("");
 
   // tasks/ai
   const [taskTitle, setTaskTitle] = useState<string>("");
@@ -120,11 +128,13 @@ export default function App() {
 
   const selectedTemplate = templates[tplIndex] ?? null;
   const templateRequiresTarget = mode === "new-template" && selectedTemplate?.type === "github";
+  const promptActive = templatePromptState != null;
   const textInputActive =
     mode === "commit" ||
     mode === "ai" ||
     templateRequiresTarget ||
-    (mode === "settings" && settingsEditing);
+    (mode === "settings" && settingsEditing) ||
+    promptActive;
 
   async function confirmTemplateSelection() {
     const sel = templates[tplIndex];
@@ -132,23 +142,85 @@ export default function App() {
     if (sel.type === "blank") {
       await createBlankSpec(repoPath, specRoot);
       setMode("preview");
-      await refreshRepo();
+      await refreshRepo(repoPath);
       setTargetDir("");
       return;
     }
-    if (sel.type === "local") {
-      await copyLocalTemplate(sel, repoPath);
-      setMode("preview");
-      await refreshRepo();
-      setTargetDir("");
+    if (sel.type === "github" && !targetDir) {
       return;
     }
-    if (sel.type === "github") {
-      if (!targetDir) return;
-      await cloneTemplate(sel, targetDir);
-      await refreshRepo(targetDir);
-      setMode("preview");
+
+    const destination = sel.type === "github" ? targetDir : repoPath;
+    const initialMessage = sel.type === "github"
+      ? `Cloning template into ${destination}...\n`
+      : `Copying template into ${repoPath}...\n`;
+
+    const appendOutput = (chunk: string) => {
+      setTaskOutput(prev => {
+        const base = prev || "";
+        return base ? base + chunk : chunk;
+      });
+    };
+
+    const promptHandler = (prompt: TemplateVarPrompt) => {
+      return new Promise<string>(resolve => {
+        setTemplatePromptValue(prompt.defaultValue || "");
+        setTemplatePromptState({
+          prompt,
+          onSubmit: value => {
+            setTemplatePromptState(null);
+            setTemplatePromptValue("");
+            appendOutput(`\n${prompt.key} = ${value}\n`);
+            resolve(value);
+          }
+        });
+      });
+    };
+
+    const handlePostInitEvent = async (event: TemplatePostInitEvent) => {
+      switch (event.type) {
+        case "start":
+          appendOutput(`\n$ ${event.command}\n`);
+          break;
+        case "stdout":
+        case "stderr":
+          appendOutput(event.data);
+          break;
+        case "exit": {
+          const code = event.code ?? 0;
+          const signal = event.signal ? ` (signal ${event.signal})` : "";
+          appendOutput(`\nCommand exited with code ${code}${signal}.\n`);
+          break;
+        }
+        case "error":
+          appendOutput(`\nError: ${formatError(event.error)}\n`);
+          break;
+      }
+    };
+
+    setTaskTitle(`Template: ${sel.name}`);
+    setTaskOutput(initialMessage);
+    setMode("tasks");
+
+    try {
+      await useTemplateIntoDir(sel, destination, {
+        mergeIntoCwd: false,
+        promptVars: true,
+        runPostInit: true,
+        promptFn: promptHandler,
+        onPostInitEvent: handlePostInitEvent,
+      });
+      setTaskTitle(`Template: ${sel.name} ✓`);
+      appendOutput(`\nTemplate applied successfully.\n`);
+      const nextRepo = sel.type === "github" ? destination : repoPath;
+      await refreshRepo(nextRepo);
       setTargetDir("");
+    } catch (error: any) {
+      setTaskTitle(`Template: ${sel.name} ✗`);
+      appendOutput(`\nTemplate failed: ${formatError(error)}\n`);
+    } finally {
+      setTemplatePromptState(null);
+      setTemplatePromptValue("");
     }
   }
 
@@ -503,7 +575,15 @@ export default function App() {
               repoPath={repoPath}
             />
           )}
-          {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
+          {mode === "tasks" && (
+            <TaskViewer
+              title={taskTitle}
+              output={taskOutput}
+              prompt={templatePromptState}
+              promptValue={templatePromptValue}
+              onChangePromptValue={setTemplatePromptValue}
+            />
+          )}
           {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} onCancel={() => setMode("preview")} />}
           {mode === "settings" && (
             <SettingsUI
@@ -607,7 +687,7 @@ function CommitUI({ msg, setMsg, repoPath, onStart, onResult, onCancel }: Commit
             await gitCommitAll(msg, repoPath);
             await onResult?.({ ok: true, output: `Committed with message:\n${msg}` });
           } catch (error: any) {
-            const message = formatGitCommitError(error);
+            const message = formatError(error);
             await onResult?.({ ok: false, output: message });
           }
         }}
@@ -618,7 +698,7 @@ function CommitUI({ msg, setMsg, repoPath, onStart, onResult, onCancel }: Commit
   );
 }
 
-function formatGitCommitError(error: any): string {
+function formatError(error: any): string {
   const message = (error?.stderr || error?.stdout || error?.shortMessage || error?.message || String(error) || "").trim();
   return message || "(no output)";
 }
@@ -632,11 +712,42 @@ function HelpUI() {
   );
 }
 
-function TaskViewer({ title, output }: { title: string; output: string }) {
+type TaskViewerProps = {
+  title: string;
+  output: string;
+  prompt: TemplatePromptState | null;
+  promptValue: string;
+  onChangePromptValue: (value: string) => void;
+};
+
+function TaskViewer({ title, output, prompt, promptValue, onChangePromptValue }: TaskViewerProps) {
+  useInput((input, key) => {
+    if (!prompt) return;
+    if (key.escape) {
+      prompt.onCancel?.();
+    }
+  }, { isActive: !!prompt });
+
+  const instructions = prompt
+    ? `Enter to continue${prompt.prompt.defaultValue ? ` (default: ${prompt.prompt.defaultValue})` : ""}${prompt.onCancel ? " · Esc cancel" : ""}`
+    : null;
+
   return (
     <>
       <Text bold>{title}</Text>
       <Text>{output || "(no output)"} </Text>
+      {prompt && (
+        <>
+          <Text>{prompt.prompt.prompt}</Text>
+          <TextInput
+            value={promptValue}
+            onChange={onChangePromptValue}
+            onSubmit={value => prompt.onSubmit(value)}
+            focus
+          />
+          {instructions && <Text dimColor>{instructions}</Text>}
+        </>
+      )}
     </>
   );
 }
@@ -783,20 +894,6 @@ async function createBlankSpec(repoPath: string, specRoot: string) {
   const name = `spec_${Date.now()}.md`;
   const dest = path.join(destDir, name);
   await fs.copyFile(base, dest);
-}
-
-async function cloneTemplate(tpl: TemplateEntry, targetDir: string) {
-  if (tpl.type !== "github" || !tpl.repo) return;
-  await fs.ensureDir(path.dirname(targetDir));
-  await execa("git", ["clone", "--depth", "1", "--branch", tpl.branch || "main", `https://github.com/${tpl.repo}.git`, targetDir], { stdio: "inherit" });
-}
-
-async function copyLocalTemplate(tpl: TemplateEntry, repoPath: string) {
-  if (tpl.type !== "local" || !tpl.localPath) return;
-  const files = await globby(["**/*", "!**/.git/**"], { cwd: tpl.localPath, dot: true });
-  for (const file of files) {
-    await fs.copy(path.join(tpl.localPath, file), path.join(repoPath, file), { overwrite: true });
-  }
 }
 
 function buildSettingsFields(cfg: SpeckitConfig): SettingsFieldWithValue[] {

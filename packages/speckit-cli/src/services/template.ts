@@ -5,12 +5,36 @@ import fs from "fs-extra";
 import path from "node:path";
 import { globby } from "globby";
 
-type UseOptions = { mergeIntoCwd: boolean; promptVars: boolean; runPostInit: boolean };
+type UseOptions = {
+  mergeIntoCwd: boolean;
+  promptVars: boolean;
+  runPostInit: boolean;
+  promptFn?: TemplatePromptHandler;
+  providedVars?: Record<string, string>;
+  onPostInitEvent?: TemplatePostInitListener;
+};
 type TemplateManifest = { varsFile?: string };
 
 type InputPrompt = typeof inquirerInput;
 
 let promptInput: InputPrompt = inquirerInput;
+
+export type TemplateVarPrompt = {
+  key: string;
+  prompt: string;
+  defaultValue: string;
+};
+
+export type TemplatePromptHandler = (prompt: TemplateVarPrompt) => Promise<string>;
+
+export type TemplatePostInitEvent =
+  | { type: "start"; command: string; cwd: string }
+  | { type: "stdout"; command: string; data: string }
+  | { type: "stderr"; command: string; data: string }
+  | { type: "exit"; command: string; code: number | null; signal: NodeJS.Signals | null }
+  | { type: "error"; command: string; error: unknown };
+
+type TemplatePostInitListener = (event: TemplatePostInitEvent) => void | Promise<void>;
 
 export function __setTemplatePromptInput(fn: InputPrompt) {
   promptInput = fn;
@@ -22,7 +46,8 @@ export function __resetTemplatePromptInput() {
 
 export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, opts: UseOptions) {
   if (t.type === "blank") {
-    const specsDir = path.join(targetDir, "docs/specs");
+    const specRoot = t.specRoot || "docs/specs";
+    const specsDir = path.join(targetDir, specRoot);
     const templatesDir = path.join(specsDir, "templates");
     const base = path.join(templatesDir, "base.md");
     await fs.ensureDir(templatesDir);
@@ -72,20 +97,27 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
 
   const varsFile = await selectVarsFile(base, t.varsFile);
   const varsPath = varsFile ? path.join(base, varsFile) : undefined;
-  let vars: Record<string,string> = {};
-  if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
-    const json = await fs.readJson(varsPath);
-    for (const [key, meta] of Object.entries<any>(json)) {
-      const def = typeof meta === "object" ? meta.default ?? "" : "";
-      const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
-      vars[key] = await promptInput({ message: prompt, default: def });
+  const vars: Record<string, string> = { ...(opts.providedVars || {}) };
+
+  if (varsPath && (opts.promptVars || Object.keys(vars).length > 0) && (await fs.pathExists(varsPath))) {
+    const prompts = await readTemplatePrompts(varsPath);
+    if (opts.promptVars) {
+      const handler: TemplatePromptHandler =
+        opts.promptFn ?? (async prompt => promptInput({ message: prompt.prompt, default: prompt.defaultValue }));
+      for (const prompt of prompts) {
+        if (vars[prompt.key] != null) continue;
+        vars[prompt.key] = await handler(prompt);
+      }
     }
+  }
+
+  if (Object.keys(vars).length > 0) {
     await applyVars(base, vars);
   }
+
   if (opts.runPostInit && t.postInit?.length) {
     for (const cmd of t.postInit) {
-      const [bin, ...args] = cmd.split(" ");
-      await execa(bin, args, { cwd: base, stdio: "inherit" });
+      await runPostInitCommand(base, cmd, opts.onPostInitEvent);
     }
   }
 }
@@ -158,4 +190,93 @@ async function applyVars(base: string, vars: Record<string,string>) {
     const replaced = text.replace(/\{\{([A-Z0-9_\-]+)\}\}/g, (_match, key: string) => vars[key] ?? `{{${key}}}`);
     if (replaced !== text) await fs.writeFile(fp, replaced, "utf8");
   }
+}
+
+async function readTemplatePrompts(varsPath: string): Promise<TemplateVarPrompt[]> {
+  const json = await fs.readJson(varsPath);
+  const entries: TemplateVarPrompt[] = [];
+  for (const [key, meta] of Object.entries<any>(json)) {
+    entries.push(normalizeVarMeta(key, meta));
+  }
+  return entries;
+}
+
+function normalizeVarMeta(key: string, meta: any): TemplateVarPrompt {
+  if (typeof meta !== "object" || meta === null) {
+    return { key, prompt: key, defaultValue: "" };
+  }
+  const prompt = typeof meta.prompt === "string" && meta.prompt.trim().length > 0
+    ? meta.prompt
+    : key;
+  const defaultRaw = meta.default;
+  const defaultValue = defaultRaw == null ? "" : String(defaultRaw);
+  return { key, prompt, defaultValue };
+}
+
+async function runPostInitCommand(base: string, command: string, emit?: TemplatePostInitListener) {
+  const parts = command.split(" ").filter(Boolean);
+  if (parts.length === 0) {
+    return;
+  }
+  const [bin, ...args] = parts;
+
+  if (!emit) {
+    await execa(bin, args, { cwd: base, stdio: "inherit" });
+    return;
+  }
+
+  await emit({ type: "start", command, cwd: base });
+  const child = execa(bin, args, { cwd: base });
+
+  child.stdout?.on("data", chunk => {
+    const text = toText(chunk);
+    if (text) {
+      void emit({ type: "stdout", command, data: text });
+    }
+  });
+
+  child.stderr?.on("data", chunk => {
+    const text = toText(chunk);
+    if (text) {
+      void emit({ type: "stderr", command, data: text });
+    }
+  });
+
+  try {
+    const result = await child;
+    await emit({
+      type: "exit",
+      command,
+      code: result.exitCode ?? 0,
+      signal: result.signal ?? null,
+    });
+  } catch (error: any) {
+    if (error?.stdout) {
+      const text = toText(error.stdout);
+      if (text) {
+        await emit({ type: "stdout", command, data: text });
+      }
+    }
+    if (error?.stderr) {
+      const text = toText(error.stderr);
+      if (text) {
+        await emit({ type: "stderr", command, data: text });
+      }
+    }
+    await emit({ type: "error", command, error });
+    throw error;
+  }
+}
+
+function toText(value: any): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (Buffer.isBuffer(value)) {
+    return value.toString();
+  }
+  if (value == null) {
+    return "";
+  }
+  return String(value);
 }

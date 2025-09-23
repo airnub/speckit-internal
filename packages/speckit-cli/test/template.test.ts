@@ -7,7 +7,8 @@ import type { TemplateEntry } from "@speckit/core";
 import {
   useTemplateIntoDir,
   __setTemplatePromptInput,
-  __resetTemplatePromptInput
+  __resetTemplatePromptInput,
+  TemplatePostInitEvent
 } from "../src/services/template.js";
 
 test("prompts when fallback template.vars.json exists", async () => {
@@ -92,6 +93,49 @@ test("uses manifest-defined varsFile overrides", async () => {
     assert.equal(serviceDoc.trim(), "Service: Payments");
   } finally {
     __resetTemplatePromptInput();
+    await fs.remove(tmpRoot);
+  }
+});
+
+test("applies provided vars and emits post-init events", async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "speckit-template-"));
+  const templateDir = path.join(tmpRoot, "template");
+  const targetDir = path.join(tmpRoot, "output");
+
+  await fs.ensureDir(templateDir);
+  await fs.writeJson(path.join(templateDir, "template.vars.json"), {
+    SERVICE: { prompt: "Service name", default: "Payments" }
+  });
+  await fs.writeFile(path.join(templateDir, "SERVICE.md"), "Service: {{SERVICE}}\n", "utf8");
+  await fs.writeFile(path.join(templateDir, "post-init.js"), "console.log('post-init-run');", "utf8");
+
+  const tpl: TemplateEntry = {
+    name: "local-post-init",
+    description: "",
+    type: "local",
+    localPath: templateDir,
+    postInit: ["node post-init.js"],
+  };
+
+  const events: TemplatePostInitEvent[] = [];
+
+  try {
+    await useTemplateIntoDir(tpl, targetDir, {
+      mergeIntoCwd: false,
+      promptVars: false,
+      runPostInit: true,
+      providedVars: { SERVICE: "Billing" },
+      onPostInitEvent: event => { events.push(event); },
+    });
+
+    const serviceDoc = await fs.readFile(path.join(targetDir, "SERVICE.md"), "utf8");
+    assert.equal(serviceDoc.trim(), "Service: Billing");
+
+    const eventTypes = events.map(ev => ev.type);
+    assert.deepEqual(eventTypes.filter(t => t === "start"), ["start"]);
+    assert(eventTypes.includes("stdout"));
+    assert(eventTypes.includes("exit"));
+  } finally {
     await fs.remove(tmpRoot);
   }
 });
