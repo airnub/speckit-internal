@@ -9,9 +9,21 @@ type UseOptions = { mergeIntoCwd: boolean; promptVars: boolean; runPostInit: boo
 
 export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, opts: UseOptions) {
   if (t.type === "blank") {
-    await fs.ensureDir(path.join(targetDir, "docs/specs"));
-    const file = path.join(targetDir, "docs/specs/spec_" + Date.now() + ".md");
-    await fs.outputFile(file, `---\ntitle: New Spec\nversion: 0.1.0\nstatus: draft\n---\n\n# Summary\n`);
+    const specsDir = path.join(targetDir, "docs/specs");
+    const templatesDir = path.join(specsDir, "templates");
+    const base = path.join(templatesDir, "base.md");
+    await fs.ensureDir(templatesDir);
+    if (!(await fs.pathExists(base))) {
+      const now = new Date().toISOString();
+      await fs.writeFile(
+        base,
+        `---\ntitle: "New Spec"\nversion: "0.1.0"\nstatus: "draft"\nowners: []\ncreated: "${now}"\nupdated: "${now}"\n---\n\n# Summary\n`,
+        "utf8"
+      );
+    }
+    await fs.ensureDir(specsDir);
+    const dest = path.join(specsDir, `spec_${Date.now()}.md`);
+    await fs.copyFile(base, dest);
     return;
   }
   if (t.type === "github" && t.repo) {
