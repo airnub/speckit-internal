@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export * from "./template.js";
+
 export const SpecMetaSchema = z.object({
   title: z.string().min(1),
   version: z.string().min(1),

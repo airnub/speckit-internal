@@ -5,7 +5,15 @@ import matter from "gray-matter";
 import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
-import { getDefaultTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
+import {
+  getDefaultTemplates,
+  TemplateEntry,
+  TemplateVarPrompt,
+  SpeckitConfig,
+  parseTemplateVars,
+  applyTemplateVars,
+  runTemplatePostInit
+} from "@speckit/core";
 import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult } from "../git.js";
 import { execa } from "execa";
@@ -24,7 +32,7 @@ const SPECKIT_TAGLINE = "Spec-driven commits from your terminal";
 const KEY_HINTS = "↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · S Settings · G status · ? help · Q quit";
 
 type FileInfo = { path: string; title?: string };
-type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings";
+type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings"|"template-flow";
 
 type SettingFieldType = "boolean"|"select"|"text"|"list"|"action";
 type SettingField = {
@@ -37,6 +45,19 @@ type SettingField = {
   help?: string;
 };
 type SettingsFieldWithValue = SettingField & { value: any };
+
+type TemplateFlowStage = "cloning" | "prompt" | "applying" | "applied";
+type TemplateFlowState = {
+  template: TemplateEntry;
+  targetDir: string;
+  absTargetDir: string;
+  stage: TemplateFlowStage;
+  prompts: TemplateVarPrompt[];
+  currentIndex: number;
+  inputValue: string;
+  values: Record<string, string>;
+  missingKeys: string[];
+};
 
 export default function App() {
   const [cfg, setCfg] = useState<SpeckitConfig|null>(null);
@@ -54,6 +75,7 @@ export default function App() {
   const [tplIndex, setTplIndex] = useState(0);
   const templates = getDefaultTemplates().filter(t => ["blank","next-supabase","speckit-template"].includes(t.name));
   const [targetDir, setTargetDir] = useState<string>("");
+  const [templateFlow, setTemplateFlow] = useState<TemplateFlowState|null>(null);
 
   // tasks/ai
   const [taskTitle, setTaskTitle] = useState<string>("");
@@ -118,6 +140,13 @@ export default function App() {
       return;
     }
 
+    if (mode === "template-flow") {
+      if (templateFlow?.stage === "applied" && key.return) {
+        await finishTemplateFlow();
+      }
+      return;
+    }
+
     if (key.upArrow) {
       if (mode === "new-template") setTplIndex(i => Math.max(0, i-1));
       else setIdx(i => Math.max(0, i-1));
@@ -156,10 +185,7 @@ export default function App() {
         setMode("preview");
         await refreshRepo();
       } else {
-        if (!targetDir) return;
-        await cloneTemplate(sel, targetDir);
-        await refreshRepo(targetDir);
-        setMode("preview");
+        await startTemplateFlow(sel, targetDir);
       }
     }
   });
@@ -371,6 +397,176 @@ export default function App() {
     setTaskOutput(out || "(no output)");
   }
 
+  function formatTemplateError(error: any): string {
+    if (!error) return "Unknown error";
+    if (typeof error === "string") return error;
+    const candidates = [error.stderr, error.stdout, error.shortMessage, error.message];
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+    return String(error);
+  }
+
+  function handleTemplateError(title: string, error: any) {
+    const message = formatTemplateError(error);
+    setTaskTitle(title);
+    setTaskOutput(message);
+    setMode("tasks");
+    setTemplateFlow(null);
+  }
+
+  async function applyTemplateWithValues(template: TemplateEntry, absTargetDir: string, values: Record<string, string>) {
+    setTemplateFlow(prev => {
+      if (!prev) return prev;
+      return { ...prev, stage: "applying", values };
+    });
+    try {
+      const result = await applyTemplateVars(absTargetDir, values);
+      setTemplateFlow(prev => {
+        if (!prev) return prev;
+        return { ...prev, stage: "applied", missingKeys: result.missingKeys, values };
+      });
+    } catch (error) {
+      handleTemplateError("Template substitution error", error);
+    }
+  }
+
+  function handleTemplatePromptChange(value: string) {
+    setTemplateFlow(prev => {
+      if (!prev) return prev;
+      if (prev.stage !== "prompt") return prev;
+      return { ...prev, inputValue: value };
+    });
+  }
+
+  async function handleTemplatePromptSubmit() {
+    if (!templateFlow || templateFlow.stage !== "prompt") return;
+    const prompt = templateFlow.prompts[templateFlow.currentIndex];
+    const value = templateFlow.inputValue;
+    const nextValues = { ...templateFlow.values, [prompt.key]: value };
+    const nextIndex = templateFlow.currentIndex + 1;
+    if (nextIndex < templateFlow.prompts.length) {
+      const nextPrompt = templateFlow.prompts[nextIndex];
+      setTemplateFlow(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          values: nextValues,
+          currentIndex: nextIndex,
+          inputValue: nextPrompt?.defaultValue ?? ""
+        };
+      });
+      return;
+    }
+    await applyTemplateWithValues(templateFlow.template, templateFlow.absTargetDir, nextValues);
+  }
+
+  async function finishTemplateFlow() {
+    if (!templateFlow) return;
+    const tpl = templateFlow.template;
+    const absTargetDir = templateFlow.absTargetDir;
+    const missing = templateFlow.missingKeys;
+    try {
+      if (tpl.postInit?.length) {
+        const summaryLines = missing.length
+          ? [`Missing template placeholders: ${missing.join(", ")}`]
+          : ["All template placeholders replaced."];
+        let output = summaryLines.join("\n");
+        if (output) output += "\n\n";
+        setTaskTitle(`PostInit (${tpl.name})`);
+        setTaskOutput(output + "(running...)");
+        setMode("tasks");
+        await runTemplatePostInit(
+          absTargetDir,
+          tpl.postInit,
+          async (bin, args, cwd) => {
+            const res = await runCmd(cwd, bin, args);
+            return res;
+          },
+          async result => {
+            output += `$ ${result.command}\n`;
+            const text = result.output ? result.output.trimEnd() : "(no output)";
+            output += text + "\n\n";
+            setTaskOutput(output.trimEnd());
+          }
+        );
+        setTaskOutput(output.trimEnd());
+      }
+      await refreshRepo(absTargetDir);
+      setTemplateFlow(null);
+      setTargetDir("");
+      setMode("preview");
+    } catch (error) {
+      handleTemplateError("Template workflow error", error);
+    }
+  }
+
+  async function startTemplateFlow(tpl: TemplateEntry, rawTarget: string) {
+    if (tpl.type !== "github" || !tpl.repo) return;
+    const trimmed = rawTarget.trim();
+    if (!trimmed) {
+      setTaskTitle("Template error");
+      setTaskOutput("Provide a target directory before cloning a template.");
+      setMode("tasks");
+      return;
+    }
+    const absTargetDir = path.isAbsolute(trimmed) ? trimmed : path.resolve(repoPath, trimmed);
+    if (await fs.pathExists(absTargetDir)) {
+      handleTemplateError("Template error", new Error(`Target directory already exists: ${absTargetDir}`));
+      return;
+    }
+    setTemplateFlow({
+      template: tpl,
+      targetDir: trimmed,
+      absTargetDir,
+      stage: "cloning",
+      prompts: [],
+      currentIndex: 0,
+      inputValue: "",
+      values: {},
+      missingKeys: []
+    });
+    setMode("template-flow");
+    try {
+      await fs.ensureDir(path.dirname(absTargetDir));
+      await execa("git", [
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        tpl.branch || "main",
+        `https://github.com/${tpl.repo}.git`,
+        absTargetDir
+      ]);
+      let prompts: TemplateVarPrompt[] = [];
+      const varsPath = tpl.varsFile ? path.join(absTargetDir, tpl.varsFile) : null;
+      if (varsPath && await fs.pathExists(varsPath)) {
+        const json = await fs.readJson(varsPath);
+        prompts = parseTemplateVars(json);
+      }
+      if (prompts.length > 0) {
+        setTemplateFlow(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            stage: "prompt",
+            prompts,
+            currentIndex: 0,
+            inputValue: prompts[0]?.defaultValue ?? "",
+            values: {},
+            missingKeys: []
+          };
+        });
+      } else {
+        await applyTemplateWithValues(tpl, absTargetDir, {});
+      }
+    } catch (error) {
+      handleTemplateError("Template error", error);
+    }
+  }
+
   async function runAi(requirement: string) {
     if (!cfg?.ai?.enabled) return;
     const agentCfg: AgentConfig = {
@@ -428,6 +624,13 @@ export default function App() {
           {mode === "commit" && <CommitUI msg={commitMsg} setMsg={setCommitMsg} repoPath={repoPath} onDone={async () => { setCommitMsg("chore(specs): update"); setMode("preview"); setStatus(await gitStatus(repoPath)); }} />}
           {mode === "help" && <HelpUI/>}
           {mode === "new-template" && <TemplatePicker templates={templates} index={tplIndex} targetDir={targetDir} setTargetDir={setTargetDir}/>}
+          {mode === "template-flow" && templateFlow && (
+            <TemplateWorkflowUI
+              state={templateFlow}
+              onChangeValue={handleTemplatePromptChange}
+              onSubmitValue={handleTemplatePromptSubmit}
+            />
+          )}
           {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
           {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} />}
           {mode === "settings" && (
@@ -542,6 +745,75 @@ function AiUI({ prompt, setPrompt, onSubmit }: { prompt: string; setPrompt: (s:s
   );
 }
 
+type TemplateWorkflowUIProps = {
+  state: TemplateFlowState;
+  onChangeValue: (value: string) => void;
+  onSubmitValue: () => void | Promise<void>;
+};
+
+function TemplateWorkflowUI({ state, onChangeValue, onSubmitValue }: TemplateWorkflowUIProps) {
+  if (state.stage === "cloning") {
+    return (
+      <>
+        <Text>Cloning template “{state.template.name}”…</Text>
+        {state.template.repo && (
+          <Text dimColor>
+            {`https://github.com/${state.template.repo}.git → ${state.targetDir}`}
+          </Text>
+        )}
+      </>
+    );
+  }
+  if (state.stage === "prompt") {
+    const prompt = state.prompts[state.currentIndex];
+    return (
+      <>
+        <Text>Template: {state.template.name}</Text>
+        <Text>{prompt.prompt} ({prompt.key})</Text>
+        <TextInput
+          value={state.inputValue}
+          onChange={onChangeValue}
+          onSubmit={onSubmitValue}
+          placeholder={prompt.defaultValue ? `Default: ${prompt.defaultValue}` : undefined}
+        />
+        <Text dimColor>
+          {`Enter to continue · ${state.currentIndex + 1}/${state.prompts.length}`}
+        </Text>
+      </>
+    );
+  }
+  if (state.stage === "applying") {
+    return (
+      <>
+        <Text>Applying template variables…</Text>
+      </>
+    );
+  }
+  if (state.stage === "applied") {
+    return (
+      <>
+        <Text>Template variables applied for “{state.template.name}”.</Text>
+        {state.missingKeys.length > 0 ? (
+          <>
+            <Text color="yellow">Missing placeholders:</Text>
+            {state.missingKeys.map(key => (
+              <Text key={key}>- {key}</Text>
+            ))}
+          </>
+        ) : (
+          <Text color="green">All placeholders replaced.</Text>
+        )}
+        <Text dimColor>
+          {state.template.postInit?.length
+            ? "Press Enter to run postInit commands."
+            : "Press Enter to finish."}
+        </Text>
+      </>
+    );
+  }
+  return null;
+}
+
 type SettingsUIProps = {
   fields: SettingsFieldWithValue[];
   cursor: number;
@@ -607,7 +879,7 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir }: { templat
         <>
           <Text>Target directory for clone:</Text>
           <TextInput value={targetDir} onChange={setTargetDir} placeholder="./my-project" />
-          <Text dimColor>Press Enter to clone & switch repo.</Text>
+          <Text dimColor>Press Enter to launch the template workflow.</Text>
         </>
       )}
       {templates[index]?.name === "blank" && <Text dimColor>Press Enter to create a blank spec in current repo.</Text>}
@@ -627,12 +899,6 @@ async function createBlankSpec(repoPath: string, specRoot: string) {
   const name = `spec_${Date.now()}.md`;
   const dest = path.join(destDir, name);
   await fs.copyFile(base, dest);
-}
-
-async function cloneTemplate(tpl: TemplateEntry, targetDir: string) {
-  if (tpl.type !== "github" || !tpl.repo) return;
-  await fs.ensureDir(path.dirname(targetDir));
-  await execa("git", ["clone", "--depth", "1", "--branch", tpl.branch || "main", `https://github.com/${tpl.repo}.git`, targetDir], { stdio: "inherit" });
 }
 
 function buildSettingsFields(cfg: SpeckitConfig): SettingsFieldWithValue[] {

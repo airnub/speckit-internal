@@ -1,5 +1,11 @@
 import { input } from "@inquirer/prompts";
-import { TemplateEntry } from "@speckit/core";
+import {
+  TemplateEntry,
+  TemplateVarPrompt,
+  parseTemplateVars,
+  applyTemplateVars,
+  runTemplatePostInit
+} from "@speckit/core";
 import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
@@ -26,21 +32,19 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
     }
     const base = opts.mergeIntoCwd ? process.cwd() : targetDir;
     const varsPath = t.varsFile ? path.join(base, t.varsFile) : undefined;
-    let vars: Record<string,string> = {};
+    const vars: Record<string, string> = {};
     if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
       const json = await fs.readJson(varsPath);
-      for (const [key, meta] of Object.entries<any>(json)) {
-        const def = typeof meta === "object" ? meta.default ?? "" : "";
-        const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
-        vars[key] = await input({ message: prompt, default: def });
+      const prompts: TemplateVarPrompt[] = parseTemplateVars(json);
+      for (const prompt of prompts) {
+        vars[prompt.key] = await input({ message: prompt.prompt, default: prompt.defaultValue });
       }
-      await applyVars(base, vars);
+      await applyTemplateVars(base, vars);
     }
     if (opts.runPostInit && t.postInit?.length) {
-      for (const cmd of t.postInit) {
-        const [bin, ...args] = cmd.split(" ");
-        await execa(bin, args, { cwd: base, stdio: "inherit" });
-      }
+      await runTemplatePostInit(base, t.postInit, async (bin, args, cwd) => {
+        await execa(bin, args, { cwd, stdio: "inherit" });
+      });
     }
   }
 }
@@ -52,16 +56,3 @@ async function copyInto(dst: string, src: string) {
   }
 }
 
-async function applyVars(base: string, vars: Record<string,string>) {
-  const files = await globby(["**/*", "!**/.git/**", "!node_modules/**", "!dist/**"], { cwd: base, dot: true });
-  for (const rel of files) {
-    const fp = path.join(base, rel);
-    if ((await fs.stat(fp)).isDirectory()) continue;
-    const buf = await fs.readFile(fp);
-    if (buf.length > 2_000_000) continue;
-    const text = buf.toString("utf8");
-    if (!text) continue;
-    const replaced = text.replace(/\{\{([A-Z0-9_\-]+)\}\}/g, (_match, key: string) => vars[key] ?? `{{${key}}}`);
-    if (replaced !== text) await fs.writeFile(fp, replaced, "utf8");
-  }
-}
