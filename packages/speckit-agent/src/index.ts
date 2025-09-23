@@ -21,6 +21,13 @@ const DEFAULT_OPENAI_MODEL = "gpt-5-2025-08-07";
 const DEFAULT_GITHUB_MODEL = "openai/gpt-5";
 const DEFAULT_GITHUB_ENDPOINT = "https://models.inference.ai.azure.com";
 
+type OpenAiModuleLoader = () => Promise<{ OpenAI: new (...args: any[]) => any }>;
+let openAiModuleLoader: OpenAiModuleLoader | undefined;
+
+export function __setOpenAiModuleLoader(loader?: OpenAiModuleLoader) {
+  openAiModuleLoader = loader;
+}
+
 /**
  * Guarded at the app layer by cfg.ai.enabled; this function performs the actual call.
  * SDKs are lazily imported to keep startup light.
@@ -52,28 +59,99 @@ async function callOpenAi(cfg: AgentConfig, requirement: string, context?: strin
     throw new Error("OpenAI API key missing (set OPENAI_API_KEY or cfg.openai.apiKey).");
   }
 
-  const { OpenAI } = await import("openai");
+  const { OpenAI } = openAiModuleLoader ? await openAiModuleLoader() : await import("openai");
   const client = new OpenAI({ apiKey });
 
   const messages = buildMessages(requirement, context);
-  const completion = await client.chat.completions.create({
+  const completion = await client.responses.create({
     model,
-    messages,
+    input: messages,
     temperature: 0,
     response_format: { type: "json_object" }
   });
 
-  const choice = completion.choices?.[0];
-  const refusal = choice?.message?.refusal;
+  const refusal = detectResponseRefusal(completion.output);
   if (refusal) {
-    throw new Error(`OpenAI request refused: ${typeof refusal === "string" ? refusal : JSON.stringify(refusal)}`);
+    throw new Error(`OpenAI request refused: ${refusal}`);
   }
 
-  const plan = parsePlan(choice?.message?.content);
+  const planText = resolveResponseText(completion);
+  const plan = parsePlan(planText);
   plan.summary ||= "AI proposal";
   plan.patch = plan.patch.trim();
   if (plan.rationale) plan.rationale = plan.rationale.trim();
   return plan;
+}
+
+function detectResponseRefusal(output: unknown): string | undefined {
+  if (!Array.isArray(output)) return undefined;
+
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+
+    const directRefusal = typeof (item as any).refusal === "string" ? (item as any).refusal : undefined;
+    if (directRefusal && directRefusal.trim()) {
+      return directRefusal;
+    }
+
+    const content = (item as any).content;
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (!part || typeof part !== "object") continue;
+        if ((part as any).type === "refusal") {
+          const refusalText = typeof (part as any).refusal === "string" ? (part as any).refusal : JSON.stringify(part);
+          if (refusalText && refusalText.trim()) {
+            return refusalText;
+          }
+        }
+      }
+    } else if (content && typeof content === "object" && typeof (content as any).refusal === "string") {
+      const nestedRefusal = (content as any).refusal;
+      if (nestedRefusal && nestedRefusal.trim()) {
+        return nestedRefusal;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function resolveResponseText(completion: { output_text?: unknown; output?: unknown }): string {
+  const direct = typeof completion.output_text === "string" ? completion.output_text : "";
+  if (direct.trim()) {
+    return direct;
+  }
+
+  const fallback = collectResponseOutputText(completion.output);
+  if (fallback.trim()) {
+    return fallback;
+  }
+
+  return direct;
+}
+
+function collectResponseOutputText(output: unknown): string {
+  if (!Array.isArray(output)) return "";
+
+  const segments: string[] = [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = (item as any).content;
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (!part) continue;
+        if (typeof part === "object" && (part as any).type === "refusal") continue;
+        const text = normaliseContent(part);
+        if (text) segments.push(text);
+      }
+    } else if (content) {
+      if (typeof content === "object" && (content as any).type === "refusal") continue;
+      const text = normaliseContent(content);
+      if (text) segments.push(text);
+    }
+  }
+
+  return segments.join("");
 }
 
 async function callGithub(cfg: AgentConfig, requirement: string, context?: string): Promise<AiPlan> {
