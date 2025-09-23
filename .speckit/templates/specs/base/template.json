@@ -1,0 +1,5 @@
+{
+  "name": "Base spec bundle",
+  "description": "Baseline SpecKit spec scaffold with metadata frontmatter and summary stub.",
+  "specRoot": "docs/specs"
+}
