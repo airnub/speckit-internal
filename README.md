@@ -17,6 +17,13 @@
 - **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
 - **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
 
+### Why it matters
+
+- **One source of truth at any scale** — distributed squads rely on the same living specification bundle, so onboarding, reviews, and compliance checks stay aligned no matter how many repos you operate. Product and platform changes point back to that single narrative instead of scattered docs.
+- **Stack-flexible planning** — when architecture or framework choices shift—say, React today and Next.js tomorrow—you refine the implementation plan while the core requirements remain steady. Specs describe intent, so they survive tool migrations and keep engineers unblocked.
+- **Requirements tracked like code** — every requirement lives alongside the source in git, complete with history, diffs, and review workflows. Traceability stops being a spreadsheet exercise because updates ride through normal pull requests.
+- **Full-context AI assistance** — the agent can reference the entire specification, recent diffs, and surrounding artifacts rather than a single prompt. That richer context produces proposals that respect constraints your team already agreed to.
+
 ## Quick start
 ```bash
 # Install pnpm via Corepack (Node 18+ ships with it)

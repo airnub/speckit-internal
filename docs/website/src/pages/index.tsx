@@ -81,9 +81,24 @@ function HomepageHero(): JSX.Element {
             </Link>
           </div>
           <ul className={styles.heroMeta}>
-            <li>Runtime diff previews</li>
-            <li>Template-driven automation</li>
-            <li>Inline AI proposals</li>
+            <li>
+              One source of truth at any scale — Keep distributed squads anchored to
+              the same spec library so releases and audits all reference the latest
+              commitments.
+            </li>
+            <li>
+              Stack-flexible planning — When you pivot from React to Next.js (or
+              beyond), adjust execution steps while the approved requirements stay
+              intact.
+            </li>
+            <li>
+              Requirements tracked like code — Store specs in git, review them
+              through pull requests, and carry history with every change.
+            </li>
+            <li>
+              Full-context AI assistance — Give the agent the complete narrative so
+              proposals respect the guardrails your team already agreed on.
+            </li>
           </ul>
         </div>
         <div className={styles.heroCard}>
