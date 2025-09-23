@@ -51,7 +51,8 @@ type TemplatePromptState = {
 
 export default function App() {
   const [cfg, setCfg] = useState<SpeckitConfig|null>(null);
-  const [repoPath, setRepoPath] = useState<string>(process.cwd());
+  const initialRepoPathRef = React.useRef(path.resolve(process.cwd()));
+  const [repoPath, setRepoPath] = useState<string>(initialRepoPathRef.current);
   const [branch, setBranch] = useState<string>("main");
   const [specRoot, setSpecRoot] = useState<string>("docs/specs");
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -81,20 +82,42 @@ export default function App() {
   const [settingsEditField, setSettingsEditField] = useState<SettingsFieldWithValue|null>(null);
 
   async function refreshRepo(rootOverride?: string, options?: RefreshOptions) {
-    const r = rootOverride || await gitRoot() || process.cwd();
     const conf = await loadConfig();
-    const availableTemplates = await loadTemplates({ repoRoot: r });
+    const repoMode = conf.repo?.mode;
+    const configRepoPath = repoMode === "local" && conf.repo?.localPath
+      ? path.resolve(conf.repo.localPath)
+      : undefined;
+    const initialRepoPath = initialRepoPathRef.current;
+    const currentRepoPath = repoPath ? path.resolve(repoPath) : undefined;
+    const overridePath = rootOverride ? path.resolve(rootOverride) : undefined;
+
+    let selectedRoot = overridePath;
+    if (!selectedRoot) {
+      if (currentRepoPath && currentRepoPath !== initialRepoPath) {
+        selectedRoot = currentRepoPath;
+      } else if (configRepoPath) {
+        selectedRoot = configRepoPath;
+      } else if (currentRepoPath) {
+        selectedRoot = currentRepoPath;
+      }
+    }
+    if (!selectedRoot) {
+      selectedRoot = await gitRoot() || initialRepoPath || process.cwd();
+    }
+    const resolvedRoot = path.resolve(selectedRoot);
+
+    const availableTemplates = await loadTemplates({ repoRoot: resolvedRoot });
     setCfg(conf);
-    setRepoPath(r);
+    setRepoPath(resolvedRoot);
     setTemplates(availableTemplates);
     setTplIndex(prev => {
       if (availableTemplates.length === 0) return 0;
       return Math.min(prev, availableTemplates.length - 1);
     });
-    setBranch(await gitBranch(r));
-    setStatus(await gitStatus(r));
+    setBranch(await gitBranch(resolvedRoot));
+    setStatus(await gitStatus(resolvedRoot));
     const resolvedSpecRoot = conf.repo?.specRoot || "docs/specs";
-    const resolvedSpecRootPath = path.join(r, resolvedSpecRoot);
+    const resolvedSpecRootPath = path.join(resolvedRoot, resolvedSpecRoot);
     const templateDir = path.join(resolvedSpecRootPath, "templates");
     setSpecRoot(resolvedSpecRoot);
     const pattern = [
@@ -238,7 +261,7 @@ export default function App() {
         setTargetDir("");
       } else {
         const options = currentSelection ? { selectedPath: currentSelection } : undefined;
-        await refreshRepo(undefined, options);
+        await refreshRepo(repoPath, options);
       }
 
       const outputs = commandOutputs.length
@@ -303,7 +326,7 @@ export default function App() {
       const selectedPath = files[idx]?.path;
       if (selectedPath) {
         await openInEditor(selectedPath);
-        await refreshRepo(undefined, { selectedPath });
+        await refreshRepo(repoPath, { selectedPath });
       }
     }
     if (input === "n") { setMode("new-template"); }
