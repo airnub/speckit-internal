@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "bin": {
+    "speckit": "dist/cli.js",
     "spec": "dist/cli.js"
   },
   "main": "dist/cli.cjs",

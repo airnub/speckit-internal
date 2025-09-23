@@ -50,7 +50,7 @@ A developer‑friendly **SDD workstation** that:
 ## 4) Product Overview
 **Packages** (pnpm workspaces):
 - `@speckit/core` — zod schemas, template registry, shared types.
-- `@speckit/cli` — `spec` binary; ASCII banner; create wizard; template ops; REPL.
+- `@speckit/cli` — `speckit` binary (alias: `spec`); ASCII banner; create wizard; template ops; REPL.
 - `@speckit/tui` — Ink app (spec list/preview, diff, commit, Spectral, PostInit, Settings, AI gate).
 - `@speckit/agent` — provider adapters (OpenAI now; GitHub Models later) returning `{ summary, rationale, patch }`.
 
