@@ -74,8 +74,14 @@ export default function App() {
     setRepoPath(r);
     setBranch(await gitBranch(r));
     setStatus(await gitStatus(r));
-    setSpecRoot(conf.repo?.specRoot || "docs/specs");
-    const pattern = [path.join(r, conf.repo?.specRoot || "docs/specs", "**/*.md"), "!" + path.join(r, "docs/specs/templates/**")];
+    const resolvedSpecRoot = conf.repo?.specRoot || "docs/specs";
+    const resolvedSpecRootPath = path.join(r, resolvedSpecRoot);
+    const templateDir = path.join(resolvedSpecRootPath, "templates");
+    setSpecRoot(resolvedSpecRoot);
+    const pattern = [
+      path.join(resolvedSpecRootPath, "**/*.md"),
+      `!${path.join(templateDir, "**")}`
+    ];
     const paths = (await globby(pattern)).sort();
     const infos: FileInfo[] = [];
     for (const file of paths) {
