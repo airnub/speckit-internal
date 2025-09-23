@@ -1,4 +1,4 @@
-import { input } from "@inquirer/prompts";
+import { input as inquirerInput } from "@inquirer/prompts";
 import { TemplateEntry } from "@speckit/core";
 import { execa } from "execa";
 import fs from "fs-extra";
@@ -6,6 +6,19 @@ import path from "node:path";
 import { globby } from "globby";
 
 type UseOptions = { mergeIntoCwd: boolean; promptVars: boolean; runPostInit: boolean };
+type TemplateManifest = { varsFile?: string };
+
+type InputPrompt = typeof inquirerInput;
+
+let promptInput: InputPrompt = inquirerInput;
+
+export function __setTemplatePromptInput(fn: InputPrompt) {
+  promptInput = fn;
+}
+
+export function __resetTemplatePromptInput() {
+  promptInput = inquirerInput;
+}
 
 export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, opts: UseOptions) {
   if (t.type === "blank") {
@@ -57,14 +70,15 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
     throw new Error(`Unsupported template type: ${t.type}`);
   }
 
-  const varsPath = t.varsFile ? path.join(base, t.varsFile) : undefined;
+  const varsFile = await selectVarsFile(base, t.varsFile);
+  const varsPath = varsFile ? path.join(base, varsFile) : undefined;
   let vars: Record<string,string> = {};
   if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
     const json = await fs.readJson(varsPath);
     for (const [key, meta] of Object.entries<any>(json)) {
       const def = typeof meta === "object" ? meta.default ?? "" : "";
       const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
-      vars[key] = await input({ message: prompt, default: def });
+      vars[key] = await promptInput({ message: prompt, default: def });
     }
     await applyVars(base, vars);
   }
@@ -81,6 +95,55 @@ async function copyInto(dst: string, src: string) {
   for (const f of files) {
     await fs.copy(path.join(src, f), path.join(dst, f), { overwrite: true });
   }
+}
+
+async function selectVarsFile(base: string, explicit?: string): Promise<string | undefined> {
+  if (explicit) {
+    const explicitPath = path.join(base, explicit);
+    if (await fs.pathExists(explicitPath)) {
+      return explicit;
+    }
+  }
+
+  const discovered = await discoverVarsFile(base);
+  if (discovered) {
+    return discovered;
+  }
+
+  return undefined;
+}
+
+async function discoverVarsFile(base: string): Promise<string | undefined> {
+  const manifest = await readTemplateManifest(base);
+  const manifestVars = typeof manifest?.varsFile === "string" ? manifest.varsFile : undefined;
+  if (manifestVars) {
+    const manifestPath = path.join(base, manifestVars);
+    if (await fs.pathExists(manifestPath)) {
+      return manifestVars;
+    }
+  }
+
+  const fallback = "template.vars.json";
+  if (await fs.pathExists(path.join(base, fallback))) {
+    return fallback;
+  }
+
+  return undefined;
+}
+
+async function readTemplateManifest(base: string): Promise<TemplateManifest | null> {
+  const candidates = ["template.json", "template.config.json", "template.meta.json"];
+  for (const file of candidates) {
+    const full = path.join(base, file);
+    if (await fs.pathExists(full)) {
+      try {
+        return await fs.readJson(full);
+      } catch (error: any) {
+        throw new Error(`Failed to parse ${full}: ${error?.message || error}`);
+      }
+    }
+  }
+  return null;
 }
 
 async function applyVars(base: string, vars: Record<string,string>) {

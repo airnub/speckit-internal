@@ -89,6 +89,13 @@ Values collected via `spec template use …` or `spec init --template …` are i
 
 Declare an array of shell commands in `postInit` (within the manifest) to run after files are copied and variables applied. Commands execute in order inside the target repo, letting you prime dependencies (`pnpm install`), generate docs (`pnpm docs:gen`), or run any other bootstrap tasks. Leave `postInit` undefined to skip this step.
 
+### Manual QA: Ad-hoc GitHub template prompts
+
+1. Remove any previous sandbox directory (for example `rm -rf /tmp/spec-template-test`).
+2. Run `pnpm --filter @speckit/cli dev -- template use https://github.com/airnub/next-supabase-speckit-template /tmp/spec-template-test`.
+3. Confirm the CLI prompts for `REPO_NAME`, `APP_TITLE`, and the other keys defined in the template's `template.vars.json` file.
+4. Inspect files such as `/tmp/spec-template-test/docs/specs/templates/base.md` to verify placeholders like `{{REPO_NAME}}` were replaced with the entered values.
+
 ## Roadmap
 
 ### Near term
