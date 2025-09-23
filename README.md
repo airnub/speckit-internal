@@ -44,6 +44,7 @@ pnpm --filter @speckit/tui dev
 
 ### Near term
 - Expand template coverage (more frontend/backend stacks) and polish the TUI flows for diffing, staging, and committing specs.
+- Add support for repo-local templates under `.speckit/templates` so teams can version custom scaffolds that load seamlessly in the CLI/TUI pickers.
 - Harden the Spectral/PostInit runners with additional integration tests and richer error surfacing, keeping AI and analytics optional by default.
 - Add a draft-spec workflow so requirement edits happen in a draft workspace first, can be reviewed or committed as drafts, and then promoted into a new published version when ready.
 
