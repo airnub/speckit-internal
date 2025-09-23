@@ -22,6 +22,7 @@
     "fs-extra": "^11.2.0",
     "execa": "^9.3.0",
     "globby": "^14.0.2",
+    "string-argv": "^0.3.2",
     "@speckit/core": "workspace:*"
   },
   "devDependencies": {
