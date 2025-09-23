@@ -40,6 +40,18 @@ pnpm --filter @speckit/tui dev
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
 
+## Roadmap
+
+### Near term
+- Expand template coverage (more frontend/backend stacks) and polish the TUI flows for diffing, staging, and committing specs.
+- Harden the Spectral/PostInit runners with additional integration tests and richer error surfacing, keeping AI and analytics optional by default.
+
+### Mid term
+- Add **Model Context Protocol (MCP) / Agent-to-Agent (A2A)** support so SpecKit can both consume and expose spec context programmatically. This will let external agents request templates, trigger lint/build runs, and hand back proposed patches without going through the interactive CLI/TUI.
+
+### Long term
+- Ship **Speckit TUS as a SaaS platform**: a multi-tenant Next.js + Supabase web app that generates specs, manages template catalogs, and mirrors all SpecKit CLI/TUI functionality (spec editing, diffing, AI proposals, repo orchestration) through secure web workflows and webhooks. The goal is a managed experience where teams collaborate on specs, sync to their repos, and invoke SpecKit automation from the browser or via Supabase Edge Functions.
+
 ### Update model lists
 Edit `~/.config/spec-studio/config.json`:
 ```jsonc
