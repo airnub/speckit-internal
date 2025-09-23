@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { globby } from "globby";
 import matter from "gray-matter";
@@ -8,8 +8,8 @@ import TextInput from "ink-text-input";
 import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
 import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult } from "../git.js";
-import { execa } from "execa";
 import { generatePatch, AgentConfig } from "@speckit/agent";
+import { useTemplateIntoDir, TemplateVarPrompt, TemplatePostInitEvent } from "../../../speckit-cli/src/services/template.js";
 
 const TUI_VERSION = "v0.0.1";
 const SPECKIT_ASCII = String.raw`
@@ -37,6 +37,15 @@ type SettingField = {
   help?: string;
 };
 type SettingsFieldWithValue = SettingField & { value: any };
+type TemplatePromptState = { key: string; message: string; defaultValue: string };
+type TaskPromptConfig = {
+  message: string;
+  value: string;
+  defaultValue: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  onCancel: () => void;
+};
 
 export default function App() {
   const [cfg, setCfg] = useState<SpeckitConfig|null>(null);
@@ -58,6 +67,10 @@ export default function App() {
   // tasks/ai
   const [taskTitle, setTaskTitle] = useState<string>("");
   const [taskOutput, setTaskOutput] = useState<string>("");
+  const [templatePrompt, setTemplatePrompt] = useState<TemplatePromptState|null>(null);
+  const [templatePromptValue, setTemplatePromptValue] = useState<string>("");
+  const templatePromptResolver = useRef<((value: string) => void) | null>(null);
+  const templatePromptRef = useRef<TemplatePromptState | null>(null);
   const [aiPrompt, setAiPrompt] = useState<string>("");
 
   // settings
@@ -124,31 +137,114 @@ export default function App() {
     mode === "commit" ||
     mode === "ai" ||
     templateRequiresTarget ||
-    (mode === "settings" && settingsEditing);
+    (mode === "settings" && settingsEditing) ||
+    (mode === "tasks" && !!templatePrompt);
+
+  function promptForTemplateVar(info: TemplateVarPrompt): Promise<string> {
+    return new Promise(resolve => {
+      const state: TemplatePromptState = {
+        key: info.key,
+        message: info.prompt,
+        defaultValue: info.defaultValue ?? "",
+      };
+      templatePromptRef.current = state;
+      templatePromptResolver.current = resolve;
+      setTemplatePrompt(state);
+      setTemplatePromptValue(state.defaultValue);
+    });
+  }
+
+  function clearTemplatePrompt(value: string) {
+    const resolver = templatePromptResolver.current;
+    templatePromptResolver.current = null;
+    templatePromptRef.current = null;
+    setTemplatePrompt(null);
+    setTemplatePromptValue("");
+    resolver?.(value);
+  }
+
+  function handleTemplatePromptSubmit(value: string) {
+    clearTemplatePrompt(value);
+  }
+
+  function handleTemplatePromptCancel() {
+    const current = templatePromptRef.current;
+    clearTemplatePrompt(current?.defaultValue ?? "");
+  }
+
+  const handleTemplatePostInitEvent = React.useCallback((event: TemplatePostInitEvent) => {
+    setTaskOutput(prev => {
+      const base = prev || "";
+      switch (event.type) {
+        case "start": {
+          const prefix = base && !base.endsWith("\n") ? `${base}\n` : base;
+          return `${prefix}$ ${event.command}\n`;
+        }
+        case "stdout":
+        case "stderr": {
+          const data = typeof event.data === "string" ? event.data : String(event.data ?? "");
+          return `${base}${data}`;
+        }
+        case "exit": {
+          const prefix = base && !base.endsWith("\n") ? `${base}\n` : base;
+          return `${prefix}(exit code ${event.code ?? 0})\n`;
+        }
+        case "error": {
+          const prefix = base && !base.endsWith("\n") ? `${base}\n` : base;
+          return `${prefix}Error: ${formatUnknownError(event.error)}`;
+        }
+        default:
+          return base;
+      }
+    });
+  }, []);
 
   async function confirmTemplateSelection() {
     const sel = templates[tplIndex];
     if (!sel) return;
-    if (sel.type === "blank") {
-      await createBlankSpec(repoPath, specRoot);
-      setMode("preview");
-      await refreshRepo();
-      setTargetDir("");
+    if (sel.type === "github" && !targetDir.trim()) {
       return;
     }
-    if (sel.type === "local") {
-      await copyLocalTemplate(sel, repoPath);
+    const specRootDir = cfg?.repo?.specRoot || "docs/specs";
+    const mergeIntoCwd = sel.type !== "github";
+    const destination = sel.type === "github" ? targetDir : repoPath;
+    setMode("tasks");
+    setTaskTitle(`Template: ${sel.name}`);
+    setTaskOutput("Applying template...");
+    templatePromptResolver.current = null;
+    templatePromptRef.current = null;
+    setTemplatePrompt(null);
+    setTemplatePromptValue("");
+    try {
+      await useTemplateIntoDir(sel, destination, {
+        mergeIntoCwd,
+        promptVars: !!sel.varsFile,
+        runPostInit: !!sel.postInit?.length,
+        cwd: mergeIntoCwd ? repoPath : undefined,
+        specRoot: specRootDir,
+        prompt: promptForTemplateVar,
+        onPostInitEvent: handleTemplatePostInitEvent,
+      });
+      setTaskTitle(`Template: ${sel.name} ✓`);
+      setTaskOutput(prev => {
+        const base = prev || "";
+        const padded = base && !base.endsWith("\n") ? `${base}\n` : base;
+        const summary = sel.type === "blank" ? "Blank spec created." : "Template applied successfully.";
+        return `${padded}${summary}`;
+      });
+      const refreshTarget = sel.type === "github" ? destination : repoPath;
+      await refreshRepo(refreshTarget);
+      if (sel.type === "github") {
+        setTargetDir("");
+      }
       setMode("preview");
-      await refreshRepo();
-      setTargetDir("");
-      return;
-    }
-    if (sel.type === "github") {
-      if (!targetDir) return;
-      await cloneTemplate(sel, targetDir);
-      await refreshRepo(targetDir);
-      setMode("preview");
-      setTargetDir("");
+    } catch (error: any) {
+      setTaskTitle(`Template: ${sel.name} ✗`);
+      setTaskOutput(prev => {
+        const base = prev || "";
+        const padded = base && !base.endsWith("\n") ? `${base}\n` : base;
+        return `${padded}${formatUnknownError(error)}`;
+      });
     }
   }
 
@@ -503,7 +599,20 @@ export default function App() {
               repoPath={repoPath}
             />
           )}
-          {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
+          {mode === "tasks" && (
+            <TaskViewer
+              title={taskTitle}
+              output={taskOutput}
+              prompt={templatePrompt ? {
+                message: templatePrompt.message,
+                value: templatePromptValue,
+                defaultValue: templatePrompt.defaultValue,
+                onChange: setTemplatePromptValue,
+                onSubmit: handleTemplatePromptSubmit,
+                onCancel: handleTemplatePromptCancel,
+              } : null}
+            />
+          )}
           {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} onCancel={() => setMode("preview")} />}
           {mode === "settings" && (
             <SettingsUI
@@ -623,6 +732,11 @@ function formatGitCommitError(error: any): string {
   return message || "(no output)";
 }
 
+function formatUnknownError(error: any): string {
+  const message = (error?.stderr || error?.stdout || error?.shortMessage || error?.message || String(error) || "").trim();
+  return message || "(no output)";
+}
+
 function HelpUI() {
   return (
     <>
@@ -632,11 +746,31 @@ function HelpUI() {
   );
 }
 
-function TaskViewer({ title, output }: { title: string; output: string }) {
+function TaskViewer({ title, output, prompt }: { title: string; output: string; prompt?: TaskPromptConfig|null }) {
+  useInput((input, key) => {
+    if (!prompt) return;
+    if (key.escape) {
+      prompt.onCancel();
+    }
+  }, { isActive: !!prompt });
+  const trimmed = output.trim();
   return (
     <>
       <Text bold>{title}</Text>
-      <Text>{output || "(no output)"} </Text>
+      {trimmed && <Text>{output}</Text>}
+      {!trimmed && !prompt && <Text dimColor>(no output)</Text>}
+      {prompt && (
+        <>
+          <Text>{prompt.message}</Text>
+          <TextInput
+            value={prompt.value}
+            onChange={prompt.onChange}
+            onSubmit={prompt.onSubmit}
+            focus
+          />
+          <Text dimColor>{prompt.defaultValue ? "Enter to confirm · Esc to use default" : "Enter to confirm · Esc for empty value"}</Text>
+        </>
+      )}
     </>
   );
 }
@@ -769,34 +903,6 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, 
       {active?.type === "local" && <Text dimColor>Press Enter to copy files into the current repo.</Text>}
     </>
   );
-}
-
-async function createBlankSpec(repoPath: string, specRoot: string) {
-  const dir = path.join(repoPath, specRoot, "templates");
-  const base = path.join(dir, "base.md");
-  await fs.ensureDir(path.dirname(base));
-  if (!(await fs.pathExists(base))) {
-    await fs.writeFile(base, `---\ntitle: \"New Spec\"\nversion: \"0.1.0\"\nstatus: \"draft\"\nowners: []\ncreated: \"${new Date().toISOString()}\"\nupdated: \"${new Date().toISOString()}\"\n---\n\n# Summary\n`);
-  }
-  const destDir = path.join(repoPath, specRoot);
-  await fs.ensureDir(destDir);
-  const name = `spec_${Date.now()}.md`;
-  const dest = path.join(destDir, name);
-  await fs.copyFile(base, dest);
-}
-
-async function cloneTemplate(tpl: TemplateEntry, targetDir: string) {
-  if (tpl.type !== "github" || !tpl.repo) return;
-  await fs.ensureDir(path.dirname(targetDir));
-  await execa("git", ["clone", "--depth", "1", "--branch", tpl.branch || "main", `https://github.com/${tpl.repo}.git`, targetDir], { stdio: "inherit" });
-}
-
-async function copyLocalTemplate(tpl: TemplateEntry, repoPath: string) {
-  if (tpl.type !== "local" || !tpl.localPath) return;
-  const files = await globby(["**/*", "!**/.git/**"], { cwd: tpl.localPath, dot: true });
-  for (const file of files) {
-    await fs.copy(path.join(tpl.localPath, file), path.join(repoPath, file), { overwrite: true });
-  }
 }
 
 function buildSettingsFields(cfg: SpeckitConfig): SettingsFieldWithValue[] {

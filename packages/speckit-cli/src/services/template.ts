@@ -1,15 +1,37 @@
-import { input } from "@inquirer/prompts";
 import { TemplateEntry } from "@speckit/core";
 import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { globby } from "globby";
 
-type UseOptions = { mergeIntoCwd: boolean; promptVars: boolean; runPostInit: boolean };
+export type TemplateVarPrompt = {
+  key: string;
+  prompt: string;
+  defaultValue: string;
+  meta: unknown;
+};
 
-export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, opts: UseOptions) {
+export type TemplatePostInitEvent =
+  | { type: "start"; command: string }
+  | { type: "stdout"; command: string; data: string }
+  | { type: "stderr"; command: string; data: string }
+  | { type: "exit"; command: string; code: number | null }
+  | { type: "error"; command: string; error: unknown };
+
+export type UseTemplateOptions = {
+  mergeIntoCwd: boolean;
+  promptVars: boolean;
+  runPostInit: boolean;
+  cwd?: string;
+  specRoot?: string;
+  prompt?: (prompt: TemplateVarPrompt) => Promise<string>;
+  onPostInitEvent?: (event: TemplatePostInitEvent) => void;
+};
+
+export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, opts: UseTemplateOptions) {
   if (t.type === "blank") {
-    const specsDir = path.join(targetDir, "docs/specs");
+    const specRoot = opts.specRoot || "docs/specs";
+    const specsDir = path.join(targetDir, specRoot);
     const templatesDir = path.join(specsDir, "templates");
     const base = path.join(templatesDir, "base.md");
     await fs.ensureDir(templatesDir);
@@ -26,7 +48,7 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
     await fs.copyFile(base, dest);
     return;
   }
-  const base = opts.mergeIntoCwd ? process.cwd() : targetDir;
+  const base = opts.mergeIntoCwd ? (opts.cwd ?? process.cwd()) : targetDir;
 
   if (t.type === "local") {
     if (!t.localPath) {
@@ -61,17 +83,45 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
   let vars: Record<string,string> = {};
   if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
     const json = await fs.readJson(varsPath);
+    const ask = opts.prompt ?? defaultPrompt;
     for (const [key, meta] of Object.entries<any>(json)) {
       const def = typeof meta === "object" ? meta.default ?? "" : "";
-      const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
-      vars[key] = await input({ message: prompt, default: def });
+      const defaultValue = typeof def === "string" ? def : String(def ?? "");
+      const promptText = typeof meta === "object" ? (meta.prompt || key) : key;
+      vars[key] = await ask({
+        key,
+        prompt: promptText,
+        defaultValue,
+        meta,
+      });
     }
     await applyVars(base, vars);
   }
   if (opts.runPostInit && t.postInit?.length) {
     for (const cmd of t.postInit) {
-      const [bin, ...args] = cmd.split(" ");
-      await execa(bin, args, { cwd: base, stdio: "inherit" });
+      const trimmed = cmd.trim();
+      if (!trimmed) continue;
+      const [bin, ...args] = trimmed.split(/\s+/);
+      const commandLabel = [bin, ...args].join(" ");
+      if (!opts.onPostInitEvent) {
+        await execa(bin, args, { cwd: base, stdio: "inherit" });
+        continue;
+      }
+      opts.onPostInitEvent({ type: "start", command: commandLabel });
+      try {
+        const child = execa(bin, args, { cwd: base });
+        child.stdout?.on("data", chunk => {
+          opts.onPostInitEvent?.({ type: "stdout", command: commandLabel, data: chunk.toString() });
+        });
+        child.stderr?.on("data", chunk => {
+          opts.onPostInitEvent?.({ type: "stderr", command: commandLabel, data: chunk.toString() });
+        });
+        await child;
+        opts.onPostInitEvent({ type: "exit", command: commandLabel, code: child.exitCode ?? 0 });
+      } catch (error) {
+        opts.onPostInitEvent({ type: "error", command: commandLabel, error });
+        throw error;
+      }
     }
   }
 }
@@ -95,4 +145,9 @@ async function applyVars(base: string, vars: Record<string,string>) {
     const replaced = text.replace(/\{\{([A-Z0-9_\-]+)\}\}/g, (_match, key: string) => vars[key] ?? `{{${key}}}`);
     if (replaced !== text) await fs.writeFile(fp, replaced, "utf8");
   }
+}
+
+async function defaultPrompt(info: TemplateVarPrompt): Promise<string> {
+  const { input } = await import("@inquirer/prompts");
+  return input({ message: info.prompt, default: info.defaultValue });
 }
