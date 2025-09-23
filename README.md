@@ -9,10 +9,9 @@
 - **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.
 - **Spec ops**: create from template, edit in `$EDITOR`, validate front-matter, preview Markdown, diff, stage, **commit**.
 - **Git remote ops (AI-OFF supported)**: **Fetch/Pull/Push** using your local git credentials.
-- **Templates** (built-in):
-  - **blank** — empty spec in current repo
-  - **next-supabase** — Next.js + Supabase SpecKit template (`airnub/next-supabase-speckit-template`)
-  - **speckit-template** — generic, app-agnostic SpecKit template (`airnub/speckit-template`)
+- **Templates**:
+  - **Built-in** — `blank`, `next-supabase`, `speckit-template`
+  - **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
 - **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
 - **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
 - **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
@@ -35,10 +34,56 @@ spec init --template speckit-template
 
 # TUI
 pnpm --filter @speckit/tui dev
-# N → pick a template (Blank, Next + Supabase, or Generic)
+# N → pick a template (blank, built-ins, or repo-local)
 # K → Spectral lint, B → docs/RTM build, A → AI propose (if enabled),
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
+
+## Repo-local templates
+
+SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`spec template list`, `spec template use`, `spec init --template …`) and the TUI picker (`N`) both surface these entries alongside the defaults.
+
+### Optional manifest (`template.json`)
+
+Add a JSON manifest at the root of the template directory to override metadata or declare post-init hooks:
+
+```jsonc
+// .speckit/templates/app/next/template.json
+{
+  "name": "app/next",          // defaults to the relative directory name
+  "description": "Next.js + Supabase starter wired for SpecKit",
+  "specRoot": "docs/specs",    // optional override for downstream tooling
+  "varsFile": "template.vars.json", // defaults to template.vars.json when present
+  "postInit": [
+    "pnpm install",
+    "pnpm docs:gen"
+  ]
+}
+```
+
+The loader also recognizes `template.config.json` and `template.meta.json` if you prefer either filename.
+
+### Variable prompts (`template.vars.json`)
+
+Place a `template.vars.json` file next to the manifest to define string substitutions. The CLI prompts for each key and replaces `{{TOKEN}}` occurrences throughout the copied files:
+
+```json
+{
+  "PROJECT_NAME": {
+    "prompt": "Project name",
+    "default": "Acme"
+  },
+  "SUPABASE_URL": {
+    "prompt": "Supabase URL"
+  }
+}
+```
+
+Values collected via `spec template use …` or `spec init --template …` are interpolated immediately. The TUI copies the template directory as-is, so placeholders remain available for manual edits or a follow-up CLI run if you want the prompts.
+
+### Post-init commands
+
+Declare an array of shell commands in `postInit` (within the manifest) to run after files are copied and variables applied. Commands execute in order inside the target repo, letting you prime dependencies (`pnpm install`), generate docs (`pnpm docs:gen`), or run any other bootstrap tasks. Leave `postInit` undefined to skip this step.
 
 ## Roadmap
 
