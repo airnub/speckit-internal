@@ -13,12 +13,12 @@ import { generatePatch, AgentConfig } from "@speckit/agent";
 
 const TUI_VERSION = "v0.0.1";
 const SPECKIT_ASCII = String.raw`
-  _____                  _      _   _ _
- / ____|                | |    | | (_) |
-| (___  ___  ___   ___  | | ___| |_ _| |_ ___
- \___ \/ _ \/ _ \ / _ \ | |/ _ \ __| | __/ _ \
- ____) |  __/ (_) |  __/ | |  __/ |_| | ||  __/
-|_____/ \___|\___/ \___| |_|\___|\__|_|\__\___|
+ ____                  _  ___ _
+/ ___| _ __   ___  ___| |/ (_) |_
+\___ \| '_ \ / _ \/ __| ' /| | __|
+ ___) | |_) |  __/ (__| . \| | |_
+|____/| .__/ \___|\___|_|\_\_|\__|
+      |_|
 `.trim().split("\n");
 const SPECKIT_TAGLINE = "Spec-driven commits from your terminal";
 const KEY_HINTS = "↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · S Settings · G status · ? help · Q quit";
