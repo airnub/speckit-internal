@@ -5,7 +5,7 @@ sidebar_label: Iterative Prompt Catalog v0.0.2
 slug: /dev/prompts/iterative-development-prompts
 description: Consolidated evergreen prompts for iterative SpecKit development workflows.
 created: "2025-09-22"
-updated: "2025-09-23"
+updated: "2025-09-24"
 ---
 
 # Iterative Development Prompt Catalog (v0.0.2)
@@ -124,6 +124,56 @@ Read the root `AGENTS.md` to discover the current coding agent brief. Load that 
 
 ```
 Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Compile a release-readiness checklist that covers code freeze status, outstanding migrations, documentation completeness, changelog accuracy, and required test suites (unit, integration, CLI, TUI). For each item, note the current status, responsible owner, next action, and deadline. Flag gating risks, propose mitigation steps, and call out any approvals or sign-offs needed before cutting the release.
+```
+
+### 11. Shared-surface isolator
+
+**Rationale.** Spotlights overlapping code or doc surfaces across active workstreams so contributors can partition responsibilities without stepping on each other.
+
+**When to use.** Use this when multiple initiatives target the same modules, packages, or narratives and you need a plan to keep edits isolated.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Enumerate the in-flight tasks that rely on shared files, modules, or docs, then map the overlapping touchpoints. For each shared surface, describe the competing change intents, the risk of collision, and isolation tactics such as carving helper seams, staging rename passes, or queueing edits. Assign coordination owners and checkpoints so collaborators know when the surface is safe to touch.
+```
+
+### 12. Dependency sequencer
+
+**Rationale.** Orchestrates interdependent work so prerequisite changes land in the correct order and unblock downstream updates without churn.
+
+**When to use.** Use this whenever several efforts rely on a chain of dependency upgrades, feature flags, or infrastructure toggles that must ship in sequence.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Catalog the pending changes that depend on one another—such as package bumps, schema migrations, or API rollouts—and diagram the dependency chain. For each step, capture required artifacts, validation gates, rollback considerations, and the signals that confirm the prerequisite is complete. Produce a recommended landing order with owners and target windows so downstream work never waits on missing foundations.
+```
+
+### 13. Review lane balancer
+
+**Rationale.** Distributes review workload evenly while ensuring subject-matter experts cover the riskiest surfaces.
+
+**When to use.** Use this when a surge of incoming changes threatens to overload specific reviewers or leave critical areas under-reviewed.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Inventory the open or imminent review requests, tagging them by domain, complexity, and urgency. Match each item to qualified reviewers, balancing workload, time zones, and vacation schedules. Recommend an assignment plan, noting backup reviewers, pairing opportunities, and any pre-review prep—such as design docs or test plans—that will help the primary reviewers stay efficient.
+```
+
+### 14. Release alignment sentinel
+
+**Rationale.** Verifies that release scope, documentation, and stakeholder expectations remain synchronized throughout the release window.
+
+**When to use.** Use this during release execution to confirm every functional, operational, and communications track stays on the same version plan.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Audit the planned release scope against the current branch state, changelog entries, rollout checklists, and stakeholder announcements. Highlight mismatches in feature readiness, migration coverage, support playbooks, or customer messaging. Recommend adjustments—such as deferring features, updating docs, or scheduling syncs—so the entire release narrative stays aligned.
+```
+
+### 15. Integration rehearsal scripter
+
+**Rationale.** Builds a dry-run integration script so teams can rehearse complex rollouts before touching production systems.
+
+**When to use.** Use this before landing multi-system changes that require coordinated steps across services, environments, or partners.
+
+```
+Read the root `AGENTS.md` to discover the current coding agent brief. Load that brief and, through it, the latest spec and orchestration plan so every instruction you follow is up to date. Draft an end-to-end rehearsal script that covers environment prep, data seeding, feature flag flips, service restarts, and verification probes. Sequence each action with expected outcomes, timing constraints, rollback hooks, and observers responsible for sign-off. Include communication checkpoints and post-rehearsal log collection so lessons learned translate into a smoother production integration.
 ```
 
 ## Packaging these prompts with `.speckit/templates`
