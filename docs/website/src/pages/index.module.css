@@ -115,8 +115,10 @@ html[data-theme='dark'] .hero {
 
 .heroMeta li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
+  max-width: 360px;
+  line-height: 1.45;
 }
 
 .heroMeta li::before {

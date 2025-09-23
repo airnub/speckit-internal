@@ -17,6 +17,13 @@
 - **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
 - **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
 
+### Why it matters
+
+- **One source of truth at any scale** — distributed squads rely on the same living specification bundle, so onboarding, reviews, and compliance checks stay aligned no matter how many repos you operate. Product and platform changes point back to that single narrative instead of scattered docs.
+- **Stack-flexible planning** — when architecture or framework choices shift—say, React today and Next.js tomorrow—you refine the implementation plan while the core requirements remain steady. Specs describe intent, so they survive tool migrations and keep engineers unblocked.
+- **Requirements tracked like code** — every requirement lives alongside the source in git, complete with history, diffs, and review workflows. Traceability stops being a spreadsheet exercise because updates ride through normal pull requests.
+- **Full-context AI assistance** — the agent can reference the entire specification, recent diffs, and surrounding artifacts rather than a single prompt. That richer context produces proposals that respect constraints your team already agreed to.
+
 ## Quick start
 ```bash
 # Install pnpm via Corepack (Node 18+ ships with it)
@@ -35,7 +42,6 @@ speckit init --template https://github.com/acme/awesome-spec-kit#feature/onboard
 # or merge into current repo:
 speckit init --template next-supabase
 speckit init --template speckit-template
-# Use `spec` in place of `speckit` if you rely on the previous binary name.
 
 # TUI
 pnpm --filter @speckit/tui dev
@@ -84,7 +90,7 @@ Place a `template.vars.json` file next to the manifest to define string substitu
 }
 ```
 
-Values collected via `speckit template use …` or `speckit init --template …` are interpolated immediately. The TUI copies the template directory as-is, so placeholders remain available for manual edits or a follow-up CLI run if you want the prompts. Use `spec` instead of `speckit` if you need the legacy alias.
+Values collected via `speckit template use …` or `speckit init --template …` are interpolated immediately. The TUI copies the template directory as-is, so placeholders remain available for manual edits or a follow-up CLI run if you want the prompts.
 
 ### Post-init commands
 
@@ -104,6 +110,7 @@ Declare an array of shell commands in `postInit` (within the manifest) to run af
 - Add support for repo-local templates under `.speckit/templates` so teams can version custom scaffolds that load seamlessly in the CLI/TUI pickers.
 - Harden the Spectral/PostInit runners with additional integration tests and richer error surfacing, keeping AI and analytics optional by default.
 - Add a draft-spec workflow so requirement edits happen in a draft workspace first, can be reviewed or committed as drafts, and then promoted into a new published version when ready.
+- Expand the CLI/TUI beyond today's spec-generation flows by planning `/plan` to drive tech-stack selection and `/tasks` to break work into actionable steps.
 
 ### Mid term
 - Add **Model Context Protocol (MCP) / Agent-to-Agent (A2A)** support so SpecKit can both consume and expose spec context programmatically. This will let external agents request templates, trigger lint/build runs, and hand back proposed patches without going through the interactive CLI/TUI.

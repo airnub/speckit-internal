@@ -32,6 +32,12 @@ A developer‑friendly **SDD workstation** that:
 - Provides **traceability** (RTM) and **governance** (ADRs, PR templates) to keep teams aligned.
 - Treats **AI as optional**: fully functional offline; when enabled, it proposes patches with humans in the loop.
 
+**Key outcomes we drive:**
+- **One source of truth at any scale** — teams across regions riff on a common spec canon, so leadership can trust every release references the latest commitments and onboarding has less thrash.
+- **Stack-flexible planning** — implementation decisions can change without torpedoing the requirements; migrating from React to Next.js becomes a planning exercise rather than a doc rewrite.
+- **Requirements tracked like code** — housing specs in git turns reviews, approvals, and historical comparisons into everyday operations, tightening traceability loops.
+- **Full-context AI assistance** — agent proposals draw from the cumulative spec archive, not a single prompt, giving stakeholders confidence that automation respects constraints already signed off.
+
 ### Guiding Principles
 1. **Spec‑first**: everything starts from a real, versioned spec file.
 2. **Human‑in‑the‑loop**: no auto‑apply patches by default; review diffs like code.

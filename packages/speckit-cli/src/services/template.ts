@@ -4,6 +4,7 @@ import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { globby } from "globby";
+import stringArgv from "string-argv";
 
 type InputPrompt = typeof inquirerInput;
 
@@ -105,7 +106,7 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
   }
   if (opts.runPostInit && t.postInit?.length) {
     for (const cmd of t.postInit) {
-      const [bin, ...args] = cmd.split(" ").filter(Boolean);
+      const [bin, ...args] = stringArgv(cmd);
       if (!bin) continue;
       if (opts.onPostInitCommand) {
         try {
