@@ -397,10 +397,55 @@ export default function App() {
   }
 
   async function runSpectral(cwd: string) {
-    setTaskTitle("Spectral Lint (docs/srs.yaml)");
+    const srsRelativePath = "docs/srs.yaml";
+    const srsFullPath = path.join(cwd, srsRelativePath);
+
     setMode("tasks");
-    let out = await runCmd(cwd, "npx", ["-y","spectral","lint","docs/srs.yaml"]);
-    setTaskOutput(out || "(no output)");
+
+    if (!(await fs.pathExists(srsFullPath))) {
+      setTaskTitle("Spectral Lint ✗");
+      setTaskOutput([
+        `Could not find ${srsRelativePath}.`,
+        `Create the SRS file (for example via a template) or update your config to point at it before linting.`,
+        `Looked in: ${srsFullPath}`
+      ].join("\n"));
+      return;
+    }
+
+    setTaskTitle("Spectral Lint (docs/srs.yaml)");
+    setTaskOutput("(running...)");
+
+    try {
+      const { stdout } = await execa("npx", ["-y", "spectral", "lint", srsRelativePath], { cwd });
+      setTaskTitle("Spectral Lint ✓");
+      setTaskOutput(stdout?.trim() || "Spectral lint passed with no reported issues.");
+    } catch (error: any) {
+      const outputs = [error?.stderr, error?.stdout, error?.shortMessage, error?.message]
+        .filter((value): value is string => Boolean(value))
+        .map(line => line.trim())
+        .filter(Boolean);
+      const combinedOutput = outputs.join("\n");
+      const spectralMissing =
+        error?.code === "ENOENT" ||
+        error?.exitCode === 127 ||
+        /spectral[^\n]*(command not found|not installed|ENOENT)/i.test(combinedOutput) ||
+        /command not found/i.test(error?.message || combinedOutput) ||
+        /Cannot find module '?(?:@stoplight\/spectral|spectral)'?/i.test(combinedOutput);
+
+      const hint = "Hint: Install Spectral via `pnpm add -D @stoplight/spectral-cli` and rerun the lint.";
+      const outputLines: string[] = [];
+      if (combinedOutput) {
+        outputLines.push(combinedOutput);
+      } else {
+        outputLines.push("Spectral lint failed.");
+      }
+      if (spectralMissing) {
+        if (outputLines.length > 0) outputLines.push("");
+        outputLines.push(hint);
+      }
+      setTaskTitle("Spectral Lint ✗");
+      setTaskOutput(outputLines.join("\n"));
+    }
   }
 
   async function runPostInit(cwd: string) {
