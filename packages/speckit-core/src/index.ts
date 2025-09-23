@@ -1,5 +1,6 @@
 import fs from "fs-extra";
 import path from "node:path";
+import { URL } from "node:url";
 import { z } from "zod";
 
 export const SpecMetaSchema = z.object({
@@ -166,4 +167,67 @@ function sanitizeTemplateName(name: string): string {
   const trimmed = name.trim();
   const normalized = trimmed.split(path.sep).filter(Boolean).join("/");
   return normalized || "local-template";
+}
+
+export function templateFromGithubUrl(input: string): TemplateEntry | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(input);
+  } catch {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "github.com" && host !== "www.github.com") {
+    return null;
+  }
+
+  const segments = parsed.pathname
+    .split("/")
+    .filter(Boolean)
+    .map(segment => decodeURIComponent(segment));
+
+  if (segments.length < 2) {
+    return null;
+  }
+
+  const owner = segments[0];
+  let repo = segments[1];
+  if (!owner || !repo) {
+    return null;
+  }
+
+  if (repo.toLowerCase().endsWith(".git")) {
+    repo = repo.slice(0, -4);
+  }
+
+  let branch: string | undefined;
+  if (segments.length >= 4 && segments[2] === "tree") {
+    branch = segments.slice(3).join("/");
+  }
+
+  if (!branch) {
+    const ref = parsed.searchParams.get("ref");
+    if (ref) {
+      branch = ref;
+    }
+  }
+
+  if (!branch && parsed.hash) {
+    const hash = parsed.hash.replace(/^#/, "").trim();
+    if (hash) {
+      branch = hash;
+    }
+  }
+
+  const repoId = `${owner}/${repo}`;
+  const name = branch ? `${repoId}#${branch}` : repoId;
+
+  return {
+    name,
+    description: `GitHub template (${repoId}${branch ? `#${branch}` : ""})`,
+    type: "github",
+    repo: repoId,
+    branch,
+  };
 }
