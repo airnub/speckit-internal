@@ -82,12 +82,23 @@ async function waitUntil(predicate: () => boolean, timeout = 4000, interval = 50
   throw new Error("Timed out waiting for condition");
 }
 
+async function createSpecRepo(prefix: string, fileName: string, title: string, body: string) {
+  const repoRoot = await mkdtemp(path.join(tmpdir(), prefix));
+  const specsDir = path.join(repoRoot, "docs/specs");
+  await fs.ensureDir(specsDir);
+  const specPath = path.join(specsDir, fileName);
+  await fs.writeFile(specPath, `---\ntitle: "${title}"\n---\n${body}\n`);
+  return { repoRoot, specsDir, specPath };
+}
+
 describe("App refreshRepo selection", () => {
   let repoPath: string;
   let specDir: string;
+  let originalCwd: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    originalCwd = process.cwd();
     repoPath = await mkdtemp(path.join(tmpdir(), "speckit-tui-"));
     specDir = path.join(repoPath, "docs/specs");
     await fs.ensureDir(specDir);
@@ -101,16 +112,18 @@ describe("App refreshRepo selection", () => {
     );
     repoState.repoPath = repoPath;
     loadConfigMock.mockImplementation(async () => ({
-      repo: { specRoot: "docs/specs" },
+      repo: { mode: "local", specRoot: "docs/specs" },
       ai: { enabled: false }
     } as any));
     loadTemplatesMock.mockResolvedValue([]);
     openInEditorMock.mockImplementation(async (filePath: string) => {
       await fs.appendFile(filePath, "\nEdited!");
     });
+    process.chdir(repoPath);
   });
 
   afterEach(async () => {
+    process.chdir(originalCwd);
     await fs.remove(repoPath);
     repoState.repoPath = "";
   });
@@ -130,5 +143,62 @@ describe("App refreshRepo selection", () => {
     await waitUntil(() => app.lastFrame()?.includes("Edited!") ?? false);
 
     app.unmount();
+  });
+
+  it("launches from the current repo when config has no override", async () => {
+    const { repoRoot } = await createSpecRepo(
+      "speckit-tui-alt-",
+      "alt.md",
+      "Spec Alt",
+      "Alt content"
+    );
+
+    process.chdir(repoRoot);
+    repoState.repoPath = repoRoot;
+
+    const app = render(<App />);
+    try {
+      await waitUntil(() => loadTemplatesMock.mock.calls.length > 0);
+      expect(loadTemplatesMock.mock.calls[0][0]?.repoRoot).toBe(repoRoot);
+      await waitUntil(() => app.lastFrame()?.includes("Spec Alt") ?? false);
+      await waitUntil(() => app.lastFrame()?.includes("Alt content") ?? false);
+    } finally {
+      app.unmount();
+      process.chdir(originalCwd);
+      await fs.remove(repoRoot);
+    }
+  });
+
+  it("retains a deliberate repo override across refreshes", async () => {
+    const { repoRoot: overrideRoot, specPath: overrideSpec } = await createSpecRepo(
+      "speckit-tui-override-",
+      "override.md",
+      "Spec Override",
+      "Override content"
+    );
+
+    loadConfigMock.mockImplementation(async () => ({
+      repo: { mode: "local", specRoot: "docs/specs", localPath: `${overrideRoot} ` },
+      ai: { enabled: false }
+    } as any));
+
+    repoState.repoPath = repoPath;
+
+    const app = render(<App />);
+    try {
+      await waitUntil(() => loadTemplatesMock.mock.calls.length > 0);
+      expect(loadTemplatesMock.mock.calls[0][0]?.repoRoot).toBe(overrideRoot);
+      await waitUntil(() => app.lastFrame()?.includes("Spec Override") ?? false);
+      await waitUntil(() => app.lastFrame()?.includes("Override content") ?? false);
+
+      app.stdin.write("e");
+      await waitUntil(() => openInEditorMock.mock.calls.length === 1);
+      await waitUntil(() => loadTemplatesMock.mock.calls.length > 1);
+      expect(loadTemplatesMock.mock.calls[1][0]?.repoRoot).toBe(overrideRoot);
+      expect(await fs.readFile(overrideSpec, "utf8")).toContain("Edited!");
+    } finally {
+      app.unmount();
+      await fs.remove(overrideRoot);
+    }
   });
 });
