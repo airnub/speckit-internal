@@ -5,7 +5,14 @@ import matter from "gray-matter";
 import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
-import { getDefaultTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
+import {
+  getDefaultTemplates,
+  TemplateEntry,
+  SpeckitConfig,
+  applyTemplateVariables,
+  findTemplatePlaceholders,
+  parseTemplateCommand,
+} from "@speckit/core";
 import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult } from "../git.js";
 import { execa } from "execa";
@@ -24,7 +31,16 @@ const SPECKIT_TAGLINE = "Spec-driven commits from your terminal";
 const KEY_HINTS = "↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · S Settings · G status · ? help · Q quit";
 
 type FileInfo = { path: string; title?: string };
-type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings";
+type Mode =
+  | "preview"
+  | "diff"
+  | "commit"
+  | "help"
+  | "new-template"
+  | "template-flow"
+  | "tasks"
+  | "ai"
+  | "settings";
 
 type SettingFieldType = "boolean"|"select"|"text"|"list"|"action";
 type SettingField = {
@@ -37,6 +53,18 @@ type SettingField = {
   help?: string;
 };
 type SettingsFieldWithValue = SettingField & { value: any };
+
+type TemplateFlowContext = {
+  template: TemplateEntry;
+  targetDir: string;
+  displayTarget: string;
+};
+
+type TemplateFlowResult = {
+  template: TemplateEntry;
+  targetDir: string;
+  missingKeys: string[];
+};
 
 export default function App() {
   const [cfg, setCfg] = useState<SpeckitConfig|null>(null);
@@ -54,6 +82,7 @@ export default function App() {
   const [tplIndex, setTplIndex] = useState(0);
   const templates = getDefaultTemplates().filter(t => ["blank","next-supabase","speckit-template"].includes(t.name));
   const [targetDir, setTargetDir] = useState<string>("");
+  const [templateFlowCtx, setTemplateFlowCtx] = useState<TemplateFlowContext|null>(null);
 
   // tasks/ai
   const [taskTitle, setTaskTitle] = useState<string>("");
@@ -117,6 +146,7 @@ export default function App() {
   const textInputActive =
     mode === "commit" ||
     mode === "ai" ||
+    mode === "template-flow" ||
     templateRequiresTarget ||
     (mode === "settings" && settingsEditing);
 
@@ -128,10 +158,64 @@ export default function App() {
       setMode("preview");
       await refreshRepo();
     } else {
-      if (!targetDir) return;
-      await cloneTemplate(sel, targetDir);
+      const trimmed = targetDir.trim();
+      if (!trimmed) return;
+      const resolved = path.isAbsolute(trimmed) ? trimmed : path.resolve(repoPath, trimmed);
+      setTemplateFlowCtx({ template: sel, targetDir: resolved, displayTarget: trimmed });
+      setMode("template-flow");
+    }
+  }
+
+  function cancelTemplateFlow() {
+    setTemplateFlowCtx(null);
+    setMode("new-template");
+  }
+
+  function handleTemplateFlowError(message: string) {
+    setTemplateFlowCtx(null);
+    setTaskTitle("Template error");
+    setTaskOutput(message || "(unknown error)");
+    setMode("tasks");
+  }
+
+  async function handleTemplateFlowComplete(result: TemplateFlowResult) {
+    const { template, targetDir, missingKeys } = result;
+    const commands = template.postInit?.filter(cmd => cmd.trim().length > 0) ?? [];
+    setTaskTitle("PostInit");
+    setMode("tasks");
+    setTaskOutput(commands.length ? "(running...)" : "No postInit commands defined.");
+    let outputLog = commands.length ? "" : "No postInit commands defined.";
+    try {
+      for (const command of commands) {
+        const parsed = parseTemplateCommand(command);
+        if (!parsed) {
+          outputLog += `${outputLog ? "\n\n" : ""}! Unable to parse command: ${command}`;
+          setTaskOutput(outputLog);
+          continue;
+        }
+        const { bin, args } = parsed;
+        outputLog += `${outputLog ? "\n\n" : ""}$ ${command}`;
+        const cmdOutput = await runCmd(targetDir, bin, args);
+        if (cmdOutput?.trim()) {
+          outputLog += `\n${cmdOutput.trim()}`;
+        }
+        setTaskOutput(outputLog);
+      }
+      const missingSummary = missingKeys.length
+        ? `Missing template placeholders:\n${missingKeys.map(k => `- ${k}`).join("\n")}`
+        : "All template placeholders resolved.";
+      outputLog = outputLog ? `${outputLog}\n\n${missingSummary}` : missingSummary;
+      setTaskOutput(outputLog);
+      setTaskTitle("PostInit ✓");
       await refreshRepo(targetDir);
+      setTemplateFlowCtx(null);
+      setTargetDir("");
       setMode("preview");
+    } catch (error: any) {
+      const message = (error?.stderr || error?.stdout || error?.message || String(error)).trim();
+      setTaskTitle("PostInit ✗");
+      setTaskOutput(message || "(no output)");
+      setTemplateFlowCtx(null);
     }
   }
 
@@ -485,6 +569,14 @@ export default function App() {
               onCancel={() => setMode("preview")}
             />
           )}
+          {mode === "template-flow" && templateFlowCtx && (
+            <TemplateFlow
+              context={templateFlowCtx}
+              onComplete={handleTemplateFlowComplete}
+              onError={handleTemplateFlowError}
+              onCancel={cancelTemplateFlow}
+            />
+          )}
           {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
           {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} onCancel={() => setMode("preview")} />}
           {mode === "settings" && (
@@ -702,6 +794,210 @@ function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEdi
   );
 }
 
+type TemplatePrompt = {
+  key: string;
+  prompt: string;
+  defaultValue: string;
+};
+
+type TemplateFlowProps = {
+  context: TemplateFlowContext;
+  onComplete: (result: TemplateFlowResult) => void;
+  onError: (message: string) => void;
+  onCancel: () => void;
+};
+
+function TemplateFlow({ context, onComplete, onError, onCancel }: TemplateFlowProps) {
+  const { template, targetDir, displayTarget } = context;
+  const [phase, setPhase] = useState<"cloning"|"prompt"|"applying"|"summary">("cloning");
+  const [status, setStatus] = useState<string>("Cloning template...");
+  const [prompts, setPrompts] = useState<TemplatePrompt[]>([]);
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [inputValue, setInputValue] = useState("");
+  const [values, setValues] = useState<Record<string,string>>({});
+  const [missingKeys, setMissingKeys] = useState<string[]>([]);
+  const [varsPath, setVarsPath] = useState<string|null>(null);
+  const completionRef = React.useRef(false);
+
+  const finalizeApply = React.useCallback(async (allValues: Record<string,string>) => {
+    try {
+      setPhase("applying");
+      setStatus("Applying template variables...");
+      setValues(allValues);
+      setMissingKeys([]);
+      await applyTemplateVariables(targetDir, allValues);
+      const remaining = await findTemplatePlaceholders(targetDir);
+      setMissingKeys(remaining);
+      setPhase("summary");
+      setStatus("Template applied.");
+    } catch (error: any) {
+      onError(error?.stderr || error?.message || String(error));
+    }
+  }, [targetDir, onError]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        completionRef.current = false;
+        setValues({});
+        setMissingKeys([]);
+        setPromptIndex(0);
+        setInputValue("");
+        setPhase("cloning");
+        const repoLabel = template.repo ? `https://github.com/${template.repo}.git` : "template repository";
+        setStatus(`Cloning ${repoLabel} ...`);
+        await fs.ensureDir(path.dirname(targetDir));
+        if (template.repo) {
+          await execa("git", ["clone", "--depth", "1", "--branch", template.branch || "main", `https://github.com/${template.repo}.git`, targetDir], { stdio: "inherit" });
+        }
+        if (cancelled) return;
+        setStatus("Loading template variables...");
+        const { prompts: loadedPrompts, sourcePath } = await loadTemplatePrompts(targetDir, template.varsFile);
+        if (cancelled) return;
+        setVarsPath(sourcePath);
+        setPrompts(loadedPrompts);
+        if (loadedPrompts.length > 0) {
+          setPhase("prompt");
+          setStatus(`Provide values for ${loadedPrompts.length} template variable${loadedPrompts.length === 1 ? "" : "s"}.`);
+          const first = loadedPrompts[0];
+          setInputValue(first.defaultValue ?? "");
+        } else {
+          await finalizeApply({});
+        }
+      } catch (error: any) {
+        if (cancelled) return;
+        onError(error?.stderr || error?.message || String(error));
+      }
+    }
+    void run();
+    return () => { cancelled = true; };
+  }, [template, targetDir, finalizeApply, onError]);
+
+  useEffect(() => {
+    if (phase !== "prompt") return;
+    const current = prompts[promptIndex];
+    if (!current) return;
+    const existing = values[current.key];
+    setInputValue(existing ?? current.defaultValue ?? "");
+  }, [phase, promptIndex, prompts, values]);
+
+  useEffect(() => {
+    if (phase !== "summary") {
+      completionRef.current = false;
+    }
+  }, [phase]);
+
+  const handleSubmit = React.useCallback((value: string) => {
+    const current = prompts[promptIndex];
+    if (!current) return;
+    const nextValues = { ...values, [current.key]: value };
+    setValues(nextValues);
+    if (promptIndex + 1 < prompts.length) {
+      setPromptIndex(i => i + 1);
+    } else {
+      void finalizeApply(nextValues);
+    }
+  }, [prompts, promptIndex, values, finalizeApply]);
+
+  useInput((input, key) => {
+    if (key.escape) {
+      if (phase === "prompt" || phase === "summary") {
+        onCancel();
+      }
+    }
+    if (phase === "summary" && key.return) {
+      if (completionRef.current) return;
+      completionRef.current = true;
+      onComplete({ template, targetDir, missingKeys });
+    }
+  });
+
+  const activePrompt = prompts[promptIndex];
+  const destinationLabel = displayTarget ? `${displayTarget} (${targetDir})` : targetDir;
+
+  return (
+    <Box flexDirection="column">
+      <Text>Template: {template.name}</Text>
+      {template.repo && <Text dimColor>Repo: https://github.com/{template.repo}</Text>}
+      <Text>Destination: {destinationLabel}</Text>
+      {phase === "cloning" && <Text>{status}</Text>}
+      {phase === "prompt" && activePrompt && (
+        <>
+          <Text>{status}</Text>
+          <Text>{activePrompt.prompt}</Text>
+          <TextInput
+            value={inputValue}
+            onChange={setInputValue}
+            onSubmit={handleSubmit}
+            focus={phase === "prompt"}
+          />
+          <Text dimColor>{`(${promptIndex + 1}/${prompts.length})`}</Text>
+          <Text dimColor>Enter to accept · Esc to cancel</Text>
+        </>
+      )}
+      {phase === "applying" && <Text>{status}</Text>}
+      {phase === "summary" && (
+        <>
+          <Text color="green">Template applied to {targetDir}</Text>
+          {varsPath ? (
+            <Text dimColor>Variables file: {varsPath}</Text>
+          ) : (
+            <Text dimColor>No template variables file detected.</Text>
+          )}
+          {missingKeys.length ? (
+            <>
+              <Text color="yellow">Placeholders still present:</Text>
+              {missingKeys.map(key => (
+                <Text key={key}>- {key}</Text>
+              ))}
+            </>
+          ) : (
+            <Text color="green">All template placeholders resolved.</Text>
+          )}
+          {template.postInit?.length ? (
+            <>
+              <Text>PostInit commands to run:</Text>
+              {template.postInit.map(cmd => (
+                <Text key={cmd} dimColor>{`• ${cmd}`}</Text>
+              ))}
+            </>
+          ) : (
+            <Text dimColor>No postInit commands defined for this template.</Text>
+          )}
+          <Text dimColor>Press Enter to continue · Esc to cancel</Text>
+        </>
+      )}
+    </Box>
+  );
+}
+
+async function loadTemplatePrompts(baseDir: string, varsFile?: string | null): Promise<{ prompts: TemplatePrompt[]; sourcePath: string | null }> {
+  if (!varsFile) {
+    return { prompts: [], sourcePath: null };
+  }
+  const resolved = path.join(baseDir, varsFile);
+  if (!(await fs.pathExists(resolved))) {
+    return { prompts: [], sourcePath: null };
+  }
+  const raw = await fs.readJson(resolved);
+  const prompts: TemplatePrompt[] = [];
+  if (raw && typeof raw === "object") {
+    for (const [key, meta] of Object.entries(raw as Record<string, any>)) {
+      if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+        const promptText = meta.prompt ? String(meta.prompt) : key;
+        const defaultValue = meta.default == null ? "" : String(meta.default);
+        prompts.push({ key, prompt: promptText, defaultValue });
+      } else if (meta != null) {
+        prompts.push({ key, prompt: key, defaultValue: String(meta) });
+      } else {
+        prompts.push({ key, prompt: key, defaultValue: "" });
+      }
+    }
+  }
+  return { prompts, sourcePath: resolved };
+}
+
 function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, onCancel }: { templates: TemplateEntry[]; index: number; targetDir: string; setTargetDir: (s:string)=>void; onConfirm: () => Promise<void>; onCancel: () => void }) {
   const active = templates[index];
   const requiresTarget = active?.type === "github";
@@ -749,12 +1045,6 @@ async function createBlankSpec(repoPath: string, specRoot: string) {
   const name = `spec_${Date.now()}.md`;
   const dest = path.join(destDir, name);
   await fs.copyFile(base, dest);
-}
-
-async function cloneTemplate(tpl: TemplateEntry, targetDir: string) {
-  if (tpl.type !== "github" || !tpl.repo) return;
-  await fs.ensureDir(path.dirname(targetDir));
-  await execa("git", ["clone", "--depth", "1", "--branch", tpl.branch || "main", `https://github.com/${tpl.repo}.git`, targetDir], { stdio: "inherit" });
 }
 
 function buildSettingsFields(cfg: SpeckitConfig): SettingsFieldWithValue[] {

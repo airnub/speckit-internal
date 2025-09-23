@@ -55,3 +55,5 @@ export function getDefaultTemplates(): TemplateEntry[] {
     }
   ];
 }
+
+export { applyTemplateVariables, findTemplatePlaceholders, parseTemplateCommand } from "./template-utils.js";
