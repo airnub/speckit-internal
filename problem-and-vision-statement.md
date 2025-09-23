@@ -161,6 +161,11 @@ ADR-ID: ADR-0002
 - Patch apply workflow with explicit confirmation.
 - PR creation path with diff summary and spec links.
 
+**Post-v1.0 (Next.js SaaS platform)**
+- Launch a Next.js-hosted SaaS experience that reuses the existing Speckit CLI/TUI packages and exposes their core flows (template selection, spec authoring, diff/commit previews) through a web UI.
+- Depend directly on the Speckit package interfaces so orchestrations remain DRY and the SaaS surface stays in lockstep with CLI/TUI behaviors and contracts.
+- Integrate with the sister agentic-execution project that runs generated specs/docs, letting the SaaS orchestrate template discovery, GitHub repo creation, and fully autonomous implementations while offering customization hooks before handoff.
+
 **v1.0**
 - Plugin system for templates and runners; richer markdown preview; test coverage badges in TUI.
 
