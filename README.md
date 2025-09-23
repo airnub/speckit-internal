@@ -2,7 +2,7 @@
 
 **TUI + optional AI assistant for spec-driven development:** edit specs, preview diffs, and commit. AI and analytics are **disabled by default**.
 
-- **Repo:** `speckit`  ·  **Binary:** `spec`  ·  **Version:** `0.0.1`
+- **Repo:** `speckit`  ·  **Binary:** `speckit`  ·  **Version:** `0.0.1`
 - **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/core` (all `0.0.1`)
 
 ## Features
@@ -25,16 +25,16 @@ pnpm install
 
 # CLI
 pnpm --filter @speckit/cli dev
-spec template list
-spec template use next-supabase ./my-next-app
-spec template use speckit-template ./my-generic-spec
+speckit template list
+speckit template use next-supabase ./my-next-app
+speckit template use speckit-template ./my-generic-spec
 # or pull directly from any GitHub repo (optionally add #branch or ?ref=branch)
-spec template use https://github.com/acme/awesome-spec-kit ./awesome-spec
+speckit template use https://github.com/acme/awesome-spec-kit ./awesome-spec
 # merge a GitHub template into the current repo:
-spec init --template https://github.com/acme/awesome-spec-kit#feature/onboarding
+speckit init --template https://github.com/acme/awesome-spec-kit#feature/onboarding
 # or merge into current repo:
-spec init --template next-supabase
-spec init --template speckit-template
+speckit init --template next-supabase
+speckit init --template speckit-template
 
 # TUI
 pnpm --filter @speckit/tui dev
@@ -45,7 +45,7 @@ pnpm --filter @speckit/tui dev
 
 ## Repo-local templates
 
-SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`spec template list`, `spec template use`, `spec init --template …`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `spec template use …` or `spec init --template …` (add `#branch` or `?ref=` if you need a branch other than the default).
+SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`speckit template list`, `speckit template use`, `speckit init --template …`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `speckit template use …` or `speckit init --template …` (add `#branch` or `?ref=` if you need a branch other than the default).
 
 ### Optional manifest (`template.json`)
 
@@ -83,7 +83,7 @@ Place a `template.vars.json` file next to the manifest to define string substitu
 }
 ```
 
-Values collected via `spec template use …` or `spec init --template …` are interpolated immediately. The TUI copies the template directory as-is, so placeholders remain available for manual edits or a follow-up CLI run if you want the prompts.
+Values collected via `speckit template use …` or `speckit init --template …` are interpolated immediately. The TUI copies the template directory as-is, so placeholders remain available for manual edits or a follow-up CLI run if you want the prompts.
 
 ### Post-init commands
 
