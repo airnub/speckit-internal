@@ -12,6 +12,7 @@ import { execa } from "execa";
 import { generatePatch, AgentConfig } from "@speckit/agent";
 
 const TUI_VERSION = "v0.0.1";
+const DEFAULT_COMMIT_MESSAGE = "chore(specs): update";
 const SPECKIT_ASCII = String.raw`
   _____                  _      _   _ _
  / ____|                | |    | | (_) |
@@ -48,7 +49,7 @@ export default function App() {
   const [content, setContent] = useState<string>("");
   const [status, setStatus] = useState<string>("");
   const [mode, setMode] = useState<Mode>("preview");
-  const [commitMsg, setCommitMsg] = useState<string>("chore(specs): update");
+  const [commitMsg, setCommitMsg] = useState<string>(DEFAULT_COMMIT_MESSAGE);
 
   // template modal
   const [tplIndex, setTplIndex] = useState(0);
@@ -340,6 +341,38 @@ export default function App() {
     }
   }
 
+  function handleCommitStart(_message: string) {
+    setTaskTitle("Git commit");
+    setTaskOutput("(running...)");
+    setMode("tasks");
+  }
+
+  async function handleCommitSuccess(message: string) {
+    const nextStatus = await gitStatus(repoPath);
+    setTaskTitle("Git commit ✓");
+    const lines = [
+      "Commit message:",
+      message || "(empty message)",
+      "",
+      nextStatus || "(no output)"
+    ];
+    setTaskOutput(lines.join("\n"));
+    setCommitMsg(DEFAULT_COMMIT_MESSAGE);
+    setStatus(nextStatus);
+  }
+
+  async function handleCommitError(_message: string, error: unknown) {
+    const nextStatus = await gitStatus(repoPath);
+    const errorText = formatGitError(error);
+    setTaskTitle("Git commit ✗");
+    const lines = [errorText || "(no output)"];
+    if (nextStatus) {
+      lines.push("", nextStatus);
+    }
+    setTaskOutput(lines.join("\n"));
+    setStatus(nextStatus);
+  }
+
   async function runSpectral(cwd: string) {
     setTaskTitle("Spectral Lint (docs/srs.yaml)");
     setMode("tasks");
@@ -425,7 +458,16 @@ export default function App() {
         <Box flexGrow={1} borderStyle="single" padding={1} flexDirection="column">
           {mode === "preview" && (<><Text dimColor>{current?.path ?? "(no file)"} </Text><Text>{content || "(empty)"}</Text></>)}
           {mode === "diff" && <Diff path={current?.path} cwd={repoPath}/>}
-          {mode === "commit" && <CommitUI msg={commitMsg} setMsg={setCommitMsg} repoPath={repoPath} onDone={async () => { setCommitMsg("chore(specs): update"); setMode("preview"); setStatus(await gitStatus(repoPath)); }} />}
+          {mode === "commit" && (
+            <CommitUI
+              msg={commitMsg}
+              setMsg={setCommitMsg}
+              repoPath={repoPath}
+              onStart={handleCommitStart}
+              onSuccess={handleCommitSuccess}
+              onError={handleCommitError}
+            />
+          )}
           {mode === "help" && <HelpUI/>}
           {mode === "new-template" && <TemplatePicker templates={templates} index={tplIndex} targetDir={targetDir} setTargetDir={setTargetDir}/>}
           {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
@@ -504,11 +546,32 @@ function Diff({ path: p, cwd }: { path?: string; cwd: string }) {
   return <Text>{diff}</Text>;
 }
 
-function CommitUI({ msg, setMsg, repoPath, onDone }: any) {
+type CommitUIProps = {
+  msg: string;
+  setMsg: React.Dispatch<React.SetStateAction<string>>;
+  repoPath: string;
+  onStart: (message: string) => void;
+  onSuccess: (message: string) => Promise<void> | void;
+  onError: (message: string, error: unknown) => Promise<void> | void;
+};
+
+function CommitUI({ msg, setMsg, repoPath, onStart, onSuccess, onError }: CommitUIProps) {
   return (
     <>
       <Text>Commit message:</Text>
-      <TextInput value={msg} onChange={setMsg} onSubmit={async () => { await gitCommitAll(msg, repoPath); await onDone(); }} />
+      <TextInput
+        value={msg}
+        onChange={setMsg}
+        onSubmit={async () => {
+          onStart(msg);
+          try {
+            await gitCommitAll(msg, repoPath);
+            await onSuccess(msg);
+          } catch (error) {
+            await onError(msg, error);
+          }
+        }}
+      />
       <Text dimColor>Enter to commit. (Stage-all + commit)</Text>
     </>
   );
@@ -802,6 +865,27 @@ function maskSecret(value: unknown): string {
   if (!text) return "(not set)";
   const masked = "•".repeat(Math.min(text.length, 8));
   return masked + (text.length > 8 ? "…" : "");
+}
+
+function formatGitError(error: unknown): string {
+  if (error == null) return "(no output)";
+  if (typeof error === "string") {
+    const trimmed = error.trim();
+    return trimmed || "(no output)";
+  }
+  if (typeof error === "object") {
+    const err = error as any;
+    const message = err?.stderr || err?.stdout || err?.shortMessage || err?.message;
+    if (typeof message === "string" && message.trim()) {
+      return message.trim();
+    }
+    if (typeof err?.toString === "function") {
+      const text = String(err);
+      if (text.trim()) return text.trim();
+    }
+  }
+  const fallback = String(error);
+  return fallback.trim() || "(no output)";
 }
 
 function parseList(raw: string): string[] {
