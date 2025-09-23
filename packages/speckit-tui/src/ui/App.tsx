@@ -112,19 +112,55 @@ export default function App() {
     });
   }, [mode, settingsFields.length]);
 
+  const selectedTemplate = templates[tplIndex] ?? null;
+  const templateRequiresTarget = mode === "new-template" && selectedTemplate?.type === "github";
+  const textInputActive =
+    mode === "commit" ||
+    mode === "ai" ||
+    templateRequiresTarget ||
+    (mode === "settings" && settingsEditing);
+
+  async function confirmTemplateSelection() {
+    const sel = templates[tplIndex];
+    if (!sel) return;
+    if (sel.type === "blank") {
+      await createBlankSpec(repoPath, specRoot);
+      setMode("preview");
+      await refreshRepo();
+    } else {
+      if (!targetDir) return;
+      await cloneTemplate(sel, targetDir);
+      await refreshRepo(targetDir);
+      setMode("preview");
+    }
+  }
+
   useInput(async (input, key) => {
+    if (mode === "new-template") {
+      if (key.upArrow) {
+        setTplIndex(i => Math.max(0, i-1));
+        return;
+      }
+      if (key.downArrow) {
+        setTplIndex(i => Math.min(templates.length-1, i+1));
+        return;
+      }
+    }
+
+    if (textInputActive) {
+      return;
+    }
+
     if (mode === "settings") {
       await handleSettingsInput(input, key);
       return;
     }
 
     if (key.upArrow) {
-      if (mode === "new-template") setTplIndex(i => Math.max(0, i-1));
-      else setIdx(i => Math.max(0, i-1));
+      setIdx(i => Math.max(0, i-1));
     }
     if (key.downArrow) {
-      if (mode === "new-template") setTplIndex(i => Math.min(templates.length-1, i+1));
-      else setIdx(i => Math.min(files.length-1, i+1));
+      setIdx(i => Math.min(files.length-1, i+1));
     }
     if (input === "q") process.exit(0);
     if (input === "?") setMode("help");
@@ -150,17 +186,7 @@ export default function App() {
       }
     }
     if (key.return && mode === "new-template") {
-      const sel = templates[tplIndex];
-      if (sel.name === "blank") {
-        await createBlankSpec(repoPath, specRoot);
-        setMode("preview");
-        await refreshRepo();
-      } else {
-        if (!targetDir) return;
-        await cloneTemplate(sel, targetDir);
-        await refreshRepo(targetDir);
-        setMode("preview");
-      }
+      await confirmTemplateSelection();
     }
   });
 
@@ -180,9 +206,6 @@ export default function App() {
     }
 
     if (settingsEditing) {
-      if (key.escape) {
-        cancelSettingsEdit();
-      }
       return;
     }
 
@@ -425,11 +448,28 @@ export default function App() {
         <Box flexGrow={1} borderStyle="single" padding={1} flexDirection="column">
           {mode === "preview" && (<><Text dimColor>{current?.path ?? "(no file)"} </Text><Text>{content || "(empty)"}</Text></>)}
           {mode === "diff" && <Diff path={current?.path} cwd={repoPath}/>}
-          {mode === "commit" && <CommitUI msg={commitMsg} setMsg={setCommitMsg} repoPath={repoPath} onDone={async () => { setCommitMsg("chore(specs): update"); setMode("preview"); setStatus(await gitStatus(repoPath)); }} />}
+          {mode === "commit" && (
+            <CommitUI
+              msg={commitMsg}
+              setMsg={setCommitMsg}
+              repoPath={repoPath}
+              onDone={async () => { setCommitMsg("chore(specs): update"); setMode("preview"); setStatus(await gitStatus(repoPath)); }}
+              onCancel={() => setMode("preview")}
+            />
+          )}
           {mode === "help" && <HelpUI/>}
-          {mode === "new-template" && <TemplatePicker templates={templates} index={tplIndex} targetDir={targetDir} setTargetDir={setTargetDir}/>}
+          {mode === "new-template" && (
+            <TemplatePicker
+              templates={templates}
+              index={tplIndex}
+              targetDir={targetDir}
+              setTargetDir={setTargetDir}
+              onConfirm={confirmTemplateSelection}
+              onCancel={() => setMode("preview")}
+            />
+          )}
           {mode === "tasks" && <TaskViewer title={taskTitle} output={taskOutput}/>}
-          {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} />}
+          {mode === "ai" && <AiUI prompt={aiPrompt} setPrompt={setAiPrompt} onSubmit={runAi} onCancel={() => setMode("preview")} />}
           {mode === "settings" && (
             <SettingsUI
               fields={settingsFields}
@@ -439,6 +479,7 @@ export default function App() {
               editField={settingsEditField}
               onChangeEditValue={setSettingsEditValue}
               onSubmitEdit={handleSettingsEditSubmit}
+              onCancelEdit={cancelSettingsEdit}
             />
           )}
         </Box>
@@ -504,12 +545,22 @@ function Diff({ path: p, cwd }: { path?: string; cwd: string }) {
   return <Text>{diff}</Text>;
 }
 
-function CommitUI({ msg, setMsg, repoPath, onDone }: any) {
+function CommitUI({ msg, setMsg, repoPath, onDone, onCancel }: any) {
+  useInput((input, key) => {
+    if (key.escape) {
+      onCancel?.();
+    }
+  });
   return (
     <>
       <Text>Commit message:</Text>
-      <TextInput value={msg} onChange={setMsg} onSubmit={async () => { await gitCommitAll(msg, repoPath); await onDone(); }} />
-      <Text dimColor>Enter to commit. (Stage-all + commit)</Text>
+      <TextInput
+        value={msg}
+        onChange={setMsg}
+        onSubmit={async () => { await gitCommitAll(msg, repoPath); await onDone(); }}
+        focus
+      />
+      <Text dimColor>Enter to commit · Esc to cancel. (Stage-all + commit)</Text>
     </>
   );
 }
@@ -532,12 +583,23 @@ function TaskViewer({ title, output }: { title: string; output: string }) {
   );
 }
 
-function AiUI({ prompt, setPrompt, onSubmit }: { prompt: string; setPrompt: (s:string)=>void; onSubmit: (p:string)=>void }) {
+function AiUI({ prompt, setPrompt, onSubmit, onCancel }: { prompt: string; setPrompt: (s:string)=>void; onSubmit: (p:string)=>void; onCancel: () => void }) {
+  useInput((input, key) => {
+    if (key.escape) {
+      onCancel();
+    }
+  });
   return (
     <>
       <Text>Describe your requirement or change:</Text>
-      <TextInput value={prompt} onChange={setPrompt} onSubmit={() => onSubmit(prompt)} placeholder="e.g., Add audit trail to user actions" />
-      <Text dimColor>Enter to run AI (only if AI is enabled in config).</Text>
+      <TextInput
+        value={prompt}
+        onChange={setPrompt}
+        onSubmit={() => onSubmit(prompt)}
+        placeholder="e.g., Add audit trail to user actions"
+        focus
+      />
+      <Text dimColor>Enter to run AI (only if AI is enabled in config) · Esc to cancel.</Text>
     </>
   );
 }
@@ -550,6 +612,7 @@ type SettingsUIProps = {
   editField: SettingsFieldWithValue|null;
   onChangeEditValue: (value: string) => void;
   onSubmitEdit: (value: string) => void;
+  onCancelEdit: () => void;
 };
 
 function renderSettingRow(field: SettingsFieldWithValue): string {
@@ -561,8 +624,13 @@ function renderSettingRow(field: SettingsFieldWithValue): string {
   return `${field.label}: ${formatSettingValue(field)}`;
 }
 
-function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEditValue, onSubmitEdit }: SettingsUIProps) {
+function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEditValue, onSubmitEdit, onCancelEdit }: SettingsUIProps) {
   const active = fields[cursor];
+  useInput((input, key) => {
+    if (key.escape) {
+      onCancelEdit();
+    }
+  }, { isActive: editing });
   return (
     <>
       <Text>Settings — ↑/↓ move · Space toggle · ←/→ cycle · Enter edit/save · q cancel</Text>
@@ -585,6 +653,7 @@ function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEdi
             onChange={onChangeEditValue}
             onSubmit={onSubmitEdit}
             placeholder={editField.placeholder}
+            focus={editing}
           />
           <Text dimColor>Enter to apply · Esc to cancel</Text>
         </>
@@ -593,7 +662,14 @@ function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEdi
   );
 }
 
-function TemplatePicker({ templates, index, targetDir, setTargetDir }: { templates: TemplateEntry[]; index: number; targetDir: string; setTargetDir: (s:string)=>void }) {
+function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, onCancel }: { templates: TemplateEntry[]; index: number; targetDir: string; setTargetDir: (s:string)=>void; onConfirm: () => Promise<void>; onCancel: () => void }) {
+  const active = templates[index];
+  const requiresTarget = active?.type === "github";
+  useInput((input, key) => {
+    if (key.escape) {
+      onCancel();
+    }
+  });
   return (
     <>
       <Text>Select a template (Enter to confirm):</Text>
@@ -603,14 +679,20 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir }: { templat
            t.name === "speckit-template" ? "Generic SpecKit template" : t.name}
         </Text>
       ))}
-      {["next-supabase","speckit-template"].includes(templates[index]?.name) && (
+      {requiresTarget && (
         <>
           <Text>Target directory for clone:</Text>
-          <TextInput value={targetDir} onChange={setTargetDir} placeholder="./my-project" />
-          <Text dimColor>Press Enter to clone & switch repo.</Text>
+          <TextInput
+            value={targetDir}
+            onChange={setTargetDir}
+            onSubmit={() => { void onConfirm(); }}
+            placeholder="./my-project"
+            focus={requiresTarget}
+          />
+          <Text dimColor>Enter to clone & switch repo · Esc to cancel.</Text>
         </>
       )}
-      {templates[index]?.name === "blank" && <Text dimColor>Press Enter to create a blank spec in current repo.</Text>}
+      {active?.type === "blank" && <Text dimColor>Press Enter to create a blank spec in current repo.</Text>}
     </>
   );
 }
