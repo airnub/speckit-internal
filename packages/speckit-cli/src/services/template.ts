@@ -26,33 +26,43 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
     await fs.copyFile(base, dest);
     return;
   }
-  if (t.type === "github" && t.repo) {
+  const base = opts.mergeIntoCwd ? process.cwd() : targetDir;
+
+  if (t.type === "local") {
+    if (!t.localPath) {
+      throw new Error(`Template '${t.name}' is missing a localPath.`);
+    }
+    await fs.ensureDir(base);
+    await copyInto(base, t.localPath);
+  } else if (t.type === "github" && t.repo) {
     if (!opts.mergeIntoCwd) {
       await fs.ensureDir(path.dirname(targetDir));
       await execa("git", ["clone", "--depth", "1", "--branch", t.branch || "main", `https://github.com/${t.repo}.git`, targetDir], { stdio: "inherit" });
     } else {
       const tmp = path.join(process.cwd(), `.speckit-tpl-${Date.now()}`);
       await execa("git", ["clone", "--depth", "1", "--branch", t.branch || "main", `https://github.com/${t.repo}.git`, tmp], { stdio: "inherit" });
-      await copyInto(process.cwd(), tmp);
+      await copyInto(base, tmp);
       await fs.remove(tmp);
     }
-    const base = opts.mergeIntoCwd ? process.cwd() : targetDir;
-    const varsPath = t.varsFile ? path.join(base, t.varsFile) : undefined;
-    let vars: Record<string,string> = {};
-    if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
-      const json = await fs.readJson(varsPath);
-      for (const [key, meta] of Object.entries<any>(json)) {
-        const def = typeof meta === "object" ? meta.default ?? "" : "";
-        const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
-        vars[key] = await input({ message: prompt, default: def });
-      }
-      await applyVars(base, vars);
+  } else {
+    throw new Error(`Unsupported template type: ${t.type}`);
+  }
+
+  const varsPath = t.varsFile ? path.join(base, t.varsFile) : undefined;
+  let vars: Record<string,string> = {};
+  if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
+    const json = await fs.readJson(varsPath);
+    for (const [key, meta] of Object.entries<any>(json)) {
+      const def = typeof meta === "object" ? meta.default ?? "" : "";
+      const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
+      vars[key] = await input({ message: prompt, default: def });
     }
-    if (opts.runPostInit && t.postInit?.length) {
-      for (const cmd of t.postInit) {
-        const [bin, ...args] = cmd.split(" ");
-        await execa(bin, args, { cwd: base, stdio: "inherit" });
-      }
+    await applyVars(base, vars);
+  }
+  if (opts.runPostInit && t.postInit?.length) {
+    for (const cmd of t.postInit) {
+      const [bin, ...args] = cmd.split(" ");
+      await execa(bin, args, { cwd: base, stdio: "inherit" });
     }
   }
 }
