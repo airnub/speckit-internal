@@ -1,5 +1,41 @@
 import { execa } from "execa";
 
+function splitEditorCommand(command: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let quote: "'" | '"' | null = null;
+  let escaping = false;
+
+  for (const char of command) {
+    if (escaping) {
+      current += char;
+      escaping = false;
+      continue;
+    }
+
+    if (char === "\\" && quote !== "'") {
+      escaping = true;
+      continue;
+    }
+
+    if (char === "'" || char === '"') {
+      if (quote === char) { quote = null; continue; }
+      if (!quote) { quote = char; continue; }
+    }
+
+    if (!quote && /\s/.test(char)) {
+      if (current) { parts.push(current); current = ""; }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (escaping) current += "\\";
+  if (current) parts.push(current);
+  return parts;
+}
+
 export async function gitRoot(): Promise<string|null> {
   try {
     const { stdout } = await execa("git", ["rev-parse", "--show-toplevel"]);
@@ -23,8 +59,10 @@ export async function gitDiff(cwd?: string, path?: string): Promise<string> {
   } catch (e:any) { return e?.stdout || "(diff unavailable)"; }
 }
 export async function openInEditor(filePath: string) {
-  const editor = process.env.EDITOR || "nano";
-  await execa(editor, [filePath], { stdio: "inherit" });
+  const editor = process.env.EDITOR?.trim();
+  const parsed = editor ? splitEditorCommand(editor) : [];
+  const [bin, ...args] = parsed.length ? parsed : ["nano"];
+  await execa(bin, [...args, filePath], { stdio: "inherit" });
 }
 export async function gitCommitAll(msg: string, cwd?: string) {
   await execa("git", ["add","-A"], { cwd });
