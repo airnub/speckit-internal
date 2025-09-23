@@ -1,20 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  --ifm-color-primary: #4757ff;
-  --ifm-color-primary-dark: #3f4ee6;
-  --ifm-color-primary-darker: #3947d1;
-  --ifm-color-primary-darkest: #2f3aa8;
-  --ifm-color-primary-light: #5f6eff;
-  --ifm-color-primary-lighter: #7a86ff;
-  --ifm-color-primary-lightest: #9fa9ff;
-  --ifm-code-font-size: 95%;
+  color-scheme: light;
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --radius: 0.85rem;
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ifm-heading-font-weight: 600;
+  --ifm-color-primary: hsl(var(--primary));
+  --ifm-color-primary-dark: hsl(221.2deg 82.6% 47%);
+  --ifm-color-primary-darker: hsl(221.2deg 82.6% 44%);
+  --ifm-color-primary-darkest: hsl(221.2deg 82.6% 36%);
+  --ifm-color-primary-light: hsl(221.2deg 90% 58%);
+  --ifm-color-primary-lighter: hsl(221.2deg 95% 63%);
+  --ifm-color-primary-lightest: hsl(221.2deg 100% 72%);
+  --ifm-link-hover-decoration: none;
+  --ifm-line-height-base: 1.65;
+  --ifm-container-width-xl: 1200px;
+  --ifm-spacing-horizontal: 1.25rem;
+  --ifm-navbar-height: 4.5rem;
+  --ifm-button-border-radius: var(--radius);
+  --ifm-code-font-size: 90%;
 }
 
 html[data-theme='dark'] {
-  --ifm-color-primary: #8ea2ff;
-  --ifm-color-primary-dark: #748bff;
-  --ifm-color-primary-darker: #5a73ff;
-  --ifm-color-primary-darkest: #3248ff;
-  --ifm-color-primary-light: #a9b6ff;
-  --ifm-color-primary-lighter: #c3ceff;
-  --ifm-color-primary-lightest: #dbe1ff;
+  color-scheme: dark;
+  --background: 224 71% 4%;
+  --foreground: 213 31% 91%;
+  --muted: 223 47% 11%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --ring: 217.2 91% 60%;
+  --primary: 217.2 91% 60%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 215 27.9% 16.9%;
+  --secondary-foreground: 210 40% 98%;
+  --ifm-color-primary: hsl(var(--primary));
+  --ifm-color-primary-dark: hsl(217.2deg 91% 53%);
+  --ifm-color-primary-darker: hsl(217.2deg 91% 49%);
+  --ifm-color-primary-darkest: hsl(217.2deg 91% 41%);
+  --ifm-color-primary-light: hsl(217.2deg 91% 66%);
+  --ifm-color-primary-lighter: hsl(217.2deg 91% 72%);
+  --ifm-color-primary-lightest: hsl(217.2deg 91% 78%);
+}
+
+body {
+  font-family: var(--ifm-font-family-base);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+}
+
+.main-wrapper {
+  background: hsl(var(--background));
+}
+
+a {
+  color: hsl(var(--primary));
+  font-weight: 500;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+a:hover {
+  color: hsl(var(--primary));
+  opacity: 0.85;
+}
+
+.navbar {
+  background: hsl(var(--background) / 0.85) !important;
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid hsl(var(--border));
+  box-shadow: 0 10px 30px -20px hsl(var(--foreground) / 0.35);
+}
+
+.navbar__brand {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.navbar__item {
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.navbar__item:hover,
+.navbar__item.navbar__link--active {
+  color: hsl(var(--foreground));
+}
+
+.footer {
+  background: hsl(var(--background));
+  border-top: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+.footer .footer__title,
+.footer .footer__item {
+  color: hsl(var(--foreground));
+}
+
+.button {
+  border-radius: var(--ifm-button-border-radius);
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease,
+    border-color 0.2s ease, color 0.2s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button.button--primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 18px 34px -20px hsl(var(--primary) / 0.7);
+}
+
+.button.button--primary:hover {
+  box-shadow: 0 20px 40px -18px hsl(var(--primary) / 0.75);
+}
+
+.button.button--secondary,
+.button.button--outline,
+.button.button--secondary:hover,
+.button.button--outline:hover {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+  box-shadow: 0 12px 24px -18px hsl(var(--foreground) / 0.35);
+}
+
+.button.button--link {
+  color: hsl(var(--foreground));
+}
+
+:root code,
+html[data-theme='dark'] code {
+  border-radius: calc(var(--radius) / 1.5);
+  padding: 0.15rem 0.4rem;
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+pre {
+  border-radius: calc(var(--radius) * 1.1) !important;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--accent));
+}
+
+html[data-theme='dark'] pre {
+  background: hsl(var(--accent));
+}
+
+@media screen and (max-width: 768px) {
+  :root {
+    --ifm-navbar-height: 4rem;
+  }
+
+  .navbar {
+    backdrop-filter: none;
+  }
 }
