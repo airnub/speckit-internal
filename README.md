@@ -110,6 +110,7 @@ Declare an array of shell commands in `postInit` (within the manifest) to run af
 - Add support for repo-local templates under `.speckit/templates` so teams can version custom scaffolds that load seamlessly in the CLI/TUI pickers.
 - Harden the Spectral/PostInit runners with additional integration tests and richer error surfacing, keeping AI and analytics optional by default.
 - Add a draft-spec workflow so requirement edits happen in a draft workspace first, can be reviewed or committed as drafts, and then promoted into a new published version when ready.
+- Expand the CLI/TUI beyond today's spec-generation flows by planning `/plan` to drive tech-stack selection and `/tasks` to break work into actionable steps.
 
 ### Mid term
 - Add **Model Context Protocol (MCP) / Agent-to-Agent (A2A)** support so SpecKit can both consume and expose spec context programmatically. This will let external agents request templates, trigger lint/build runs, and hand back proposed patches without going through the interactive CLI/TUI.
