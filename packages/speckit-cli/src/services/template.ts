@@ -5,10 +5,30 @@ import fs from "fs-extra";
 import path from "node:path";
 import { globby } from "globby";
 
-type UseOptions = { mergeIntoCwd: boolean; promptVars: boolean; runPostInit: boolean };
-type TemplateManifest = { varsFile?: string };
-
 type InputPrompt = typeof inquirerInput;
+
+export type PostInitCommandEvent = {
+  command: string;
+  bin: string;
+  args: string[];
+  cwd: string;
+  result: {
+    ok: boolean;
+    stdout: string;
+    stderr: string;
+    error?: unknown;
+  };
+};
+
+type UseOptions = {
+  mergeIntoCwd: boolean;
+  promptVars: boolean;
+  runPostInit: boolean;
+  promptInput?: InputPrompt;
+  onPostInitCommand?: (event: PostInitCommandEvent) => Promise<void> | void;
+};
+
+type TemplateManifest = { varsFile?: string };
 
 let promptInput: InputPrompt = inquirerInput;
 
@@ -75,17 +95,46 @@ export async function useTemplateIntoDir(t: TemplateEntry, targetDir: string, op
   let vars: Record<string,string> = {};
   if (opts.promptVars && varsPath && await fs.pathExists(varsPath)) {
     const json = await fs.readJson(varsPath);
+    const ask = opts.promptInput ?? promptInput;
     for (const [key, meta] of Object.entries<any>(json)) {
       const def = typeof meta === "object" ? meta.default ?? "" : "";
       const prompt = typeof meta === "object" ? (meta.prompt || key) : key;
-      vars[key] = await promptInput({ message: prompt, default: def });
+      vars[key] = await ask({ message: prompt, default: def });
     }
     await applyVars(base, vars);
   }
   if (opts.runPostInit && t.postInit?.length) {
     for (const cmd of t.postInit) {
-      const [bin, ...args] = cmd.split(" ");
-      await execa(bin, args, { cwd: base, stdio: "inherit" });
+      const [bin, ...args] = cmd.split(" ").filter(Boolean);
+      if (!bin) continue;
+      if (opts.onPostInitCommand) {
+        try {
+          const { stdout = "", stderr = "" } = await execa(bin, args, { cwd: base });
+          await opts.onPostInitCommand({
+            command: cmd,
+            bin,
+            args,
+            cwd: base,
+            result: { ok: true, stdout, stderr }
+          });
+        } catch (error: any) {
+          await opts.onPostInitCommand({
+            command: cmd,
+            bin,
+            args,
+            cwd: base,
+            result: {
+              ok: false,
+              stdout: error?.stdout ?? "",
+              stderr: error?.stderr ?? "",
+              error
+            }
+          });
+          throw error;
+        }
+      } else {
+        await execa(bin, args, { cwd: base, stdio: "inherit" });
+      }
     }
   }
 }

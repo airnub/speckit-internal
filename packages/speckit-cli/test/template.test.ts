@@ -51,6 +51,48 @@ test("prompts when fallback template.vars.json exists", async () => {
   }
 });
 
+test("onPostInitCommand receives output", async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "speckit-template-"));
+  const templateDir = path.join(tmpRoot, "template");
+  const targetDir = path.join(tmpRoot, "output");
+
+  await fs.ensureDir(templateDir);
+  await fs.writeFile(path.join(templateDir, "hello.txt"), "hello", "utf8");
+  await fs.writeFile(
+    path.join(templateDir, "post-init.js"),
+    "console.log('post init ran');\n",
+    "utf8"
+  );
+
+  const tpl: TemplateEntry = {
+    name: "with-post-init",
+    description: "",
+    type: "local",
+    localPath: templateDir,
+    postInit: ["node post-init.js"]
+  };
+
+  const events: any[] = [];
+
+  try {
+    await useTemplateIntoDir(tpl, targetDir, {
+      mergeIntoCwd: false,
+      promptVars: false,
+      runPostInit: true,
+      onPostInitCommand: event => {
+        events.push(event);
+      }
+    });
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].command, "node post-init.js");
+    assert.equal(events[0].result.ok, true);
+    assert.match(events[0].result.stdout, /post init ran/);
+  } finally {
+    await fs.remove(tmpRoot);
+  }
+});
+
 test("uses manifest-defined varsFile overrides", async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "speckit-template-"));
   const templateDir = path.join(tmpRoot, "template");
