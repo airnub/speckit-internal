@@ -24,6 +24,7 @@ const SPECKIT_TAGLINE = "Spec-driven commits from your terminal";
 const KEY_HINTS = "↑/↓ select · E edit · N new (template) · P preview · D diff · C commit · L pull · F fetch · U push · K Spectral lint · B Build docs/RTM · A AI Propose (if enabled) · S Settings · G status · ? help · Q quit";
 
 type FileInfo = { path: string; title?: string };
+type RefreshOptions = { selectedPath?: string | null };
 type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings";
 
 type SettingFieldType = "boolean"|"select"|"text"|"list"|"action";
@@ -67,7 +68,7 @@ export default function App() {
   const [settingsEditValue, setSettingsEditValue] = useState<string>("");
   const [settingsEditField, setSettingsEditField] = useState<SettingsFieldWithValue|null>(null);
 
-  async function refreshRepo(rootOverride?: string) {
+  async function refreshRepo(rootOverride?: string, options?: RefreshOptions) {
     const r = rootOverride || await gitRoot() || process.cwd();
     const conf = await loadConfig();
     const availableTemplates = await loadTemplates({ repoRoot: r });
@@ -95,9 +96,30 @@ export default function App() {
       const fm = matter(raw).data as any;
       infos.push({ path: file, title: fm?.title });
     }
+    const selectionOverride = options?.selectedPath;
+    const resetSelection = selectionOverride === null;
+    const preferredPath = selectionOverride === undefined
+      ? files[idx]?.path
+      : selectionOverride ?? undefined;
     setFiles(infos);
-    if (infos[0]) setContent(await fs.readFile(infos[0].path, "utf8"));
-    setIdx(0);
+    if (infos.length === 0) {
+      setIdx(0);
+      setContent("");
+      return;
+    }
+    let nextIdx = 0;
+    if (!resetSelection && preferredPath) {
+      const found = infos.findIndex(info => info.path === preferredPath);
+      if (found >= 0) {
+        nextIdx = found;
+      }
+    }
+    setIdx(nextIdx);
+    try {
+      setContent(await fs.readFile(infos[nextIdx].path, "utf8"));
+    } catch {
+      setContent("");
+    }
   }
 
   const settingsFields = React.useMemo(
@@ -107,7 +129,16 @@ export default function App() {
 
   useEffect(() => { refreshRepo(); }, []);
   useEffect(() => { (async () => {
-    if (files[idx]) setContent(await fs.readFile(files[idx].path, "utf8"));
+    const file = files[idx];
+    if (!file) {
+      setContent("");
+      return;
+    }
+    try {
+      setContent(await fs.readFile(file.path, "utf8"));
+    } catch {
+      setContent("");
+    }
   })(); }, [idx, files.length]);
 
   useEffect(() => {
@@ -129,24 +160,27 @@ export default function App() {
   async function confirmTemplateSelection() {
     const sel = templates[tplIndex];
     if (!sel) return;
+    const currentSelection = files[idx]?.path;
     if (sel.type === "blank") {
       await createBlankSpec(repoPath, specRoot);
       setMode("preview");
-      await refreshRepo();
+      const options = currentSelection ? { selectedPath: currentSelection } : undefined;
+      await refreshRepo(undefined, options);
       setTargetDir("");
       return;
     }
     if (sel.type === "local") {
       await copyLocalTemplate(sel, repoPath);
       setMode("preview");
-      await refreshRepo();
+      const options = currentSelection ? { selectedPath: currentSelection } : undefined;
+      await refreshRepo(undefined, options);
       setTargetDir("");
       return;
     }
     if (sel.type === "github") {
       if (!targetDir) return;
       await cloneTemplate(sel, targetDir);
-      await refreshRepo(targetDir);
+      await refreshRepo(targetDir, { selectedPath: null });
       setMode("preview");
       setTargetDir("");
     }
@@ -186,7 +220,13 @@ export default function App() {
     if (input === "c") setMode("commit");
     if (input === "s") { openSettings(); return; }
     if (input === "g") setStatus(await gitStatus(repoPath));
-    if (input === "e" && files[idx]) { await openInEditor(files[idx].path); await refreshRepo(); }
+    if (input === "e" && files[idx]) {
+      const selectedPath = files[idx]?.path;
+      if (selectedPath) {
+        await openInEditor(selectedPath);
+        await refreshRepo(undefined, { selectedPath });
+      }
+    }
     if (input === "n") { setMode("new-template"); }
     if (input === "f") { await handleGitAction("Git fetch", () => gitFetch(repoPath)); return; }
     if (input === "l") { await handleGitAction("Git pull", () => gitPull(repoPath)); return; }
@@ -348,7 +388,10 @@ export default function App() {
       const repoOverride = draft.repo?.mode === "local" && draft.repo?.localPath
         ? draft.repo.localPath
         : undefined;
-      await refreshRepo(repoOverride);
+      const currentSelection = files[idx]?.path;
+      await refreshRepo(repoOverride, {
+        selectedPath: repoOverride ? null : currentSelection
+      });
       setTaskTitle("Settings saved");
       setTaskOutput(formatSettingsSummary(draft));
       setMode("tasks");

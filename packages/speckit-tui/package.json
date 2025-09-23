@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsup src/index.tsx --format esm,cjs --dts --clean --target node18",
     "dev": "tsx src/index.tsx",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "ink": "^5.0.1",
@@ -29,9 +30,11 @@
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
+    "@types/react": "^18.3.3",
+    "ink-testing-library": "^4.0.0",
     "tsup": "^8.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.2",
-    "@types/react": "^18.3.3"
+    "vitest": "^3.2.4"
   }
 }
