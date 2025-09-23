@@ -363,6 +363,22 @@ export default function App() {
     }
   }
 
+  function startCommitTask() {
+    setTaskTitle("Git commit");
+    setTaskOutput("(running...)");
+    setMode("tasks");
+  }
+
+  async function finishCommitTask(result: GitCommandResult) {
+    setStatus(await gitStatus(repoPath));
+    setTaskTitle(result.ok ? "Git commit ✓" : "Git commit ✗");
+    setTaskOutput(result.output || "(no output)");
+    if (result.ok) {
+      setCommitMsg("chore(specs): update");
+    }
+    setMode("tasks");
+  }
+
   async function runSpectral(cwd: string) {
     setTaskTitle("Spectral Lint (docs/srs.yaml)");
     setMode("tasks");
@@ -453,7 +469,8 @@ export default function App() {
               msg={commitMsg}
               setMsg={setCommitMsg}
               repoPath={repoPath}
-              onDone={async () => { setCommitMsg("chore(specs): update"); setMode("preview"); setStatus(await gitStatus(repoPath)); }}
+              onStart={startCommitTask}
+              onResult={finishCommitTask}
               onCancel={() => setMode("preview")}
             />
           )}
@@ -545,7 +562,16 @@ function Diff({ path: p, cwd }: { path?: string; cwd: string }) {
   return <Text>{diff}</Text>;
 }
 
-function CommitUI({ msg, setMsg, repoPath, onDone, onCancel }: any) {
+type CommitUIProps = {
+  msg: string;
+  setMsg: (value: string) => void;
+  repoPath: string;
+  onStart?: () => void;
+  onResult?: (result: GitCommandResult) => Promise<void> | void;
+  onCancel?: () => void;
+};
+
+function CommitUI({ msg, setMsg, repoPath, onStart, onResult, onCancel }: CommitUIProps) {
   useInput((input, key) => {
     if (key.escape) {
       onCancel?.();
@@ -557,12 +583,26 @@ function CommitUI({ msg, setMsg, repoPath, onDone, onCancel }: any) {
       <TextInput
         value={msg}
         onChange={setMsg}
-        onSubmit={async () => { await gitCommitAll(msg, repoPath); await onDone(); }}
+        onSubmit={async () => {
+          onStart?.();
+          try {
+            await gitCommitAll(msg, repoPath);
+            await onResult?.({ ok: true, output: `Committed with message:\n${msg}` });
+          } catch (error: any) {
+            const message = formatGitCommitError(error);
+            await onResult?.({ ok: false, output: message });
+          }
+        }}
         focus
       />
       <Text dimColor>Enter to commit · Esc to cancel. (Stage-all + commit)</Text>
     </>
   );
+}
+
+function formatGitCommitError(error: any): string {
+  const message = (error?.stderr || error?.stdout || error?.shortMessage || error?.message || String(error) || "").trim();
+  return message || "(no output)";
 }
 
 function HelpUI() {
