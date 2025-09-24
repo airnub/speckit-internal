@@ -11,11 +11,11 @@ import { generateDocs } from "../../speckit-cli/src/services/generator.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const bundleDir = path.join(__dirname, "fixtures", "test-bundle");
+const defaultBundleDir = path.join(__dirname, "fixtures", "test-bundle");
 
-const mockModel: SpecModel = {
+const baseModel: SpecModel = {
   version: "2024.09",
-  meta: { title: "SpecKit Demo" },
+  meta: { title: "SpecKit Demo", mode: "Classic" },
   requirements: [
     { id: "REQ-001", title: "Render overview" },
     { id: "REQ-002", title: "Preserve placeholders" },
@@ -24,38 +24,26 @@ const mockModel: SpecModel = {
 
 const mockDialect = { id: "speckit.v1", version: "1.1.0" };
 
-const catalogEntry: CatalogLockEntry = {
+let activeModel: SpecModel = deepClone(baseModel);
+let activeBundle: BundleDefinition = createBundleDefinition({
   id: "test-bundle",
-  sha: "abc1234",
-  version: "0.0.1",
-  requires_speckit: ">=0.0.0",
-  requires_dialect: { id: "speckit.v1", range: ">=1.0.0 <2.0.0" },
-  synced_with: { version: "0.0.1", commit: "abc1234" },
-};
-
-const bundle: BundleDefinition = {
-  id: "test-bundle",
-  kind: "specs",
-  version: "0.0.1",
-  engine: "nunjucks",
-  requires_speckit: ">=0.0.0",
-  requires_dialect: { id: "speckit.v1", range: ">=1.0.0 <2.0.0" },
+  dir: defaultBundleDir,
   outputs: [
     { id: "overview", from: "overview.md.njk", to: "docs/overview.md" },
     { id: "config", from: "config.yaml.njk", to: "config/app.yaml" },
     { id: "metadata", from: "metadata.ts.njk", to: "src/metadata.ts" },
   ],
-  dir: bundleDir,
-};
+});
+let activeCatalogEntry: CatalogLockEntry = createCatalogEntry(activeBundle);
 
 vi.mock("../../speckit-cli/src/services/spec.js", () => ({
-  loadSpecModel: vi.fn(async () => ({ model: mockModel, dialect: mockDialect, data: {} })),
+  loadSpecModel: vi.fn(async () => ({ model: activeModel, dialect: mockDialect, data: {} })),
   hashSpecYaml: vi.fn(async () => "sha256:mock-spec-digest"),
 }));
 
 vi.mock("../../speckit-cli/src/services/catalog.js", () => ({
-  loadCatalogLock: vi.fn(async () => [catalogEntry]),
-  loadBundle: vi.fn(async () => bundle),
+  loadCatalogLock: vi.fn(async () => [activeCatalogEntry]),
+  loadBundle: vi.fn(async () => activeBundle),
   assertSpeckitCompatibility: vi.fn(),
   assertSpecCompatibility: vi.fn(),
   assertDialectCompatibility: vi.fn(),
@@ -91,6 +79,10 @@ afterAll(async () => {
 });
 
 describe("generator snapshots", () => {
+  beforeEach(() => {
+    resetActiveFixtures();
+  });
+
   it("renders markdown output with provenance snapshot", async () => {
     vi.useFakeTimers();
     try {
@@ -150,3 +142,101 @@ describe("generator snapshots", () => {
     }
   });
 });
+
+describe("mode generator snapshots", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    resetActiveFixtures();
+  });
+
+  const cases = [
+    {
+      label: "classic",
+      dir: "mode-classic",
+      bundleId: "mode-classic",
+      outputPath: ["docs", "mode-classic.md"],
+      meta: { title: "Mode Classic", mode: "Classic" },
+    },
+    {
+      label: "secure",
+      dir: "mode-secure",
+      bundleId: "mode-secure",
+      outputPath: ["docs", "mode-secure.md"],
+      meta: { title: "Mode Secure", mode: "Secure" },
+    },
+  ] as const;
+
+  it.each(cases)("renders $label mode snapshot", async fixture => {
+    const repoRoot = await createRepoRoot();
+    activeModel = {
+      ...deepClone(baseModel),
+      meta: { ...deepClone(baseModel.meta ?? {}), ...fixture.meta },
+    };
+    const bundleDir = path.join(__dirname, "fixtures", fixture.dir);
+    activeBundle = createBundleDefinition({
+      id: fixture.bundleId,
+      dir: bundleDir,
+      outputs: [
+        { id: "mode", from: "mode.md.njk", to: `docs/${fixture.bundleId}.md` },
+      ],
+    });
+    activeCatalogEntry = createCatalogEntry(activeBundle);
+
+    vi.setSystemTime(new Date("2024-01-02T03:04:05Z"));
+    await generateDocs({ repoRoot, write: true });
+    const markdown = await fs.readFile(path.join(repoRoot, ...fixture.outputPath), "utf8");
+    expect(markdown).toMatchSnapshot();
+  });
+});
+
+type BundleShape = {
+  id: string;
+  dir: string;
+  outputs: { id: string; from: string; to: string }[];
+};
+
+function createBundleDefinition(shape: BundleShape): BundleDefinition {
+  return {
+    id: shape.id,
+    kind: "specs",
+    version: "0.0.1",
+    engine: "nunjucks",
+    requires_speckit: ">=0.0.0",
+    requires_dialect: { id: "speckit.v1", range: ">=1.0.0 <2.0.0" },
+    outputs: shape.outputs.map(output => ({ ...output })),
+    dir: shape.dir,
+  };
+}
+
+function createCatalogEntry(bundleDef: BundleDefinition): CatalogLockEntry {
+  return {
+    id: bundleDef.id,
+    sha: `${bundleDef.id}-sha`,
+    version: bundleDef.version,
+    requires_speckit: bundleDef.requires_speckit,
+    requires_dialect: { ...bundleDef.requires_dialect },
+    synced_with: { version: bundleDef.version, commit: `${bundleDef.id}-commit` },
+  };
+}
+
+function resetActiveFixtures() {
+  activeModel = deepClone(baseModel);
+  activeBundle = createBundleDefinition({
+    id: "test-bundle",
+    dir: defaultBundleDir,
+    outputs: [
+      { id: "overview", from: "overview.md.njk", to: "docs/overview.md" },
+      { id: "config", from: "config.yaml.njk", to: "config/app.yaml" },
+      { id: "metadata", from: "metadata.ts.njk", to: "src/metadata.ts" },
+    ],
+  });
+  activeCatalogEntry = createCatalogEntry(activeBundle);
+}
+
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}

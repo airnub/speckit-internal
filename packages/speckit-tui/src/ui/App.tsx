@@ -12,6 +12,7 @@ import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult, gitEnsureGithubRepo } from "../git.js";
 import { execa } from "execa";
 import { generatePatch, AgentConfig } from "@speckit/agent";
+import { parse } from "yaml";
 
 const TUI_VERSION = "v0.0.1";
 const SPECKIT_ASCII = String.raw`
@@ -57,6 +58,7 @@ export default function App() {
   const [repoPath, setRepoPath] = useState<string>(initialRepoPathRef.current);
   const [branch, setBranch] = useState<string>("main");
   const [specRoot, setSpecRoot] = useState<string>("docs/specs");
+  const [repoMode, setRepoMode] = useState<"classic"|"secure">("classic");
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [idx, setIdx] = useState(0);
   const [content, setContent] = useState<string>("");
@@ -117,6 +119,7 @@ export default function App() {
         if (availableTemplates.length === 0) return 0;
         return Math.min(prev, availableTemplates.length - 1);
       });
+      setRepoMode(await detectRepoMode(resolvedRoot));
       setBranch(await gitBranch(resolvedRoot));
       setStatus(await gitStatus(resolvedRoot));
       const resolvedSpecRoot = conf.repo?.specRoot || "docs/specs";
@@ -677,6 +680,7 @@ export default function App() {
         repoPath={repoPath}
         branch={branch}
         specRoot={specRoot}
+        mode={repoMode}
         aiEnabled={aiEnabled}
         provider={provider}
         model={model}
@@ -755,12 +759,17 @@ type HeaderProps = {
   repoPath: string;
   branch: string;
   specRoot: string;
+  mode: "classic"|"secure";
   aiEnabled: boolean;
   provider: string;
   model: string;
 };
 
-function Header({ repoPath, branch, specRoot, aiEnabled, provider, model }: HeaderProps) {
+function Header({ repoPath, branch, specRoot, mode, aiEnabled, provider, model }: HeaderProps) {
+  const modeItems = [
+    { label: "Classic", value: "classic" as const },
+    { label: "Secure", value: "secure" as const }
+  ];
   const metadata = [
     { label: "Version", value: TUI_VERSION, bold: true },
     { label: "Repo", value: repoPath },
@@ -779,6 +788,19 @@ function Header({ repoPath, branch, specRoot, aiEnabled, provider, model }: Head
         ))}
       </Box>
       <Text dimColor>{SPECKIT_TAGLINE}</Text>
+      <Box marginTop={1} flexDirection="row" alignItems="center">
+        <Text color="gray">Mode:</Text>
+        <Box marginLeft={1} flexDirection="row">
+          {modeItems.map((item, index) => (
+            <Box key={item.value} flexDirection="row">
+              {index > 0 && <Text color="gray"> | </Text>}
+              <Text color={item.value === mode ? "yellow" : "gray"} bold={item.value === mode}>
+                {item.label}
+              </Text>
+            </Box>
+          ))}
+        </Box>
+      </Box>
       <Box marginTop={1} flexDirection="row" flexWrap="wrap" columnGap={3} rowGap={0}>
         {metadata.map(item => (
           <Box key={item.label} marginRight={2}>
@@ -793,6 +815,54 @@ function Header({ repoPath, branch, specRoot, aiEnabled, provider, model }: Head
       <Text dimColor>{KEY_HINTS}</Text>
     </Box>
   );
+}
+
+async function detectRepoMode(repoRoot: string): Promise<"classic"|"secure"> {
+  try {
+    const specPath = path.join(repoRoot, ".speckit", "spec.yaml");
+    if (!(await fs.pathExists(specPath))) {
+      return "classic";
+    }
+    const raw = await fs.readFile(specPath, "utf8");
+    const data = parse(raw) as any;
+    const candidates = [
+      data?.mode,
+      data?.spec?.mode,
+      data?.spec?.meta?.mode,
+      data?.meta?.mode,
+    ];
+    for (const candidate of candidates) {
+      const normalized = normalizeModeValue(candidate);
+      if (normalized) {
+        return normalized;
+      }
+    }
+    const standards = Array.isArray(data?.standards)
+      ? data?.standards
+      : Array.isArray(data?.spec?.standards)
+        ? data?.spec?.standards
+        : null;
+    if (Array.isArray(standards) && standards.length > 0) {
+      return "secure";
+    }
+  } catch {
+    // Ignore parse errors and fall back to Classic.
+  }
+  return "classic";
+}
+
+function normalizeModeValue(input: unknown): "classic"|"secure"|null {
+  if (typeof input !== "string") {
+    return null;
+  }
+  const normalized = input.trim().toLowerCase();
+  if (normalized === "secure") {
+    return "secure";
+  }
+  if (normalized === "classic") {
+    return "classic";
+  }
+  return null;
 }
 
 function truncate(s: string, n: number) {
