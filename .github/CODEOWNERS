@@ -1,3 +1,6 @@
 .speckit/catalog/**                                   @airnub
 .speckit/catalog.lock                                 @airnub
 packages/speckit-cli/src/config/modes.ts              @airnub
+.speckit/spec.yaml                                    @airnub
+policy/**                                             @airnub
+.github/workflows/**                                  @airnub
