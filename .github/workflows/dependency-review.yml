@@ -1,0 +1,27 @@
+name: dependency-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Review dependencies
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: |
+            AGPL-1.0-only
+            AGPL-3.0-only
+            GPL-1.0-only
+            GPL-2.0-only
+            GPL-3.0-only
+            LGPL-3.0-only
+            LGPL-2.0-only

@@ -1,0 +1,55 @@
+name: release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-attest:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile=false
+
+      - name: Build workspaces
+        run: |
+          pnpm -w -r build
+          pnpm --filter @speckit/core run build
+          pnpm --filter @speckit/cli run build
+
+      - name: Package release artifacts
+        run: |
+          mkdir -p release
+          tar -czf release/speckit-artifacts.tar.gz packages
+
+      - name: Upload release artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: release/speckit-artifacts.tar.gz
+          asset_name: speckit-artifacts.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Generate build provenance attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: release/speckit-artifacts.tar.gz
