@@ -56,6 +56,7 @@ Paste as **valid JSON** if you used an agent; otherwise skip. This helps reviewe
 - [ ] Tests were added/updated and linked to **Req-ID(s)** in comments or filenames
 - [ ] No secrets / credentials committed
 - [ ] I linked relevant ADRs (or proposed a new one in `docs/internal/adr/`)
+- [ ] ⬜ Changing default mode (requires mode-change label & MAJOR bump)
 
 ## Breaking changes?
 - [ ] No
