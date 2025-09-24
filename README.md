@@ -92,6 +92,20 @@ speckit doctor
 speckit verify
 ```
 
+### Secure mode: Education (US)
+
+When a team opts into the U.S. education guardrails you can generate a compliance plan and verify supporting evidence directly from the CLI. The bundle aligns with guidance from the [U.S. Department of Education Student Privacy Policy Office](https://studentprivacy.ed.gov/), the [Federal Trade Commission's COPPA program](https://www.ftc.gov/legal-library/browse/rules/childrens-online-privacy-protection-rule-coppa), and the [Federal Communications Commission's CIPA resources](https://www.fcc.gov/consumers/guides/childrens-internet-protection-act).
+
+```bash
+# build a plan that layers FERPA, COPPA, CIPA, and PPRA with state overlays
+speckit compliance plan --framework edu-us --overlays ca-sopipa,ny-2d --format markdown --output compliance/edu-us-plan.md
+
+# evaluate the current repo against the required artifacts and tagged requirements
+speckit compliance verify --framework edu-us --overlays ca-sopipa,ny-2d --fail-on missing
+```
+
+The planner maps spec requirements tagged with `ferpa:*`, `coppa:*`, `cipa:*`, `ppra:*`, and state overlays such as `ca:sopipa:*` or `ny:2-d:*`. Verification reports summarize missing artifacts and call out matching Open Policy Agent checks located under `policy/opa/edu-us/*.rego` so PR reviewers can see exactly which FERPA/COPPA/CIPA/PPRA control is outstanding.
+
 ## Repo-local templates
 
 SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`speckit template list`, `speckit template use`, `speckit init --template …`; alias: swap `speckit` for `spec`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `speckit template use …` or `speckit init --template …` (add `#branch` or `?ref=` if you need a branch other than the default—alias: `spec`).
