@@ -8,7 +8,7 @@ import TextInput from "ink-text-input";
 import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
 import { useTemplateIntoDir, PostInitCommandEvent } from "@speckit/cli/src/services/template.js";
 import { loadConfig, saveConfig } from "../config.js";
-import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult } from "../git.js";
+import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult, gitEnsureGithubRepo } from "../git.js";
 import { execa } from "execa";
 import { generatePatch, AgentConfig } from "@speckit/agent";
 
@@ -27,6 +27,7 @@ const TEMPLATE_CANCELLED_MESSAGE = "Template cancelled by user.";
 
 type FileInfo = { path: string; title?: string };
 type RefreshOptions = { selectedPath?: string | null };
+type RefreshResult = { ok: true; path: string } | { ok: false; error: string };
 type Mode = "preview"|"diff"|"commit"|"help"|"new-template"|"tasks"|"ai"|"settings"|"template-prompt";
 
 type SettingFieldType = "boolean"|"select"|"text"|"list"|"action";
@@ -81,89 +82,86 @@ export default function App() {
   const [settingsEditValue, setSettingsEditValue] = useState<string>("");
   const [settingsEditField, setSettingsEditField] = useState<SettingsFieldWithValue|null>(null);
 
-  async function refreshRepo(rootOverride?: string, options?: RefreshOptions) {
+  async function refreshRepo(rootOverride?: string, options?: RefreshOptions): Promise<RefreshResult> {
     const conf = await loadConfig();
-    const repoMode = conf.repo?.mode;
-    let configRepoPath: string | undefined;
-    if (repoMode === "local" && typeof conf.repo?.localPath === "string") {
-      const trimmedLocalPath = conf.repo.localPath.trim();
-      if (trimmedLocalPath) {
-        const resolvedLocalPath = path.resolve(trimmedLocalPath);
-        const initialResolved = initialRepoPathRef.current
-          ? path.resolve(initialRepoPathRef.current)
-          : undefined;
-        if (!initialResolved || resolvedLocalPath !== initialResolved) {
-          configRepoPath = resolvedLocalPath;
-        }
-      }
-    }
-    const initialRepoPath = initialRepoPathRef.current;
+    setCfg(conf);
+
+    const initialRepoPath = initialRepoPathRef.current
+      ? path.resolve(initialRepoPathRef.current)
+      : undefined;
     const currentRepoPath = repoPath ? path.resolve(repoPath) : undefined;
     const overridePath = rootOverride ? path.resolve(rootOverride) : undefined;
 
-    let selectedRoot = overridePath;
-    if (!selectedRoot) {
-      if (currentRepoPath && currentRepoPath !== initialRepoPath) {
-        selectedRoot = currentRepoPath;
-      } else if (configRepoPath) {
-        selectedRoot = configRepoPath;
-      } else if (currentRepoPath) {
-        selectedRoot = currentRepoPath;
-      }
-    }
-    if (!selectedRoot) {
-      selectedRoot = await gitRoot() || initialRepoPath || process.cwd();
-    }
-    const resolvedRoot = path.resolve(selectedRoot);
-
-    const availableTemplates = await loadTemplates({ repoRoot: resolvedRoot });
-    setCfg(conf);
-    setRepoPath(resolvedRoot);
-    setTemplates(availableTemplates);
-    setTplIndex(prev => {
-      if (availableTemplates.length === 0) return 0;
-      return Math.min(prev, availableTemplates.length - 1);
-    });
-    setBranch(await gitBranch(resolvedRoot));
-    setStatus(await gitStatus(resolvedRoot));
-    const resolvedSpecRoot = conf.repo?.specRoot || "docs/specs";
-    const resolvedSpecRootPath = path.join(resolvedRoot, resolvedSpecRoot);
-    const templateDir = path.join(resolvedSpecRootPath, "templates");
-    setSpecRoot(resolvedSpecRoot);
-    const pattern = [
-      path.join(resolvedSpecRootPath, "**/*.md"),
-      `!${path.join(templateDir, "**")}`
-    ];
-    const paths = (await globby(pattern)).sort();
-    const infos: FileInfo[] = [];
-    for (const file of paths) {
-      const raw = await fs.readFile(file, "utf8");
-      const fm = matter(raw).data as any;
-      infos.push({ path: file, title: fm?.title });
-    }
-    const selectionOverride = options?.selectedPath;
-    const resetSelection = selectionOverride === null;
-    const preferredPath = selectionOverride === undefined
-      ? files[idx]?.path
-      : selectionOverride ?? undefined;
-    setFiles(infos);
-    if (infos.length === 0) {
-      setIdx(0);
-      setContent("");
-      return;
-    }
-    let nextIdx = 0;
-    if (!resetSelection && preferredPath) {
-      const found = infos.findIndex(info => info.path === preferredPath);
-      if (found >= 0) {
-        nextIdx = found;
-      }
-    }
-    setIdx(nextIdx);
+    let resolvedRoot: string;
     try {
-      setContent(await fs.readFile(infos[nextIdx].path, "utf8"));
-    } catch {
-      setContent("");
+      resolvedRoot = await resolveRepoRoot({
+        config: conf,
+        overridePath,
+        currentRepoPath,
+        initialRepoPath
+      });
+    } catch (error: any) {
+      const message = formatRefreshError(error);
+      setStatus(`Refresh error: ${message}`);
+      return { ok: false, error: message };
+    }
+
+    const repoChanged = !currentRepoPath || currentRepoPath !== resolvedRoot;
+
+    try {
+      const availableTemplates = await loadTemplates({ repoRoot: resolvedRoot });
+      setRepoPath(resolvedRoot);
+      setTemplates(availableTemplates);
+      setTplIndex(prev => {
+        if (availableTemplates.length === 0) return 0;
+        return Math.min(prev, availableTemplates.length - 1);
+      });
+      setBranch(await gitBranch(resolvedRoot));
+      setStatus(await gitStatus(resolvedRoot));
+      const resolvedSpecRoot = conf.repo?.specRoot || "docs/specs";
+      const resolvedSpecRootPath = path.join(resolvedRoot, resolvedSpecRoot);
+      const templateDir = path.join(resolvedSpecRootPath, "templates");
+      setSpecRoot(resolvedSpecRoot);
+      const pattern = [
+        path.join(resolvedSpecRootPath, "**/*.md"),
+        `!${path.join(templateDir, "**")}`
+      ];
+      const paths = (await globby(pattern)).sort();
+      const infos: FileInfo[] = [];
+      for (const file of paths) {
+        const raw = await fs.readFile(file, "utf8");
+        const fm = matter(raw).data as any;
+        infos.push({ path: file, title: fm?.title });
+      }
+      const selectionOverride = options?.selectedPath ?? (repoChanged ? null : undefined);
+      const resetSelection = selectionOverride === null;
+      const preferredPath = selectionOverride === undefined
+        ? files[idx]?.path
+        : selectionOverride ?? undefined;
+      setFiles(infos);
+      if (infos.length === 0) {
+        setIdx(0);
+        setContent("");
+        return { ok: true, path: resolvedRoot };
+      }
+      let nextIdx = 0;
+      if (!resetSelection && preferredPath) {
+        const found = infos.findIndex(info => info.path === preferredPath);
+        if (found >= 0) {
+          nextIdx = found;
+        }
+      }
+      setIdx(nextIdx);
+      try {
+        setContent(await fs.readFile(infos[nextIdx].path, "utf8"));
+      } catch {
+        setContent("");
+      }
+      return { ok: true, path: resolvedRoot };
+    } catch (error: any) {
+      const message = formatRefreshError(error);
+      setStatus(`Refresh error: ${message}`);
+      return { ok: false, error: message };
     }
   }
 
@@ -172,7 +170,7 @@ export default function App() {
     [settingsDraft]
   );
 
-  useEffect(() => { refreshRepo(); }, []);
+  useEffect(() => { void refreshRepo(); }, []);
   useEffect(() => { (async () => {
     const file = files[idx];
     if (!file) {
@@ -267,11 +265,17 @@ export default function App() {
       });
 
       if (sel.type === "github") {
-        await refreshRepo(targetBase, { selectedPath: null });
+        const refreshResult = await refreshRepo(targetBase, { selectedPath: null });
+        if (!refreshResult.ok) {
+          throw new Error(refreshResult.error);
+        }
         setTargetDir("");
       } else {
         const options = currentSelection ? { selectedPath: currentSelection } : undefined;
-        await refreshRepo(repoPath, options);
+        const refreshResult = await refreshRepo(repoPath, options);
+        if (!refreshResult.ok) {
+          throw new Error(refreshResult.error);
+        }
       }
 
       const outputs = commandOutputs.length
@@ -314,6 +318,10 @@ export default function App() {
       return;
     }
 
+    const gitToken = cfg?.repo?.mode === "github"
+      ? (cfg.github?.pat?.trim() || undefined)
+      : undefined;
+
     if (mode === "settings") {
       await handleSettingsInput(input, key);
       return;
@@ -340,9 +348,9 @@ export default function App() {
       }
     }
     if (input === "n") { setMode("new-template"); }
-    if (input === "f") { await handleGitAction("Git fetch", () => gitFetch(repoPath)); return; }
-    if (input === "l") { await handleGitAction("Git pull", () => gitPull(repoPath)); return; }
-    if (input === "u") { await handleGitAction("Git push", () => gitPush(repoPath)); return; }
+    if (input === "f") { await handleGitAction("Git fetch", () => gitFetch(repoPath, { token: gitToken })); return; }
+    if (input === "l") { await handleGitAction("Git pull", () => gitPull(repoPath, { token: gitToken })); return; }
+    if (input === "u") { await handleGitAction("Git push", () => gitPush(repoPath, { token: gitToken })); return; }
     if (input === "k") { await runSpectral(repoPath); }
     if (input === "b") { await runPostInit(repoPath); }
     if (input === "a") {
@@ -501,9 +509,16 @@ export default function App() {
         ? draft.repo.localPath
         : undefined;
       const currentSelection = files[idx]?.path;
-      await refreshRepo(repoOverride, {
-        selectedPath: repoOverride ? null : currentSelection
+      const shouldResetSelection = draft.repo?.mode === "github" || !!repoOverride;
+      const refreshResult = await refreshRepo(repoOverride, {
+        selectedPath: shouldResetSelection ? null : currentSelection
       });
+      if (!refreshResult.ok) {
+        setTaskTitle("Settings error");
+        setTaskOutput(refreshResult.error);
+        setMode("tasks");
+        return;
+      }
       setTaskTitle("Settings saved");
       setTaskOutput(formatSettingsSummary(draft));
       setMode("tasks");
@@ -1270,8 +1285,118 @@ function formatSettingsSummary(cfg: SpeckitConfig): string {
     `GitHub model: ${cfg.github?.model || "-"}`,
     `OpenAI key: ${cfg.openai?.apiKey ? "set" : "not set"}`,
     `GitHub token: ${cfg.github?.pat ? "set" : "not set"}`,
+    `Repo mode: ${cfg.repo?.mode || "local"}`,
+    `GitHub repo: ${cfg.repo?.githubRepo || "-"}`,
+    `Branch: ${cfg.repo?.branch || "main"}`,
     `Spec root: ${cfg.repo?.specRoot || "docs/specs"}`,
     `Workspaces root: ${cfg.workspaces?.root || "(default)"}`
   ];
   return lines.join("\n");
+}
+
+type ResolveRepoRootParams = {
+  config: SpeckitConfig;
+  overridePath?: string;
+  currentRepoPath?: string;
+  initialRepoPath?: string;
+};
+
+async function resolveRepoRoot(params: ResolveRepoRootParams): Promise<string> {
+  const { config, overridePath, currentRepoPath, initialRepoPath } = params;
+
+  if (overridePath) {
+    return path.resolve(overridePath);
+  }
+
+  const repoMode = config.repo?.mode || "local";
+
+  if (repoMode === "github") {
+    return await prepareGithubWorkspace(config);
+  }
+
+  let configRepoPath: string | undefined;
+  if (repoMode === "local" && typeof config.repo?.localPath === "string") {
+    const trimmedLocalPath = config.repo.localPath.trim();
+    if (trimmedLocalPath) {
+      const resolvedLocalPath = path.resolve(trimmedLocalPath);
+      const initialResolved = initialRepoPath;
+      if (!initialResolved || resolvedLocalPath !== initialResolved) {
+        configRepoPath = resolvedLocalPath;
+      }
+    }
+  }
+
+  if (currentRepoPath && currentRepoPath !== initialRepoPath) {
+    return currentRepoPath;
+  }
+  if (configRepoPath) {
+    return configRepoPath;
+  }
+  if (currentRepoPath) {
+    return currentRepoPath;
+  }
+
+  const gitRootPath = await gitRoot();
+  if (gitRootPath) {
+    return path.resolve(gitRootPath);
+  }
+
+  return initialRepoPath || path.resolve(process.cwd());
+}
+
+async function prepareGithubWorkspace(config: SpeckitConfig): Promise<string> {
+  const repoConfig = config.repo;
+  if (!repoConfig) {
+    throw new Error("GitHub mode requires repo settings.");
+  }
+
+  const rawRepo = typeof repoConfig.githubRepo === "string" ? repoConfig.githubRepo.trim() : "";
+  if (!rawRepo) {
+    throw new Error("Set repo.githubRepo (owner/name) when repo.mode=github.");
+  }
+
+  const normalizedRepo = rawRepo.replace(/\.git$/i, "");
+  const segments = normalizedRepo.split("/").filter(Boolean);
+  if (segments.length !== 2) {
+    throw new Error("GitHub repo must be in 'owner/name' format.");
+  }
+
+  const [owner, repoName] = segments;
+  const repoSlug = `${owner}/${repoName}`;
+  const branch = (typeof repoConfig.branch === "string" && repoConfig.branch.trim())
+    ? repoConfig.branch.trim()
+    : "main";
+
+  const workspaceRootInput = config.workspaces?.root;
+  const workspaceRoot = workspaceRootInput
+    ? path.resolve(workspaceRootInput)
+    : path.resolve(process.cwd(), ".speckit/workspaces");
+  await fs.ensureDir(workspaceRoot);
+
+  const ownerSegment = sanitizeWorkspaceSegment(owner);
+  const repoSegment = sanitizeWorkspaceSegment(repoName);
+  const branchSegment = sanitizeWorkspaceSegment(branch);
+  const workspaceDir = path.join(workspaceRoot, "github", ownerSegment, repoSegment, branchSegment);
+
+  const token = config.github?.pat?.trim() || undefined;
+
+  try {
+    await gitEnsureGithubRepo({ repo: repoSlug, branch, dir: workspaceDir, token });
+  } catch (error: any) {
+    const message = formatRefreshError(error);
+    const hint = token ? "" : " (set github.pat in settings if the repo is private)";
+    throw new Error(`Failed to prepare GitHub workspace ${repoSlug}@${branch}: ${message}${hint}`);
+  }
+
+  return path.resolve(workspaceDir);
+}
+
+function sanitizeWorkspaceSegment(value: string): string {
+  const trimmed = value.trim();
+  const sanitized = trimmed.replace(/[^a-zA-Z0-9._-]/g, "-");
+  return sanitized || "default";
+}
+
+function formatRefreshError(error: any): string {
+  return error?.message ? String(error.message) : String(error);
 }
