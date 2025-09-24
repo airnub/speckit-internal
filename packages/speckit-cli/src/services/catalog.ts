@@ -3,14 +3,39 @@ import fs from "fs-extra";
 import { parse } from "yaml";
 import { z } from "zod";
 import semver from "semver";
+import { isLikelyCommitSha } from "./version.js";
+
+const SemverRangeSchema = z
+  .string()
+  .min(1)
+  .transform(value => value.trim())
+  .refine(value => semver.validRange(value, { includePrerelease: true }) !== null, {
+    message: "Invalid semver range",
+  });
+
+const SemverVersionSchema = z
+  .string()
+  .min(1)
+  .transform(value => value.trim())
+  .refine(value => Boolean(semver.valid(value, { includePrerelease: true })), {
+    message: "Invalid semver version",
+  });
+
+const CommitSchema = z
+  .string()
+  .min(1)
+  .transform(value => value.trim().toLowerCase())
+  .refine(value => isLikelyCommitSha(value), {
+    message: "Invalid git commit",
+  });
 
 const CatalogLockSchema = z.array(
   z.object({
     id: z.string(),
     sha: z.string(),
-    version: z.string(),
-    requires_speckit: z.string(),
-    synced_with: z.object({ version: z.string(), commit: z.string() }),
+    version: SemverVersionSchema,
+    requires_speckit: SemverRangeSchema,
+    synced_with: z.object({ version: SemverVersionSchema, commit: CommitSchema }),
   })
 );
 
@@ -18,10 +43,10 @@ const BundleSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   kind: z.string(),
-  version: z.string(),
+  version: SemverVersionSchema,
   engine: z.enum(["nunjucks"]),
-  requires_spec: z.string().optional(),
-  requires_speckit: z.string().optional(),
+  requires_spec: SemverRangeSchema.optional(),
+  requires_speckit: SemverRangeSchema,
   outputs: z.array(
     z.object({ id: z.string(), from: z.string(), to: z.string() })
   ),

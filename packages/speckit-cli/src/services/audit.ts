@@ -5,7 +5,7 @@ import { globby } from "globby";
 import {
   readManifest,
 } from "./manifest.js";
-import { getSpeckitVersion } from "./version.js";
+import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { hashSpecYaml, loadSpecYaml } from "./spec.js";
 import { loadCatalogLock, loadBundle } from "./catalog.js";
 import { createHash } from "node:crypto";
@@ -31,23 +31,28 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
   const specVersion = specData?.spec?.meta?.version;
   const catalogEntries = await loadCatalogLock(repoRoot);
   const catalogById = new Map<string, { sha: string; version: string }>();
+  const issues: string[] = [];
   for (const entry of catalogEntries) {
     const bundle = await loadBundle(repoRoot, entry);
     catalogById.set(entry.id, { sha: entry.sha, version: bundle.version });
+    if (!isLikelyCommitSha(entry.synced_with.commit)) {
+      issues.push(
+        `Catalog lock entry '${entry.id}' has invalid synced_with.commit '${entry.synced_with.commit}'`
+      );
+    }
   }
 
-  const issues: string[] = [];
-  if (!speckitInfo.commit || speckitInfo.commit === "unknown") {
+  const currentCommitValid = isLikelyCommitSha(speckitInfo.commit);
+  if (!currentCommitValid) {
     issues.push("Speckit git commit could not be determined");
+  }
+  const manifestCommitValid = isLikelyCommitSha(manifest.speckit.commit);
+  if (!manifestCommitValid) {
+    issues.push(`Manifest speckit.commit (${manifest.speckit.commit}) is not a valid git commit`);
   }
   if (manifest.speckit.version !== speckitInfo.version) {
     issues.push(
       `Manifest speckit.version (${manifest.speckit.version}) does not match current version (${speckitInfo.version})`
-    );
-  }
-  if (manifest.speckit.commit !== speckitInfo.commit) {
-    issues.push(
-      `Manifest speckit.commit (${manifest.speckit.commit}) does not match current commit (${speckitInfo.commit})`
     );
   }
   const manifestByPath = new Map<
@@ -63,6 +68,10 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
   for (const run of manifest.runs) {
     if (!run.synced_with) {
       issues.push(`Manifest run at ${run.at} missing synced_with metadata`);
+    } else if (!isLikelyCommitSha(run.synced_with.commit)) {
+      issues.push(
+        `Manifest run at ${run.at} has invalid synced_with.commit '${run.synced_with.commit}'`
+      );
     }
     for (const output of run.outputs) {
       manifestByPath.set(output.path, {
@@ -103,20 +112,27 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
     const manifestEntry = manifestByPath.get(relPath);
     let status: AuditRow["status"] = "OK";
 
-    const expectedToolVersion = manifestEntry?.synced_with?.version ?? manifest.speckit.version;
-    const expectedToolCommit = manifestEntry?.synced_with?.commit ?? manifest.speckit.commit;
-    const toolMatches = prov.tool_version === expectedToolVersion && prov.tool_commit === expectedToolCommit;
-    if (!toolMatches) {
+    const provToolVersionRaw = typeof prov.tool_version === "string" ? prov.tool_version : "";
+    const provToolVersion = provToolVersionRaw.trim();
+    const provToolCommitRaw = typeof prov.tool_commit === "string" ? prov.tool_commit : "";
+    const provToolCommit = provToolCommitRaw.trim();
+
+    if (!isLikelyCommitSha(provToolCommit)) {
       status = "MISMATCH";
-      issues.push(`${relPath}: tool version/commit mismatch`);
+      const display = provToolCommit || provToolCommitRaw || "";
+      issues.push(`${relPath}: provenance tool_commit '${display}' is not a valid git commit`);
     }
 
-    const currentToolMatches =
-      prov.tool_version === speckitInfo.version && prov.tool_commit === speckitInfo.commit;
-    if (!currentToolMatches) {
+    const expectedToolVersionRaw = manifestEntry?.synced_with?.version ?? manifest.speckit.version;
+    const expectedToolCommitRaw = manifestEntry?.synced_with?.commit ?? manifest.speckit.commit;
+    const expectedToolVersion = typeof expectedToolVersionRaw === "string" ? expectedToolVersionRaw.trim() : "";
+    const expectedToolCommit = typeof expectedToolCommitRaw === "string" ? expectedToolCommitRaw.trim() : "";
+
+    const toolMatches = provToolVersion === expectedToolVersion && provToolCommit === expectedToolCommit;
+    if (!toolMatches) {
       status = "MISMATCH";
       issues.push(
-        `${relPath}: provenance records ${prov.tool_version}@${prov.tool_commit}, expected ${speckitInfo.version}@${speckitInfo.commit}`
+        `${relPath}: tool version/commit mismatch (found ${provToolVersion}@${provToolCommit}, expected ${expectedToolVersion}@${expectedToolCommit})`
       );
     }
 
@@ -147,18 +163,17 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
       if (!manifestEntry.synced_with) {
         status = "MISMATCH";
         issues.push(`${relPath}: manifest synced_with missing`);
+      } else if (!isLikelyCommitSha(manifestEntry.synced_with.commit)) {
+        status = "MISMATCH";
+        issues.push(
+          `${relPath}: manifest synced_with commit '${manifestEntry.synced_with.commit}' is not a valid git commit`
+        );
       } else if (
-        manifestEntry.synced_with.version !== prov.tool_version ||
-        manifestEntry.synced_with.commit !== prov.tool_commit
+        manifestEntry.synced_with.version !== provToolVersion ||
+        manifestEntry.synced_with.commit !== provToolCommit
       ) {
         status = "MISMATCH";
         issues.push(`${relPath}: manifest synced_with does not match provenance`);
-      } else if (
-        manifestEntry.synced_with.version !== speckitInfo.version ||
-        manifestEntry.synced_with.commit !== speckitInfo.commit
-      ) {
-        status = "MISMATCH";
-        issues.push(`${relPath}: manifest synced_with ${manifestEntry.synced_with.version}@${manifestEntry.synced_with.commit} does not match current tool ${speckitInfo.version}@${speckitInfo.commit}`);
       }
     }
 
@@ -182,7 +197,7 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
 
     rows.push({
       path: relPath,
-      tool: `${prov.tool_version ?? "?"}@${prov.tool_commit ?? "?"}`,
+      tool: `${provToolVersion || "?"}@${provToolCommit || "?"}`,
       bundle: prov.template ? `${prov.template.id ?? "?"}@${prov.template.sha ?? "?"}` : "--",
       spec: prov.spec?.digest ?? "--",
       generatedAt: prov.generated_at ?? "--",

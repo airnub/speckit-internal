@@ -13,7 +13,7 @@ import {
   assertSpeckitCompatibility,
   assertSpecCompatibility,
 } from "./catalog.js";
-import { getSpeckitVersion } from "./version.js";
+import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { appendManifestRun, updateManifestSpeckit } from "./manifest.js";
 
 type Provenance = {
@@ -59,6 +59,11 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
   const specDigest = await hashSpecYaml(repoRoot);
 
   const speckitInfo = await getSpeckitVersion(repoRoot);
+  if (!isLikelyCommitSha(speckitInfo.commit)) {
+    throw new Error(
+      "Unable to determine the Speckit git commit. Ensure the repository has commits and git metadata is available."
+    );
+  }
   await updateManifestSpeckit(repoRoot, speckitInfo);
   const catalogEntries = await loadCatalogLock(repoRoot);
   if (!catalogEntries.length) {
