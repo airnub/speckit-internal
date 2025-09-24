@@ -1,10 +1,10 @@
 {
-  "framework": "hipaa",
-  "generated_at": "2025-09-24T22:41:38.361Z",
+  "framework": "edu-us",
+  "generated_at": "2025-09-24T23:04:55.266Z",
   "spec": {
     "engine_mode": "classic",
     "compliance_enabled": false,
-    "hipaa_requested": true,
+    "edu_us_requested": false,
     "frameworks": [
       {
         "id": "hipaa",
@@ -16,129 +16,488 @@
     ]
   },
   "meta": {
-    "version": "2024.09",
-    "title": "HIPAA Security Rule Core Safeguards",
-    "crosswalks": {
-      "nist_sp_800_66r2": {
-        "title": "NIST SP 800-66 Rev.2",
-        "url": "https://csrc.nist.gov/publications/detail/sp/800-66/rev-2/final"
+    "version": "0.1.0",
+    "title": "Education (US) Secure Mode Catalog",
+    "frameworks": [
+      {
+        "id": "ferpa",
+        "key": "ferpa",
+        "name": "FERPA",
+        "authority": "Student Privacy Policy Office",
+        "citation": "20 U.S.C. § 1232g; 34 CFR Part 99",
+        "requirements": [
+          {
+            "id": "disclosure-logging",
+            "requirement_id": "EDU-US-FERPA-DISCLOSURE-LOGGING",
+            "title": "Track and justify disclosures of education records",
+            "citation": "34 CFR § 99.32",
+            "description": "Maintain an auditable log for every disclosure of education records and document the legitimate educational interest or statutory exception applied."
+          },
+          {
+            "id": "directory-information-opt-outs",
+            "requirement_id": "EDU-US-FERPA-DIRECTORY-INFORMATION-OPT-OUTS",
+            "title": "Honor directory information opt-outs",
+            "citation": "34 CFR § 99.37",
+            "description": "Maintain notice and opt-out workflows for directory information and enforce suppression across exports and integrations."
+          },
+          {
+            "id": "access-requests",
+            "requirement_id": "EDU-US-FERPA-ACCESS-REQUESTS",
+            "title": "Fulfil parent and eligible student access requests",
+            "citation": "34 CFR § 99.10",
+            "description": "Deliver education records within 45 days of a valid request and authenticate requesters before release."
+          }
+        ]
       },
-      "olir_mapping": {
-        "title": "NIST OLIR: HIPAA Security Rule ↔︎ SP 800-53 Rev.5",
-        "url": "https://csrc.nist.gov/Projects/olir"
+      {
+        "id": "coppa",
+        "key": "coppa",
+        "name": "COPPA",
+        "authority": "Federal Trade Commission",
+        "citation": "15 U.S.C. §§ 6501–6506; 16 CFR Part 312",
+        "requirements": [
+          {
+            "id": "under-13-scope",
+            "requirement_id": "EDU-US-COPPA-UNDER-13-SCOPE",
+            "title": "Determine if the service targets children under 13",
+            "citation": "16 CFR § 312.2",
+            "description": "Document why the service is or is not directed to children under 13 and identify any school-authorized use cases."
+          },
+          {
+            "id": "verifiable-parental-consent",
+            "requirement_id": "EDU-US-COPPA-VERIFIABLE-PARENTAL-CONSENT",
+            "title": "Collect verifiable parental consent",
+            "citation": "16 CFR § 312.5",
+            "description": "Capture and document verifiable parental consent before collecting personal information from children under 13 or confirm district authority to consent."
+          },
+          {
+            "id": "data-retention",
+            "requirement_id": "EDU-US-COPPA-DATA-RETENTION",
+            "title": "Limit retention of child personal information",
+            "citation": "16 CFR § 312.10",
+            "description": "Retain personal information only as long as necessary for the educational purpose and honor deletion requests promptly."
+          }
+        ]
+      },
+      {
+        "id": "cipa",
+        "key": "cipa",
+        "name": "CIPA",
+        "authority": "Federal Communications Commission",
+        "citation": "47 U.S.C. § 254; 47 CFR § 54.520",
+        "requirements": [
+          {
+            "id": "internet-safety-policy",
+            "requirement_id": "EDU-US-CIPA-INTERNET-SAFETY-POLICY",
+            "title": "Publish an internet safety policy",
+            "citation": "47 U.S.C. § 254(h)(5)(A)",
+            "description": "Adopt an internet safety policy covering access to inappropriate material, student safety, security, and unauthorized access."
+          },
+          {
+            "id": "technology-protection-measure",
+            "requirement_id": "EDU-US-CIPA-TECHNOLOGY-PROTECTION-MEASURE",
+            "title": "Operate a technology protection measure",
+            "citation": "47 U.S.C. § 254(h)(5)(B)",
+            "description": "Implement and manage filtering or blocking technology on devices accessing E-Rate supported services."
+          },
+          {
+            "id": "monitoring-and-education",
+            "requirement_id": "EDU-US-CIPA-MONITORING-AND-EDUCATION",
+            "title": "Monitor use and provide digital citizenship education",
+            "citation": "47 U.S.C. § 254(h)(5)(B)(iii)",
+            "description": "Document monitoring procedures for student activity and deliver required online safety education."
+          }
+        ]
+      },
+      {
+        "id": "ppra",
+        "key": "ppra",
+        "name": "PPRA",
+        "authority": "Student Privacy Policy Office",
+        "citation": "20 U.S.C. § 1232h; 34 CFR Part 98",
+        "requirements": [
+          {
+            "id": "sensitive-survey-inventory",
+            "requirement_id": "EDU-US-PPRA-SENSITIVE-SURVEY-INVENTORY",
+            "title": "Inventory sensitive survey content",
+            "citation": "20 U.S.C. § 1232h(b)",
+            "description": "Identify surveys that cover protected PPRA categories and record funding sources that trigger PPRA."
+          },
+          {
+            "id": "parental-notification",
+            "requirement_id": "EDU-US-PPRA-PARENTAL-NOTIFICATION",
+            "title": "Provide parental notice and consent",
+            "citation": "34 CFR § 98.3",
+            "description": "Notify parents and offer opt-out or opt-in (as required) before administering covered surveys."
+          },
+          {
+            "id": "survey-data-security",
+            "requirement_id": "EDU-US-PPRA-SURVEY-DATA-SECURITY",
+            "title": "Secure and retain survey responses appropriately",
+            "citation": "34 CFR § 98.4",
+            "description": "Restrict access to survey data, enforce retention schedules, and document destruction procedures."
+          }
+        ]
       }
-    }
+    ],
+    "states": [
+      {
+        "id": "ca-sopipa",
+        "key": "ca-sopipa",
+        "name": "California SOPIPA",
+        "authority": "California Legislature",
+        "citation": "Cal. Bus. & Prof. Code §§ 22584–22585",
+        "url": "https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?division=8.&chapter=22.&lawCode=BPC&article=5.",
+        "requirements": [
+          {
+            "id": "advertising-ban",
+            "requirement_id": "EDU-US-STATE-CA-SOPIPA-ADVERTISING-BAN",
+            "title": "Block targeted advertising and profiling",
+            "description": "Prohibit using K–12 student information for targeted advertising or profiling beyond K–12 purposes."
+          },
+          {
+            "id": "sale-prohibition",
+            "requirement_id": "EDU-US-STATE-CA-SOPIPA-SALE-PROHIBITION",
+            "title": "Ban sale of student personal information",
+            "description": "Ensure contracts and technical controls prevent selling or renting student data."
+          },
+          {
+            "id": "deletion-on-request",
+            "requirement_id": "EDU-US-STATE-CA-SOPIPA-DELETION-ON-REQUEST",
+            "title": "Delete student information on district request",
+            "description": "Provide deletion workflows to honor school or district requests when data is no longer needed."
+          }
+        ]
+      },
+      {
+        "id": "ny-2d",
+        "key": "ny-2d",
+        "name": "New York Education Law 2-d",
+        "authority": "New York State Education Department",
+        "citation": "N.Y. Educ. Law § 2-d; 8 NYCRR Part 121",
+        "url": "https://www.nysenate.gov/legislation/laws/EDN/2-D",
+        "requirements": [
+          {
+            "id": "data-privacy-policy",
+            "requirement_id": "EDU-US-STATE-NY-2D-DATA-PRIVACY-POLICY",
+            "title": "Publish Data Privacy & Security Policy",
+            "description": "Post and maintain the NYSED-aligned Data Privacy and Security Policy, including encryption and breach response details."
+          },
+          {
+            "id": "parents-bill-of-rights",
+            "requirement_id": "EDU-US-STATE-NY-2D-PARENTS-BILL-OF-RIGHTS",
+            "title": "Provide Parent Bill of Rights",
+            "description": "Distribute the Parent Bill of Rights and supplemental third-party contract disclosures."
+          },
+          {
+            "id": "data-protection-officer",
+            "requirement_id": "EDU-US-STATE-NY-2D-DATA-PROTECTION-OFFICER",
+            "title": "Designate a Data Protection Officer",
+            "description": "Assign a DPO responsible for policy compliance, incident response, and staff training."
+          },
+          {
+            "id": "third-party-contracts",
+            "requirement_id": "EDU-US-STATE-NY-2D-THIRD-PARTY-CONTRACTS",
+            "title": "Execute compliant third-party contracts",
+            "description": "Ensure vendor contracts include encryption, breach notification, data minimization, and prohibition on selling student data."
+          }
+        ]
+      }
+    ]
   },
   "summary": {
-    "total": 8,
-    "passed": 4,
+    "total": 19,
+    "passed": 0,
     "failed": 0,
-    "manual": 4,
-    "objective_failures": 0
+    "manual": 19
   },
-  "controls": [
+  "requirements": [
     {
-      "requirementId": "HIPAA-SR-ADM-SEC-MGMT",
-      "title": "Security Management Process",
-      "hipaaCitation": "45 CFR §164.308 §164.308(a)(1)",
-      "objective": false,
-      "status": "manual",
-      "mappedNistControls": [
-        "RA-3",
-        "CA-2",
-        "AU-6"
-      ]
+      "requirementId": "EDU-US-FERPA-DISCLOSURE-LOGGING",
+      "title": "Track and justify disclosures of education records",
+      "description": "Maintain an auditable log for every disclosure of education records and document the legitimate educational interest or statutory exception applied.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:ferpa",
+        "ferpa",
+        "ferpa:disclosure-logging",
+        "framework:ferpa"
+      ],
+      "status": "manual"
     },
     {
-      "requirementId": "HIPAA-SR-ADM-WORKFORCE",
-      "title": "Workforce Security",
-      "hipaaCitation": "45 CFR §164.308 §164.308(a)(3)",
-      "objective": false,
-      "status": "manual",
-      "mappedNistControls": [
-        "PS-2",
-        "PS-3",
-        "AC-5"
-      ]
+      "requirementId": "EDU-US-FERPA-DIRECTORY-INFORMATION-OPT-OUTS",
+      "title": "Honor directory information opt-outs",
+      "description": "Maintain notice and opt-out workflows for directory information and enforce suppression across exports and integrations.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:ferpa",
+        "ferpa",
+        "ferpa:directory-information-opt-outs",
+        "framework:ferpa"
+      ],
+      "status": "manual"
     },
     {
-      "requirementId": "HIPAA-SR-PHY-FACILITY-ACCESS",
-      "title": "Facility Access Controls",
-      "hipaaCitation": "45 CFR §164.310 §164.310(a)(1)",
-      "objective": false,
-      "status": "manual",
-      "mappedNistControls": [
-        "PE-2",
-        "PE-3",
-        "PE-6"
-      ]
+      "requirementId": "EDU-US-FERPA-ACCESS-REQUESTS",
+      "title": "Fulfil parent and eligible student access requests",
+      "description": "Deliver education records within 45 days of a valid request and authenticate requesters before release.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:ferpa",
+        "ferpa",
+        "ferpa:access-requests",
+        "framework:ferpa"
+      ],
+      "status": "manual"
     },
     {
-      "requirementId": "HIPAA-SR-PHY-DEVICE-MEDIA",
-      "title": "Device and Media Controls",
-      "hipaaCitation": "45 CFR §164.310 §164.310(d)(1)",
-      "objective": false,
-      "status": "manual",
-      "mappedNistControls": [
-        "MP-6",
-        "MP-7",
-        "SC-12"
-      ]
+      "requirementId": "EDU-US-COPPA-UNDER-13-SCOPE",
+      "title": "Determine if the service targets children under 13",
+      "description": "Document why the service is or is not directed to children under 13 and identify any school-authorized use cases.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:coppa",
+        "coppa",
+        "coppa:under-13-scope",
+        "framework:coppa"
+      ],
+      "status": "manual"
     },
     {
-      "requirementId": "HIPAA-SR-TECH-ACCESS-UNIQUE-ID",
-      "title": "Unique User Identification",
-      "hipaaCitation": "45 CFR §164.312 §164.312(a)(2)(i)",
-      "objective": true,
-      "status": "pass",
-      "evidence": "Workforce SSO issues immutable UUIDs; see infra/iac/iam.tf",
-      "mappedNistControls": [
-        "AC-2",
-        "IA-2",
-        "IA-4"
-      ]
+      "requirementId": "EDU-US-COPPA-VERIFIABLE-PARENTAL-CONSENT",
+      "title": "Collect verifiable parental consent",
+      "description": "Capture and document verifiable parental consent before collecting personal information from children under 13 or confirm district authority to consent.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:coppa",
+        "coppa",
+        "coppa:verifiable-parental-consent",
+        "framework:coppa"
+      ],
+      "status": "manual"
     },
     {
-      "requirementId": "HIPAA-SR-TECH-AUDIT-CONTROLS",
-      "title": "Audit Controls",
-      "hipaaCitation": "45 CFR §164.312 §164.312(b)",
-      "objective": true,
-      "status": "pass",
-      "evidence": "Application and infrastructure logs aggregated in CloudWatch with 365-day retention (observability/logging.tf).",
-      "mappedNistControls": [
-        "AU-2",
-        "AU-6",
-        "AU-12"
-      ]
+      "requirementId": "EDU-US-COPPA-DATA-RETENTION",
+      "title": "Limit retention of child personal information",
+      "description": "Retain personal information only as long as necessary for the educational purpose and honor deletion requests promptly.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:coppa",
+        "coppa",
+        "coppa:data-retention",
+        "framework:coppa"
+      ],
+      "status": "manual"
     },
     {
-      "requirementId": "HIPAA-SR-TECH-INTEGRITY-ENCRYPTION",
-      "title": "Encryption of ePHI at Rest",
-      "hipaaCitation": "45 CFR §164.312 §164.312(c)(1)",
-      "objective": true,
-      "status": "pass",
-      "evidence": "Managed database storage enforces AES-256 encryption via terraform/modules/database/encryption.tf.",
-      "mappedNistControls": [
-        "SC-28",
-        "SC-12",
-        "MP-6"
-      ]
+      "requirementId": "EDU-US-CIPA-INTERNET-SAFETY-POLICY",
+      "title": "Publish an internet safety policy",
+      "description": "Adopt an internet safety policy covering access to inappropriate material, student safety, security, and unauthorized access.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:cipa",
+        "cipa",
+        "cipa:internet-safety-policy",
+        "framework:cipa"
+      ],
+      "status": "manual"
     },
     {
-      "requirementId": "HIPAA-SR-TECH-TRANSMISSION-SECURITY",
-      "title": "Transmission Security",
-      "hipaaCitation": "45 CFR §164.312 §164.312(e)(1)",
-      "objective": true,
-      "status": "pass",
-      "evidence": "All external endpoints terminate TLS 1.2+ through AWS ACM certificates (infra/networking/tls.tf).",
-      "mappedNistControls": [
-        "SC-8",
-        "SC-12",
-        "SC-13"
-      ]
+      "requirementId": "EDU-US-CIPA-TECHNOLOGY-PROTECTION-MEASURE",
+      "title": "Operate a technology protection measure",
+      "description": "Implement and manage filtering or blocking technology on devices accessing E-Rate supported services.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:cipa",
+        "cipa",
+        "cipa:technology-protection-measure",
+        "framework:cipa"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-CIPA-MONITORING-AND-EDUCATION",
+      "title": "Monitor use and provide digital citizenship education",
+      "description": "Document monitoring procedures for student activity and deliver required online safety education.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:cipa",
+        "cipa",
+        "cipa:monitoring-and-education",
+        "framework:cipa"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-PPRA-SENSITIVE-SURVEY-INVENTORY",
+      "title": "Inventory sensitive survey content",
+      "description": "Identify surveys that cover protected PPRA categories and record funding sources that trigger PPRA.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:ppra",
+        "ppra",
+        "ppra:sensitive-survey-inventory",
+        "framework:ppra"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-PPRA-PARENTAL-NOTIFICATION",
+      "title": "Provide parental notice and consent",
+      "description": "Notify parents and offer opt-out or opt-in (as required) before administering covered surveys.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:ppra",
+        "ppra",
+        "ppra:parental-notification",
+        "framework:ppra"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-PPRA-SURVEY-DATA-SECURITY",
+      "title": "Secure and retain survey responses appropriately",
+      "description": "Restrict access to survey data, enforce retention schedules, and document destruction procedures.",
+      "tags": [
+        "edu-us",
+        "edu-us:federal",
+        "edu-us:ppra",
+        "ppra",
+        "ppra:survey-data-security",
+        "framework:ppra"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-STATE-CA-SOPIPA-ADVERTISING-BAN",
+      "title": "Block targeted advertising and profiling",
+      "description": "Prohibit using K–12 student information for targeted advertising or profiling beyond K–12 purposes.",
+      "tags": [
+        "edu-us",
+        "edu-us:state",
+        "edu-us:ca-sopipa",
+        "state:ca-sopipa",
+        "ca:sopipa",
+        "ca-sopipa:advertising-ban",
+        "overlay:ca-sopipa"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-STATE-CA-SOPIPA-SALE-PROHIBITION",
+      "title": "Ban sale of student personal information",
+      "description": "Ensure contracts and technical controls prevent selling or renting student data.",
+      "tags": [
+        "edu-us",
+        "edu-us:state",
+        "edu-us:ca-sopipa",
+        "state:ca-sopipa",
+        "ca:sopipa",
+        "ca-sopipa:sale-prohibition",
+        "overlay:ca-sopipa"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-STATE-CA-SOPIPA-DELETION-ON-REQUEST",
+      "title": "Delete student information on district request",
+      "description": "Provide deletion workflows to honor school or district requests when data is no longer needed.",
+      "tags": [
+        "edu-us",
+        "edu-us:state",
+        "edu-us:ca-sopipa",
+        "state:ca-sopipa",
+        "ca:sopipa",
+        "ca-sopipa:deletion-on-request",
+        "overlay:ca-sopipa"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-STATE-NY-2D-DATA-PRIVACY-POLICY",
+      "title": "Publish Data Privacy & Security Policy",
+      "description": "Post and maintain the NYSED-aligned Data Privacy and Security Policy, including encryption and breach response details.",
+      "tags": [
+        "edu-us",
+        "edu-us:state",
+        "edu-us:ny-2d",
+        "state:ny-2d",
+        "ny:2d",
+        "ny-2d:data-privacy-policy",
+        "overlay:ny-2d"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-STATE-NY-2D-PARENTS-BILL-OF-RIGHTS",
+      "title": "Provide Parent Bill of Rights",
+      "description": "Distribute the Parent Bill of Rights and supplemental third-party contract disclosures.",
+      "tags": [
+        "edu-us",
+        "edu-us:state",
+        "edu-us:ny-2d",
+        "state:ny-2d",
+        "ny:2d",
+        "ny-2d:parents-bill-of-rights",
+        "overlay:ny-2d"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-STATE-NY-2D-DATA-PROTECTION-OFFICER",
+      "title": "Designate a Data Protection Officer",
+      "description": "Assign a DPO responsible for policy compliance, incident response, and staff training.",
+      "tags": [
+        "edu-us",
+        "edu-us:state",
+        "edu-us:ny-2d",
+        "state:ny-2d",
+        "ny:2d",
+        "ny-2d:data-protection-officer",
+        "overlay:ny-2d"
+      ],
+      "status": "manual"
+    },
+    {
+      "requirementId": "EDU-US-STATE-NY-2D-THIRD-PARTY-CONTRACTS",
+      "title": "Execute compliant third-party contracts",
+      "description": "Ensure vendor contracts include encryption, breach notification, data minimization, and prohibition on selling student data.",
+      "tags": [
+        "edu-us",
+        "edu-us:state",
+        "edu-us:ny-2d",
+        "state:ny-2d",
+        "ny:2d",
+        "ny-2d:third-party-contracts",
+        "overlay:ny-2d"
+      ],
+      "status": "manual"
     }
   ],
-  "opa_policy": {
-    "path": "policy/opa/hipaa/technical.rego"
-  }
+  "policy_checks": [
+    {
+      "id": "policy/ny-2d-artifacts",
+      "title": "NY Education Law 2-d overlay",
+      "passed": false,
+      "details": "Missing Data Privacy & Security Policy link and Parent Bill of Rights link.",
+      "policy": "policy/opa/edu-us/ny-2d.rego"
+    }
+  ],
+  "opa_policies": [
+    "policy/opa/edu-us/coppa.rego",
+    "policy/opa/edu-us/cipa.rego",
+    "policy/opa/edu-us/ny-2d.rego"
+  ]
 }

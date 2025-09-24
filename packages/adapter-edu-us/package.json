@@ -1,0 +1,25 @@
+{
+  "name": "@speckit/adapter-edu-us",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --target node18",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@speckit/core": "workspace:*",
+    "fs-extra": "^11.2.0",
+    "yaml": "^2.6.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "tsup": "^8.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.2"
+  }
+}

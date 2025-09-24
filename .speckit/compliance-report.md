@@ -1,20 +1,41 @@
-# HIPAA Compliance Summary
+# Education (US) Compliance Summary
 
-Generated: 2025-09-24T22:41:38.361Z
+Generated: 2025-09-24T23:04:55.266Z
 
-Crosswalks: [NIST SP 800-66 Rev.2](https://csrc.nist.gov/publications/detail/sp/800-66/rev-2/final), [OLIR Mapping](https://csrc.nist.gov/Projects/olir)
+Requirements evaluated: 19
+Passed: 0
+Failed: 0
+Manual: 19
 
-Objective control failures: 0
-
-| Requirement | Status | Objective | Evidence |
+## Policy checks
+| Check | Status | Details | Policy |
 | --- | --- | --- | --- |
-| HIPAA-SR-ADM-SEC-MGMT | MANUAL | No |  |
-| HIPAA-SR-ADM-WORKFORCE | MANUAL | No |  |
-| HIPAA-SR-PHY-FACILITY-ACCESS | MANUAL | No |  |
-| HIPAA-SR-PHY-DEVICE-MEDIA | MANUAL | No |  |
-| HIPAA-SR-TECH-ACCESS-UNIQUE-ID | PASS | Yes | Workforce SSO issues immutable UUIDs; see infra/iac/iam.tf |
-| HIPAA-SR-TECH-AUDIT-CONTROLS | PASS | Yes | Application and infrastructure logs aggregated in CloudWatch with 365-day retention (observability/logging.tf). |
-| HIPAA-SR-TECH-INTEGRITY-ENCRYPTION | PASS | Yes | Managed database storage enforces AES-256 encryption via terraform/modules/database/encryption.tf. |
-| HIPAA-SR-TECH-TRANSMISSION-SECURITY | PASS | Yes | All external endpoints terminate TLS 1.2+ through AWS ACM certificates (infra/networking/tls.tf). |
+| NY Education Law 2-d overlay | FAIL | Missing Data Privacy & Security Policy link and Parent Bill of Rights link. | policy/opa/edu-us/ny-2d.rego |
 
-OPA policy: policy/opa/hipaa/technical.rego
+## Requirements
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| EDU-US-FERPA-DISCLOSURE-LOGGING | MANUAL |  |
+| EDU-US-FERPA-DIRECTORY-INFORMATION-OPT-OUTS | MANUAL |  |
+| EDU-US-FERPA-ACCESS-REQUESTS | MANUAL |  |
+| EDU-US-COPPA-UNDER-13-SCOPE | MANUAL |  |
+| EDU-US-COPPA-VERIFIABLE-PARENTAL-CONSENT | MANUAL |  |
+| EDU-US-COPPA-DATA-RETENTION | MANUAL |  |
+| EDU-US-CIPA-INTERNET-SAFETY-POLICY | MANUAL |  |
+| EDU-US-CIPA-TECHNOLOGY-PROTECTION-MEASURE | MANUAL |  |
+| EDU-US-CIPA-MONITORING-AND-EDUCATION | MANUAL |  |
+| EDU-US-PPRA-SENSITIVE-SURVEY-INVENTORY | MANUAL |  |
+| EDU-US-PPRA-PARENTAL-NOTIFICATION | MANUAL |  |
+| EDU-US-PPRA-SURVEY-DATA-SECURITY | MANUAL |  |
+| EDU-US-STATE-CA-SOPIPA-ADVERTISING-BAN | MANUAL |  |
+| EDU-US-STATE-CA-SOPIPA-SALE-PROHIBITION | MANUAL |  |
+| EDU-US-STATE-CA-SOPIPA-DELETION-ON-REQUEST | MANUAL |  |
+| EDU-US-STATE-NY-2D-DATA-PRIVACY-POLICY | MANUAL |  |
+| EDU-US-STATE-NY-2D-PARENTS-BILL-OF-RIGHTS | MANUAL |  |
+| EDU-US-STATE-NY-2D-DATA-PROTECTION-OFFICER | MANUAL |  |
+| EDU-US-STATE-NY-2D-THIRD-PARTY-CONTRACTS | MANUAL |  |
+
+### OPA policies
+- policy/opa/edu-us/coppa.rego
+- policy/opa/edu-us/cipa.rego
+- policy/opa/edu-us/ny-2d.rego
