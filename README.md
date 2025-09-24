@@ -10,7 +10,7 @@
 - **Spec ops**: create from template, edit in `$EDITOR`, validate front-matter, preview Markdown, diff, stage, **commit**.
 - **Git remote ops (AI-OFF supported)**: **Fetch/Pull/Push** using your local git credentials.
 - **Templates**:
-  - **Built-in** — `blank`, `next-supabase`, `speckit-template`
+  - **Built-in** — `blank` (`classic`), `speckit-template` (`classic`), `next-supabase` (`secure`)
   - **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
 - **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
 - **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
@@ -55,20 +55,20 @@ pnpm install
 # CLI (use `speckit`; legacy alias: `spec` works interchangeably)
 pnpm --filter @speckit/cli dev
 speckit template list
-# Classic mode (no external frameworks)
-speckit init --template speckit-template
-speckit template use speckit-template ./my-generic-spec
+
+# Classic mode (default, no external frameworks)
+speckit init --mode classic --template speckit-template   # classic
+speckit template use speckit-template ./my-generic-spec   # classic
 
 # Secure mode (standards enforced)
-speckit init --mode secure --template next-supabase
-speckit template use next-supabase ./my-next-app
-# or pull directly from any GitHub repo (optionally add #branch or ?ref=branch)
+speckit init --mode secure --template next-supabase       # secure
+speckit template use next-supabase ./my-next-app          # secure
+
+# Or pull directly from any GitHub repo (optionally add #branch or ?ref=branch)
 speckit template use https://github.com/acme/awesome-spec-kit ./awesome-spec
-# merge a GitHub template into the current repo:
-speckit init --template https://github.com/acme/awesome-spec-kit#feature/onboarding
-# or merge into current repo using your chosen mode
-speckit init --mode secure --template next-supabase
-speckit init --template speckit-template
+# Merge a GitHub template into the current repo (pick your mode first)
+speckit init --mode classic --template https://github.com/acme/awesome-spec-kit#feature/onboarding   # classic
+speckit init --mode secure --template https://github.com/acme/awesome-spec-kit#feature/onboarding    # secure
 
 # TUI
 pnpm --filter @speckit/tui dev
@@ -77,10 +77,20 @@ pnpm --filter @speckit/tui dev
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
 
-### Choosing a mode
+> #### Choose a mode
+> ```bash
+> speckit init --mode classic   # default
+> speckit init --mode secure
+> ```
 
-- **Classic** (default, no external frameworks): run `speckit init --template <name>` or omit `--mode` entirely. The CLI prints "Using Classic mode (set --mode secure to enable standards.)" to confirm you are staying in the lightweight path.
-- **Secure** (standards enforced): pass `--mode secure` to `speckit init` when you want hardened scaffolds. The TUI header now shows `Mode: Classic | Secure` with the active option highlighted so you always know which posture is loaded.
+Classic keeps things lightweight with no external framework dependencies. Secure enables hardened scaffolds and standards enforcement; pass `--mode secure` whenever you need the guardrails.
+
+### Verify & troubleshoot
+
+```bash
+speckit doctor
+speckit verify
+```
 
 ## Repo-local templates
 
@@ -136,6 +146,10 @@ Declare an array of shell commands in `postInit` (within the manifest) to run af
 2. Run `pnpm --filter @speckit/cli dev -- speckit template use https://github.com/airnub/next-supabase-speckit-template /tmp/spec-template-test` (alias: replace `speckit` with `spec` if needed).
 3. Confirm the CLI prompts for `REPO_NAME`, `APP_TITLE`, and the other keys defined in the template's `template.vars.json` file.
 4. Inspect files such as `/tmp/spec-template-test/docs/specs/templates/base.md` to verify placeholders like `{{REPO_NAME}}` were replaced with the entered values.
+
+## Governance & contributing
+
+- [Mode Assurance & Anti-Regression Charter](docs/internal/charters/mode-assurance.md)
 
 ## Roadmap
 
