@@ -61,6 +61,8 @@ pnpm --filter @speckit/tui dev
 
 SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`speckit template list`, `speckit template use`, `speckit init --template …`; alias: swap `speckit` for `spec`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `speckit template use …` or `speckit init --template …` (add `#branch` or `?ref=` if you need a branch other than the default—alias: `spec`).
 
+In this repository, published bundles live under `.speckit/catalog/**`. In consumer repos, `.speckit/templates/**` (if present) is merged into the picker.
+
 ### Optional manifest (`template.json`)
 
 Add a JSON manifest at the root of the template directory to override metadata or declare post-init hooks:

@@ -6,6 +6,8 @@ import { CreateCommand } from "./commands/create.js";
 import { ReplCommand } from "./commands/repl.js";
 import { TemplateListCommand, TemplateUseCommand } from "./commands/template.js";
 import { InitFromTemplateCommand } from "./commands/init.js";
+import { GenerateDocsCommand } from "./commands/gen.js";
+import { AuditCommand } from "./commands/audit.js";
 
 cfonts.say("speckit", { font: "block" });
 console.log(
@@ -25,5 +27,7 @@ cli.register(ReplCommand);
 cli.register(TemplateListCommand);
 cli.register(TemplateUseCommand);
 cli.register(InitFromTemplateCommand);
+cli.register(GenerateDocsCommand);
+cli.register(AuditCommand);
 
 cli.runExit(args, Cli.defaultContext);

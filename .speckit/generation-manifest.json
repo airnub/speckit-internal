@@ -1,0 +1,68 @@
+{
+  "speckit": {
+    "version": "0.0.1",
+    "commit": "0000000"
+  },
+  "runs": [
+    {
+      "at": "2025-09-24T12:34:27.268Z",
+      "spec": {
+        "version": "1.0.0",
+        "digest": "sha256:16157fae448f0d7339a3238cf8e11bc4113a415b01320e4fbbb718cdb9917573"
+      },
+      "template": {
+        "id": "speckit-core",
+        "version": "0.1.0",
+        "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
+      },
+      "outputs": [
+        {
+          "path": "docs/specs/speckit-spec-v1.0.0.md",
+          "digest": "sha256:8dfc21507d3c697f50d13cf7c17981cbc418d06059bdd62be112bb17fec8e66f"
+        },
+        {
+          "path": "docs/specs/orchestration-plan-v1.0.0.md",
+          "digest": "sha256:8a0e6a37486de88d856fdba59faee2aef42996bb6364e3baed29e37ba815ef68"
+        },
+        {
+          "path": "docs/specs/coding-agent-brief-v1.0.0.md",
+          "digest": "sha256:59629caa0d020ab7697e9737712708bd3509ad3372dba74a3021070eb828df35"
+        },
+        {
+          "path": "docs/specs/changelog-v1.0.0.md",
+          "digest": "sha256:ce57333e2d9113add99c13a2f7f1def13dc9f35bc6ade90bed1084774b5b3264"
+        }
+      ]
+    },
+    {
+      "at": "2025-09-24T13:03:17.842Z",
+      "spec": {
+        "version": "1.0.0",
+        "digest": "sha256:7dcb77546f85fdcc2a8b42334311886a1be4f57ae4385f731ff764e8f3869bf7"
+      },
+      "template": {
+        "id": "speckit-core",
+        "version": "0.1.0",
+        "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
+      },
+      "outputs": [
+        {
+          "path": "docs/specs/speckit-spec-v1.0.0.md",
+          "digest": "sha256:58ad73f988de3ec531346dd11e2b9c0f5091a0afb204737c4df675795e50f274"
+        },
+        {
+          "path": "docs/specs/orchestration-plan-v1.0.0.md",
+          "digest": "sha256:abb5b73ef6a16802af81d4295cb6297d4a27a87ad28970b55df79f8c2b9359a6"
+        },
+        {
+          "path": "docs/specs/coding-agent-brief-v1.0.0.md",
+          "digest": "sha256:54078086f83373c3e931f3e3919a233c7ffb4a9b322ce94b8c10165d29d79cce"
+        },
+        {
+          "path": "docs/specs/changelog-v1.0.0.md",
+          "digest": "sha256:8e79242c6857e795797b09d2c3255055e5127e9b4854f58560ffe808898226da"
+        }
+      ]
+    }
+  ]
+}
