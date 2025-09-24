@@ -6,11 +6,26 @@
     "speckit": "dist/cli.js",
     "spec": "dist/cli.js"
   },
-  "main": "dist/cli.cjs",
-  "module": "dist/cli.mjs",
-  "types": "dist/cli.d.ts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js",
+      "require": "./dist/cli.cjs",
+      "default": "./dist/cli.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "build": "tsup src/cli.ts --format esm,cjs --dts --clean --target node18",
+    "build": "tsup src/cli.ts src/index.ts --format esm,cjs --dts --clean --target node18",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js"
   },
