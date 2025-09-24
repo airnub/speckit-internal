@@ -6,6 +6,7 @@
     "speckit": "dist/cli.js",
     "spec": "dist/cli.js"
   },
+  "speckitCommit": "0000000",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,15 +32,19 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
+    "@speckit/core": "workspace:*",
     "boxen": "^8.0.1",
     "cfonts": "^3.3.0",
     "clipanion": "^4.0.0-rc.4",
-    "zod": "^3.23.8",
-    "fs-extra": "^11.2.0",
     "execa": "^9.3.0",
+    "fs-extra": "^11.2.0",
     "globby": "^14.0.2",
+    "gray-matter": "^4.0.3",
+    "nunjucks": "^3.2.4",
+    "semver": "^7.6.3",
     "string-argv": "^0.3.2",
-    "@speckit/core": "workspace:*"
+    "yaml": "^2.6.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",

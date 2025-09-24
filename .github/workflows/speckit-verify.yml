@@ -13,6 +13,13 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile || true
       - run: pnpm -w -r build || true
-      - run: pnpm -w speckit verify || pnpm -w run speckit:verify || true
+      - name: Build Speckit Core
+        run: pnpm --filter @speckit/core run build
+      - name: Build Speckit CLI
+        run: pnpm --filter @speckit/cli run build
+      - name: Regenerate docs from spec
+        run: node packages/speckit-cli/dist/cli.js gen --write
+      - name: Audit generated docs
+        run: node packages/speckit-cli/dist/cli.js audit
       - name: Fail if generated docs drift
         run: git diff --exit-code || (echo "Generated docs drift detected. Run 'speckit gen --write' and commit." && exit 1)
