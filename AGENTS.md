@@ -4,7 +4,7 @@
 
 ## Documents of Record
 - Spec (SRS): `.dev/specs/speckit-spec-v0.0.1.md`
-- Agent brief: `.dev/prompts/coding-agent-brief-v0.0.1.md`
+- Agent brief: `.speckit/templates/prompts/coding-agent-brief/.dev/prompts/coding-agent-brief-v0.0.1.md`
 - RTM: `.dev/rtm.md`
 - ADRs: `.dev/adrs/*`
 

@@ -11,7 +11,8 @@
 - **Git remote ops (AI-OFF supported)**: **Fetch/Pull/Push** using your local git credentials.
 - **Templates**:
   - **Built-in** — `blank`, `next-supabase`, `speckit-template`
-  - **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
+  - **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI). Organize bundles by
+    family, e.g. `.speckit/templates/specs/...` for spec scaffolds or `.speckit/templates/prompts/...` for prompt banks.
 - **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
 - **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
 - **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
@@ -53,6 +54,17 @@ pnpm --filter @speckit/tui dev
 ## Repo-local templates
 
 SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`speckit template list`, `speckit template use`, `speckit init --template …`; alias: swap `speckit` for `spec`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `speckit template use …` or `speckit init --template …` (add `#branch` or `?ref=` if you need a branch other than the default—alias: `spec`).
+
+### Catalog layout
+
+Repo-local bundles live under `.speckit/templates/` and mirror the structure you want copied into a target repository. Keep
+families grouped for faster discovery:
+
+- **Specs** → `.speckit/templates/specs/<bundle>/…` (for example, `.speckit/templates/specs/base/docs/specs/templates/base.md`)
+- **Prompts** → `.speckit/templates/prompts/<bundle>/…` (for example, `.speckit/templates/prompts/iterative-catalog/.dev/prompts/iterative-development-prompts.md`)
+
+Each bundle can carry its own documentation or helper files next to `template.json`, and the CLI/TUI will surface the manifest
+metadata. Use lowercase kebab-case for folder names so GitHub template imports and local references stay consistent.
 
 ### Optional manifest (`template.json`)
 
