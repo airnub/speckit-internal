@@ -1,0 +1,98 @@
+{
+  "speckit": {
+    "version": "0.0.1",
+    "commit": "cabf68d"
+  },
+  "runs": [
+    {
+      "at": "2025-09-24T13:14:49.276Z",
+      "spec": {
+        "version": "1.0.0",
+        "digest": "sha256:16157fae448f0d7339a3238cf8e11bc4113a415b01320e4fbbb718cdb9917573"
+      },
+      "template": {
+        "id": "speckit-core",
+        "version": "0.1.0",
+        "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
+      },
+      "outputs": [
+        {
+          "path": "docs/specs/speckit-spec-v1.0.0.md",
+          "digest": "sha256:4bef68d6c953f07836fc7cfc51ceab78b78ce5ba3a4d68866dcf122ead6e238a"
+        },
+        {
+          "path": "docs/specs/orchestration-plan-v1.0.0.md",
+          "digest": "sha256:bf613bfe076b2e72d3c4094b1f8b2a7dac6b5a1e7028522da133d9824c4fb5bd"
+        },
+        {
+          "path": "docs/specs/coding-agent-brief-v1.0.0.md",
+          "digest": "sha256:278c2eb07221f66572add6261f69f8b01a43299a781d748dfaa6c48b516abd85"
+        },
+        {
+          "path": "docs/specs/changelog-v1.0.0.md",
+          "digest": "sha256:94f9ef040388c15154cfcc6d43706e51792f08724c2d1ad24fa16cbd8bd3ba3e"
+        }
+      ]
+    },
+    {
+      "at": "2025-09-24T13:17:40.109Z",
+      "spec": {
+        "version": "1.0.0",
+        "digest": "sha256:16157fae448f0d7339a3238cf8e11bc4113a415b01320e4fbbb718cdb9917573"
+      },
+      "template": {
+        "id": "speckit-core",
+        "version": "0.1.0",
+        "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
+      },
+      "outputs": [
+        {
+          "path": "docs/specs/speckit-spec-v1.0.0.md",
+          "digest": "sha256:e9a0708e8525b971afe75adef18db1d3d8ee82a76ee00d0c1b54780091186129"
+        },
+        {
+          "path": "docs/specs/orchestration-plan-v1.0.0.md",
+          "digest": "sha256:19871f7798387b0cc8f26d29a02ffc531115f08287e81df87516567539168466"
+        },
+        {
+          "path": "docs/specs/coding-agent-brief-v1.0.0.md",
+          "digest": "sha256:e2f7f0ad1c66606b51c34068502aa62a9dfab199032b8c534dd36feeaa5d82b4"
+        },
+        {
+          "path": "docs/specs/changelog-v1.0.0.md",
+          "digest": "sha256:24f04125176314e4661f619744f82acc06ca1a263dd1ec30c9872f7dde6f4e95"
+        }
+      ]
+    },
+    {
+      "at": "2025-09-24T13:25:43.430Z",
+      "spec": {
+        "version": "1.0.0",
+        "digest": "sha256:16157fae448f0d7339a3238cf8e11bc4113a415b01320e4fbbb718cdb9917573"
+      },
+      "template": {
+        "id": "speckit-core",
+        "version": "0.1.0",
+        "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
+      },
+      "outputs": [
+        {
+          "path": "docs/specs/speckit-spec-v1.0.0.md",
+          "digest": "sha256:da886bbe3c4f62ef779cd08ee4a38ec87dc2b10efb8665d74ed6acc90250e5c3"
+        },
+        {
+          "path": "docs/specs/orchestration-plan-v1.0.0.md",
+          "digest": "sha256:ede317d0305e61387f4f90d08a8fdccdfdded544008f9172e0ed7a6278ee3034"
+        },
+        {
+          "path": "docs/specs/coding-agent-brief-v1.0.0.md",
+          "digest": "sha256:03bfe57c6dd69e0f38da07a641c31844aaeb8009db383f4d01b7781c7925576b"
+        },
+        {
+          "path": "docs/specs/changelog-v1.0.0.md",
+          "digest": "sha256:42116d433a353956e3a391b9b20ee17d2a31df21a85072f6882876955d78c7d8"
+        }
+      ]
+    }
+  ]
+}

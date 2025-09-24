@@ -12,6 +12,7 @@
 - **Templates**:
   - **Built-in** — `blank`, `next-supabase`, `speckit-template`
   - **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
+  - In this repo, published bundles live under `.speckit/catalog/**`. In consumer repos, `.speckit/templates/**` (if present) is merged into the picker.
 - **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
 - **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
 - **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).

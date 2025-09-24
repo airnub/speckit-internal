@@ -1,8 +1,8 @@
 # Agent Guidance & Orchestration Plan (v0.0.2)
 
-> **Work here:** `docs/internal/**`
+> **Work here →** `docs/internal/**`
 >
-> **Distribution (read-only):** `.speckit/catalog/**`
+> **Distribution (read-only) →** `.speckit/catalog/**`
 >
 > **Generation pipeline:** `.speckit/spec.yaml` → `speckit gen --write`
 
