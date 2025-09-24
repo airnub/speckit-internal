@@ -11,7 +11,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@speckit/core": path.resolve(__dirname, "../speckit-core/src/index.ts"),
-      "@speckit/agent": path.resolve(__dirname, "../speckit-agent/src/index.ts")
+      "@speckit/agent": path.resolve(__dirname, "../speckit-agent/src/index.ts"),
+      "@speckit/cli": path.resolve(__dirname, "../speckit-cli/src/index.ts")
     }
   }
 });

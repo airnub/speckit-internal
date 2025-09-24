@@ -1,0 +1,8 @@
+name: {{ model.meta.title | lower | replace(" ", "-") }}-config
+version: {{ model.version }}
+dialect: {{ dialect.id }}@{{ dialect.version }}
+requirements:
+{% for requirement in model.requirements -%}
+  - id: {{ requirement.id }}
+    title: {{ requirement.title }}
+{% endfor %}
