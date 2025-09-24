@@ -1,0 +1,30 @@
+---
+title: HIPAA Privacy Roles & Minimum Necessary Matrix
+requires_dialect: speckit.v1
+tags: ["secure", "hipaa"]
+---
+
+# HIPAA Privacy Roles
+
+Secure mode assumes HIPAA applies to the following organization types:
+
+{% for audience in hipaa.scope %}- {{ audience | replace("-", " ") | title }}
+{% endfor %}
+
+The minimum necessary standard should be enforced across data disclosures and workforce access provisioning.
+
+## Role to Safeguard Mapping
+
+| Role | Primary Safeguards | Notes |
+| ---- | ------------------ | ----- |
+{% for safeguard in hipaa.admin_safeguards %}| {{ safeguard.role }} | {{ safeguard.references }} | {{ safeguard.notes }} |
+{% endfor %}
+
+## Disclosure Decision Flow
+
+1. **Assess Purpose** — confirm the disclosure aligns with treatment, payment, operations, or a documented exception.
+2. **Limit the Dataset** — release only the data required to satisfy the request.
+3. **Log the Disclosure** — capture who requested, what was released, and the lawful basis.
+4. **Review Quarterly** — reconcile disclosures against the risk analysis and workforce clearance procedures.
+
+_Administrative safeguards referenced: {{ hipaa.admin_controls | join(", ") }}_

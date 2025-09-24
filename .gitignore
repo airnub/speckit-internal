@@ -10,3 +10,5 @@ docs/website/build
 
 # Speckit cache and generated previews
 .speckit/cache/
+.speckit/compliance-report.json
+.speckit/compliance-report.md

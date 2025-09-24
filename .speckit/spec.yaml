@@ -19,3 +19,9 @@ workplan:
 rtm:
   links:
     - { req: REQ-CATALOG-IMMUTABLE, implemented_by: [".github/workflows/catalog-protect.yml"], ci: ["catalog-protect"] }
+compliance:
+  enabled: false
+  frameworks:
+    - id: hipaa
+      rules: ["privacy", "security", "breach"]
+      scope: ["covered-entity", "business-associate"]

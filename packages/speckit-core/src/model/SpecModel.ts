@@ -1,5 +1,5 @@
 export interface Reference {
-  kind: "url" | "owasp" | "rfc" | "doc";
+  kind: "url" | "owasp" | "rfc" | "doc" | "hipaa" | "nist-800-53";
   value: string;
 }
 

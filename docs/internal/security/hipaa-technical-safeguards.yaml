@@ -1,0 +1,17 @@
+technical_safeguards:
+  tls:
+    enforced: true
+    evidence: "Public endpoints terminate TLS 1.2+ with HSTS enabled via the managed platform load balancer."
+    notes: "Infrastructure as code enforces HTTPS redirects and disables plaintext listeners."
+  encryption_at_rest:
+    enforced: true
+    evidence: "PostgreSQL, object storage, and Supabase secrets rely on managed encryption at rest with daily backup validation."
+    notes: "Keys are rotated annually through the cloud KMS."
+  unique_user_ids:
+    enforced: true
+    evidence: "Supabase Auth provisions immutable UUIDs for each workforce member accessing Speckit services."
+    notes: "Dormant accounts disable automatically after 60 days through scheduled Supabase edge functions."
+  audit_logging:
+    enforced: true
+    evidence: "Application logs and infrastructure events stream into Supabase Logflare with 30-day retention and daily exports to cold storage."
+    notes: "Critical actions are mirrored to git history for traceability."

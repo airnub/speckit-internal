@@ -1,0 +1,99 @@
+version: "2024.10"
+meta:
+  framework: "HIPAA Security Rule"
+  authority: "45 CFR Part 164 Subpart C"
+  description: |
+    Condensed safeguard catalog derived from the HIPAA Security Rule with
+    crosswalk references to NIST SP 800-66 Revision 2 and the OLIR HIPAA to
+    NIST SP 800-53 Revision 5 mapping. The catalog is scoped for Speckit secure
+    mode enablement.
+  sources:
+    - title: "NIST SP 800-66 Rev. 2 Implementation Guidance"
+      url: "https://csrc.nist.gov/pubs/sp/800/66/r2/final"
+    - title: "NIST OLIR HIPAA→SP 800-53 Rev. 5 Mapping"
+      url: "https://csrc.nist.gov/Projects/olir/tables"
+categories:
+  - id: administrative
+    title: "Administrative Safeguards"
+    citation: "45 CFR §164.308"
+    safeguards:
+      - id: "164.308(a)(1)(ii)(A)"
+        title: "Risk Analysis"
+        summary: "Conduct an accurate and thorough assessment of potential risks to ePHI."
+        implementation:
+          - "Maintain an asset inventory for systems storing or processing ePHI."
+          - "Review threat landscape quarterly using NIST SP 800-30 guidance."
+        nist80053:
+          - "RA-3"
+          - "RA-5"
+      - id: "164.308(a)(3)(ii)(B)"
+        title: "Workforce Clearance Procedures"
+        summary: "Implement procedures to ensure workforce access to ePHI is appropriate."
+        implementation:
+          - "Document least-privilege roles mapped to job functions."
+          - "Run quarterly entitlement reviews for privileged accounts."
+        nist80053:
+          - "PS-3"
+          - "AC-2"
+  - id: physical
+    title: "Physical Safeguards"
+    citation: "45 CFR §164.310"
+    safeguards:
+      - id: "164.310(a)(2)(ii)"
+        title: "Facility Security Plan"
+        summary: "Safeguard physical access to facilities where ePHI systems reside."
+        implementation:
+          - "Maintain data center access logs with retention ≥ 6 years."
+          - "Review and revoke inactive keycards monthly."
+        nist80053:
+          - "PE-2"
+          - "PE-6"
+      - id: "164.310(d)(2)(i)"
+        title: "Device and Media Controls"
+        summary: "Dispose of media containing ePHI in a secure manner."
+        implementation:
+          - "Use NIST SP 800-88 compliant media sanitization procedures."
+          - "Track custody of removable media and storage devices."
+        nist80053:
+          - "MP-6"
+          - "MP-2"
+  - id: technical
+    title: "Technical Safeguards"
+    citation: "45 CFR §164.312"
+    safeguards:
+      - id: "164.312(a)(2)(i)"
+        title: "Unique User Identification"
+        summary: "Assign a unique name and/or number for identifying and tracking user identity."
+        implementation:
+          - "Provision unique application identities via central IAM."
+          - "Disable dormant accounts after 60 days of inactivity."
+        nist80053:
+          - "IA-2"
+          - "AC-2"
+      - id: "164.312(a)(2)(iv)"
+        title: "Encryption and Decryption"
+        summary: "Implement mechanisms to encrypt and decrypt ePHI at rest."
+        implementation:
+          - "Enforce encryption at rest for databases and object storage."
+          - "Manage encryption keys via dedicated KMS with annual rotation."
+        nist80053:
+          - "SC-12"
+          - "SC-28"
+      - id: "164.312(c)(1)"
+        title: "Integrity Controls"
+        summary: "Protect ePHI from improper alteration or destruction."
+        implementation:
+          - "Enable cryptographic hashing for stored artifacts."
+          - "Retain tamper-evident audit logs for critical systems."
+        nist80053:
+          - "SI-7"
+          - "AU-9"
+      - id: "164.312(e)(1)"
+        title: "Transmission Security"
+        summary: "Guard against unauthorized access to ePHI transmitted over networks."
+        implementation:
+          - "Enforce TLS 1.2+ for all external interfaces."
+          - "Use forward secrecy ciphers and disable legacy protocols."
+        nist80053:
+          - "SC-8"
+          - "SC-13"

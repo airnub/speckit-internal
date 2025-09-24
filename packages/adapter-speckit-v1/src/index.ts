@@ -185,6 +185,9 @@ function inferReferenceKind(value: string): Reference["kind"] {
   if (value.toLowerCase().startsWith("owasp:")) {
     return "owasp";
   }
+  if (value.toLowerCase().startsWith("hipaa")) {
+    return "hipaa";
+  }
   if (/^rfc\s*\d+/i.test(value)) {
     return "rfc";
   }
@@ -192,7 +195,14 @@ function inferReferenceKind(value: string): Reference["kind"] {
 }
 
 function normaliseReferenceKind(kind: string | undefined, value: string): Reference["kind"] {
-  if (kind === "url" || kind === "owasp" || kind === "rfc" || kind === "doc") {
+  if (
+    kind === "url" ||
+    kind === "owasp" ||
+    kind === "rfc" ||
+    kind === "doc" ||
+    kind === "hipaa" ||
+    kind === "nist-800-53"
+  ) {
     return kind;
   }
   return inferReferenceKind(value);

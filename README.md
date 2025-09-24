@@ -76,6 +76,24 @@ pnpm --filter @speckit/tui dev
 # K → Spectral lint, B → docs/RTM build, A → AI propose (if enabled),
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
+ 
+### Secure mode: HIPAA compliance pack
+
+The secure workflow now ships with an opt-in HIPAA guardrail bundle. When the compliance framework is enabled in
+`.speckit/spec.yaml`, teams can generate tailored documentation and run automated safeguards mapped to NIST SP 800-66r2 and the
+OLIR HIPAA→NIST SP 800-53r5 crosswalk.
+
+```bash
+# Generate HIPAA readiness templates (security checklist, privacy roles, breach plan)
+speckit compliance plan --framework hipaa
+
+# Run automated technical safeguard checks + OPA policy enforcement
+speckit compliance verify --framework hipaa
+```
+
+The verification command emits `.speckit/compliance-report.json` and a Markdown summary while failing CI when objective HIPAA
+technical safeguards (TLS, encryption at rest, unique IDs, audit logging) are not satisfied. Manual evidence items stay noted
+without breaking the build.
 
 > #### Choose a mode
 > ```bash

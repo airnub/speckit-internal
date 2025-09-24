@@ -1,0 +1,58 @@
+name: hipaa-compliance
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+
+jobs:
+  hipaa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluate HIPAA gate
+        id: gate
+        run: |
+          SHOULD_RUN="false"
+          if [ "${LABEL_SECURE}" = "true" ]; then
+            SHOULD_RUN="true"
+          fi
+          if [ -f ".speckit/spec.yaml" ] && grep -q "id: hipaa" .speckit/spec.yaml; then
+            SHOULD_RUN="true"
+          fi
+          echo "should_run=${SHOULD_RUN}" >> "$GITHUB_OUTPUT"
+        env:
+          LABEL_SECURE: ${{ contains(github.event.pull_request.labels.*.name, 'secure') }}
+      - name: Skip HIPAA compliance verification
+        if: steps.gate.outputs.should_run != 'true'
+        run: echo "HIPAA compliance verification skipped (secure label missing and HIPAA framework not enabled)."
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.should_run == 'true'
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Enable Corepack
+        if: steps.gate.outputs.should_run == 'true'
+        run: corepack enable
+      - name: Install dependencies
+        if: steps.gate.outputs.should_run == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Build Speckit core
+        if: steps.gate.outputs.should_run == 'true'
+        run: pnpm --filter @speckit/core run build
+      - name: Build HIPAA adapter
+        if: steps.gate.outputs.should_run == 'true'
+        run: pnpm --filter @speckit/adapter-hipaa run build
+      - name: Build CLI
+        if: steps.gate.outputs.should_run == 'true'
+        run: pnpm --filter @speckit/cli run build
+      - name: Run HIPAA compliance verification
+        if: steps.gate.outputs.should_run == 'true'
+        run: node packages/speckit-cli/dist/cli.js compliance verify --framework hipaa
+      - name: Upload HIPAA compliance report
+        if: steps.gate.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hipaa-compliance-report
+          path: |
+            .speckit/compliance-report.json
+            .speckit/compliance-report.md

@@ -1,0 +1,33 @@
+---
+title: HIPAA Breach Notification Response Plan
+requires_dialect: speckit.v1
+tags: ["secure", "hipaa"]
+---
+
+# HIPAA Breach Response Plan
+
+Use this decision tree to triage incidents that may trigger the HIPAA Breach Notification Rule. Technical safeguards such as
+{{ hipaa.technical_refs | join(", ") }} reduce likelihood, but an executable plan is still required.
+
+```mermaid
+flowchart TD
+  Start[Potential Incident Involving ePHI] --> Assess[Assess incident scope & data sensitivity]
+  Assess --> Contained{Is the incident contained?}
+  Contained -- No --> Escalate[Initiate security incident response playbook]
+  Contained -- Yes --> RiskEval[Perform risk assessment per 45 CFR §164.402]
+  RiskEval --> NoBreach{Low probability of compromise?}
+  NoBreach -- Yes --> Document[Document rationale & retain for 6 years]
+  NoBreach -- No --> Notify[Notify affected individuals <= 60 days]
+  Notify --> OCR[Notify OCR & media if >500 individuals]
+```
+
+## Incident Response Checklist
+
+1. **Assemble the team** — security lead, privacy officer, legal, and communications.
+2. **Preserve evidence** — capture system images and relevant audit logs.
+3. **Determine containment** — isolate affected systems and revoke compromised credentials.
+4. **Risk assessment** — evaluate nature of ePHI, unauthorized individuals involved, and mitigation success.
+5. **Notification drafting** — align with HIPAA content requirements and regional regulations.
+6. **Post-incident review** — feed corrective actions into the risk analysis and workforce training plans.
+
+_Technical safeguards supporting detection: {{ hipaa.technical_controls | join(", ") }}_

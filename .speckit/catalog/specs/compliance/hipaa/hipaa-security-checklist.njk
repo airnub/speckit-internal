@@ -1,0 +1,27 @@
+---
+title: HIPAA Security Rule Checklist
+requires_dialect: speckit.v1
+tags: ["secure", "hipaa"]
+---
+
+# HIPAA Security Rule Checklist
+
+Secure mode surfaces the safeguards from the HIPAA Security Rule ({{ hipaa.catalog.meta.framework }}) and aligns them with
+NIST SP 800-66 Rev. 2 as well as the OLIR HIPAA→SP 800-53 Rev. 5 mapping. Use this checklist to track implementation status
+and evidence across administrative, physical, and technical safeguards.
+
+{% for category in hipaa.catalog.categories %}
+## {{ category.title }} — {{ category.citation }}
+{% for safeguard in category.safeguards %}
+- [ ] **{{ safeguard.title }}** (`{{ safeguard.id }}`)
+  - Summary: {{ safeguard.summary }}
+  - Implementation Tasks:
+    {% for task in safeguard.implementation %}- {{ task }}
+    {% endfor %}
+  - NIST SP 800-53 Rev. 5 Controls: {{ safeguard.nist80053 | join(", ") }}
+{% endfor %}
+{% endfor %}
+
+{% if hipaa.catalog.meta.sources and hipaa.catalog.meta.sources.length %}
+_References: {% for source in hipaa.catalog.meta.sources %}{{ source.title }}{% if not loop.last %} · {% endif %}{% endfor %}_
+{% endif %}
