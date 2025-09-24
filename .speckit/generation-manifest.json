@@ -1,7 +1,7 @@
 {
   "speckit": {
     "version": "0.1.0",
-    "commit": "dc36a0c"
+    "commit": "99a028f"
   },
   "runs": [
     {
@@ -205,6 +205,40 @@
         {
           "path": "docs/specs/changelog-v1.0.0.md",
           "digest": "sha256:d91d93f5d60121077a3f1407cfa59c5cdbe88ff1c3fef255843ca39e0d79d3fb"
+        }
+      ]
+    },
+    {
+      "at": "2025-09-24T15:12:30.841Z",
+      "synced_with": {
+        "version": "0.1.0",
+        "commit": "99a028f"
+      },
+      "spec": {
+        "version": "1.0.0",
+        "digest": "sha256:534745e106c774e0834af1a4b9d8fb5437e52ed3e048f0ef5d95667b88284af8"
+      },
+      "template": {
+        "id": "speckit-core",
+        "version": "0.1.0",
+        "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
+      },
+      "outputs": [
+        {
+          "path": "docs/specs/speckit-spec-v1.0.0.md",
+          "digest": "sha256:d417f1a7c1d3021cb0eb5ba2394c13984383acf6822cfd974849e756b89f3301"
+        },
+        {
+          "path": "docs/specs/orchestration-plan-v1.0.0.md",
+          "digest": "sha256:7b2bd8fcfff6acfd50da4fab0e1d0222fc20aef8f4a94e54045a87b1c5444586"
+        },
+        {
+          "path": "docs/specs/coding-agent-brief-v1.0.0.md",
+          "digest": "sha256:7ed00aabae91e47fb019e41066585c321f5b10b47839054be63f3f28072dad34"
+        },
+        {
+          "path": "docs/specs/changelog-v1.0.0.md",
+          "digest": "sha256:dfe7e9ed435a8679493a2692879ce5e862514c810020f1f2e1c0ee6070291e4e"
         }
       ]
     }

@@ -1,6 +1,5 @@
-> **Work here:** `docs/internal/**`
->
-> **Distribution (read-only):** `.speckit/catalog/**`
+Work here: `docs/internal/**`
+Distribution (read-only): `.speckit/catalog/**`
 
 # Agent Guidance & Orchestration Plan (v0.0.2)
 >

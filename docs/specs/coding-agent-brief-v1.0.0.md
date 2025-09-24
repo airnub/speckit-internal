@@ -9,7 +9,7 @@ updated: '2025-09-22'
 speckit_provenance:
   tool: speckit
   tool_version: 0.1.0
-  tool_commit: dc36a0c
+  tool_commit: 99a028f
   template:
     id: speckit-core
     version: 0.1.0
@@ -17,7 +17,7 @@ speckit_provenance:
   spec:
     version: 1.0.0
     digest: 'sha256:534745e106c774e0834af1a4b9d8fb5437e52ed3e048f0ef5d95667b88284af8'
-  generated_at: '2025-09-24T14:44:46.496Z'
+  generated_at: '2025-09-24T15:12:30.841Z'
 ---
 
 # Coding Agent Brief (v1.0.0)
