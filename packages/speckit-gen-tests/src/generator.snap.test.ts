@@ -37,7 +37,11 @@ let activeBundle: BundleDefinition = createBundleDefinition({
 let activeCatalogEntry: CatalogLockEntry = createCatalogEntry(activeBundle);
 
 vi.mock("../../speckit-cli/src/services/spec.js", () => ({
-  loadSpecModel: vi.fn(async () => ({ model: activeModel, dialect: mockDialect, data: {} })),
+  loadSpecModel: vi.fn(async () => ({
+    model: mockModel,
+    dialect: mockDialect,
+    data: { engine: { mode: "classic" } },
+  })),
   hashSpecYaml: vi.fn(async () => "sha256:mock-spec-digest"),
 }));
 

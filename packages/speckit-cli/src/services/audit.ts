@@ -14,6 +14,8 @@ import {
   assertDialectCompatibility,
 } from "./catalog.js";
 import { createHash } from "node:crypto";
+import type { GenerationMode } from "@speckit/core";
+import { DEFAULT_GENERATION_MODE, parseGenerationMode } from "./mode.js";
 
 type AuditRow = {
   path: string;
@@ -102,6 +104,7 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
       digest: string;
       synced_with: { version: string; commit: string } | null;
       dialect: { id: string; version: string } | null;
+      mode: GenerationMode;
     }
   >();
   for (const run of manifest.runs) {
@@ -112,6 +115,13 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
         `Manifest run at ${run.at} has invalid synced_with.commit '${run.synced_with.commit}'`
       );
     }
+    const parsedMode = parseGenerationMode(run.mode);
+    const runMode = parsedMode ?? DEFAULT_GENERATION_MODE;
+    if (!parsedMode) {
+      const display = typeof run.mode === "string" ? run.mode : "";
+      issues.push(`Manifest run at ${run.at} has invalid mode '${display}'`);
+    }
+
     let runDialect: { id: string; version: string } | null = null;
     if (run.dialect && typeof run.dialect === "object") {
       const id = typeof run.dialect.id === "string" ? run.dialect.id.trim() : "";
@@ -135,6 +145,7 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
         digest: output.digest,
         synced_with: run.synced_with ?? null,
         dialect: runDialect,
+        mode: runMode,
       });
     }
   }
@@ -175,6 +186,12 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
 
     const manifestEntry = manifestByPath.get(relPath);
     let status: AuditRow["status"] = "OK";
+
+    const provMode = parseGenerationMode(prov.mode);
+    if (!provMode) {
+      status = "MISMATCH";
+      issues.push(`${relPath}: provenance missing or invalid mode`);
+    }
 
     const provDialectId =
       typeof prov.dialect?.id === "string" ? prov.dialect.id.trim() : "";
@@ -250,6 +267,11 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
       ) {
         status = "MISMATCH";
         issues.push(`${relPath}: manifest dialect metadata mismatch`);
+      }
+
+      if (provMode && manifestEntry.mode !== provMode) {
+        status = "MISMATCH";
+        issues.push(`${relPath}: manifest mode mismatch`);
       }
 
       if (!manifestEntry.synced_with) {

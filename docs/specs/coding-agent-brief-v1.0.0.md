@@ -10,6 +10,7 @@ speckit_provenance:
   tool: speckit
   tool_version: 0.1.0
   tool_commit: 59a61d9
+  mode: classic
   dialect:
     id: speckit.v1
     version: 1.0.0

@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "fs-extra";
 import nunjucks from "nunjucks";
 import matter from "gray-matter";
-import type { SpecModel } from "@speckit/core";
+import type { GenerationMode, SpecModel } from "@speckit/core";
 import { loadSpecModel, hashSpecYaml } from "./spec.js";
 import {
   loadCatalogLock,
@@ -14,11 +14,13 @@ import {
 } from "./catalog.js";
 import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { appendManifestRun, updateManifestSpeckit } from "./manifest.js";
+import { resolveDefaultGenerationMode } from "./mode.js";
 
 type Provenance = {
   tool: "speckit";
   tool_version: string;
   tool_commit: string;
+  mode: GenerationMode;
   dialect: { id: string; version: string };
   template: { id: string; version: string; sha: string };
   spec: { version: string; digest: string };
@@ -38,6 +40,7 @@ export type GenerateOptions = {
   repoRoot?: string;
   write: boolean;
   stdout?: NodeJS.WritableStream;
+  mode?: GenerationMode;
 };
 
 export type GenerateResult = {
@@ -46,12 +49,13 @@ export type GenerateResult = {
 
 export async function generateDocs(options: GenerateOptions): Promise<GenerateResult> {
   const repoRoot = options.repoRoot ?? process.cwd();
-  const { model, dialect } = await loadSpecModel(repoRoot);
+  const { model, dialect, data } = await loadSpecModel(repoRoot);
   const specVersion = typeof model.version === "string" ? model.version.trim() : "";
   if (!specVersion) {
     throw new Error("SpecModel.version is required");
   }
   const specDigest = await hashSpecYaml(repoRoot);
+  const resolvedMode = options.mode ?? resolveDefaultGenerationMode(data);
 
   const speckitInfo = await getSpeckitVersion(repoRoot);
   if (!isLikelyCommitSha(speckitInfo.commit)) {
@@ -100,6 +104,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         tool: "speckit",
         tool_version: speckitInfo.version,
         tool_commit: speckitInfo.commit,
+        mode: resolvedMode,
         dialect: { ...dialect },
         template: { id: bundle.id, version: bundle.version, sha: entry.sha },
         spec: { version: specVersion, digest: specDigest },
@@ -136,6 +141,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         const first = preparedOutputs[0];
         await appendManifestRun(repoRoot, speckitInfo, {
           at: first.provenance.generated_at,
+          mode: resolvedMode,
           dialect,
           synced_with: { version: speckitInfo.version, commit: speckitInfo.commit },
           spec: { version: specVersion, digest: specDigest },

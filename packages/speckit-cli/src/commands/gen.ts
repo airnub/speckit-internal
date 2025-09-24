@@ -1,14 +1,28 @@
 import { Command, Option } from "clipanion";
 import { generateDocs } from "../services/generator.js";
+import { parseGenerationMode } from "../services/mode.js";
 
 export class GenerateDocsCommand extends Command {
   static paths = [["gen"]];
 
   write = Option.Boolean("--write", false);
+  mode = Option.String("--mode");
 
   async execute() {
     try {
-      const result = await generateDocs({ write: this.write, stdout: this.context.stdout });
+      const parsedMode = this.mode ? parseGenerationMode(this.mode) : undefined;
+      if (this.mode && !parsedMode) {
+        this.context.stderr.write(
+          "speckit gen failed: --mode must be one of: classic, secure\n"
+        );
+        return 1;
+      }
+
+      const result = await generateDocs({
+        write: this.write,
+        stdout: this.context.stdout,
+        mode: parsedMode ?? undefined,
+      });
       const changed = result.outputs.filter(o => o.changed);
 
       if (this.write) {
