@@ -11,15 +11,18 @@ updated: '2025-09-22'
 speckit_provenance:
   tool: speckit
   tool_version: 0.1.0
-  tool_commit: aaa1dee
+  tool_commit: 59a61d9
+  dialect:
+    id: speckit.v1
+    version: 1.0.0
   template:
     id: speckit-core
     version: 0.1.0
     sha: 92b3006e2ef148138f3494490a2e6e63349c7a26
   spec:
     version: 1.0.0
-    digest: 'sha256:534745e106c774e0834af1a4b9d8fb5437e52ed3e048f0ef5d95667b88284af8'
-  generated_at: '2025-09-24T17:44:55.125Z'
+    digest: 'sha256:098e707700ad37cfbc45fdf786d1754af761889fd4a22d55163f5202a2f086ba'
+  generated_at: '2025-09-24T20:11:39.912Z'
 ---
 
 # Orchestration Plan (v1.0.0)

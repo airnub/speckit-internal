@@ -2,6 +2,9 @@
   sha: 92b3006e2ef148138f3494490a2e6e63349c7a26
   version: "0.1.0"
   requires_speckit: ">=0.1.0 <1"
+  requires_dialect:
+    id: speckit.v1
+    range: ">=1.0.0 <2"
   synced_with:
     version: "0.1.0"
     commit: "4e80006"

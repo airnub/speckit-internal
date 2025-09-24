@@ -1,3 +1,6 @@
+dialect:
+  id: speckit.v1
+  version: 1.0.0
 spec:
   meta:
     id: speckit

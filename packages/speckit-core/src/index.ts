@@ -3,6 +3,8 @@ import path from "node:path";
 import { URL } from "node:url";
 import { z } from "zod";
 
+export * from "./model/SpecModel.js";
+
 export const SpecMetaSchema = z.object({
   title: z.string().min(1),
   version: z.string().min(1),

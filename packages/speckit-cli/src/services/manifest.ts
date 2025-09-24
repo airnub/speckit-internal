@@ -5,6 +5,9 @@ import type { SpeckitVersionInfo } from "./version.js";
 
 const ManifestRunSchema = z.object({
   at: z.string(),
+  dialect: z
+    .object({ id: z.string(), version: z.string() })
+    .optional(),
   synced_with: z
     .object({ version: z.string(), commit: z.string() })
     .optional(),
@@ -66,12 +69,19 @@ export async function appendManifestRun(
   manifest.speckit = { version: info.version, commit: info.commit };
   const enriched: ManifestRun = {
     ...run,
+    dialect: run.dialect ?? { id: "unknown", version: "unknown" },
     synced_with: run.synced_with ?? { version: info.version, commit: info.commit },
   };
-  const alreadyPresent = manifest.runs.some(existing => existing.at === enriched.at);
-  if (!alreadyPresent) {
-    manifest.runs.push(enriched);
-  }
+  manifest.runs = manifest.runs.map(existing => {
+    if (existing.dialect && existing.dialect.id && existing.dialect.version) {
+      return existing;
+    }
+    return {
+      ...existing,
+      dialect: enriched.dialect,
+    };
+  });
+  manifest.runs.push(enriched);
   await writeManifest(repoRoot, manifest);
 }
 
