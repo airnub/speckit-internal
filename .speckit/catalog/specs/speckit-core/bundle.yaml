@@ -3,6 +3,7 @@ name: "Speckit Core Bundle"
 kind: specs
 version: "0.1.0"
 engine: nunjucks
+requires_speckit: ">=0.1.0 <1"
 requires_spec: ">=1.0 <2"
 outputs:
   - { id: spec, from: "spec.njk", to: "docs/specs/speckit-spec-v{{ spec.meta.version }}.md" }

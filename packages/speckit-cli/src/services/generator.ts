@@ -14,7 +14,7 @@ import {
   assertSpecCompatibility,
 } from "./catalog.js";
 import { getSpeckitVersion } from "./version.js";
-import { appendManifestRun } from "./manifest.js";
+import { appendManifestRun, updateManifestSpeckit } from "./manifest.js";
 
 type Provenance = {
   tool: "speckit";
@@ -59,6 +59,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
   const specDigest = await hashSpecYaml(repoRoot);
 
   const speckitInfo = await getSpeckitVersion(repoRoot);
+  await updateManifestSpeckit(repoRoot, speckitInfo);
   const catalogEntries = await loadCatalogLock(repoRoot);
   if (!catalogEntries.length) {
     throw new Error(".speckit/catalog.lock has no bundles");
@@ -133,6 +134,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         const first = changedOutputs[0];
         await appendManifestRun(repoRoot, speckitInfo, {
           at: first.provenance.generated_at,
+          synced_with: { version: speckitInfo.version, commit: speckitInfo.commit },
           spec: { version: specVersion, digest: specDigest },
           template: {
             id: bundle.id,

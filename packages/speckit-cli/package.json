@@ -1,12 +1,11 @@
 {
   "name": "@speckit/cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "bin": {
     "speckit": "dist/cli.js",
     "spec": "dist/cli.js"
   },
-  "speckitCommit": "0000000",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",

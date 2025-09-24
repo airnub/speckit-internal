@@ -2,8 +2,8 @@
 
 **TUI + optional AI assistant for spec-driven development:** edit specs, preview diffs, and commit. AI and analytics are **disabled by default**.
 
-- **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.0.1`
-- **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/core` (all `0.0.1`)
+- **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
+- **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/core` (all `0.1.0`)
 
 ## Features
 - **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.
@@ -63,7 +63,7 @@ pnpm --filter @speckit/tui dev
 
 SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`speckit template list`, `speckit template use`, `speckit init --template …`; alias: swap `speckit` for `spec`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `speckit template use …` or `speckit init --template …` (add `#branch` or `?ref=` if you need a branch other than the default—alias: `spec`).
 
-In this repository, published bundles live under `.speckit/catalog/**`. In consumer repos, `.speckit/templates/**` (if present) is merged into the picker.
+In this repo, published bundles live under `.speckit/catalog/**`. Consumer repos may also use `.speckit/templates/**`, which Speckit merges into the picker.
 
 ### Optional manifest (`template.json`)
 
