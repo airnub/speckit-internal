@@ -5,6 +5,7 @@ export class CompliancePlanCommand extends Command {
   static paths = [["compliance", "plan"]];
 
   framework = Option.String("--framework");
+  overlays = Option.String("--overlays", { required: false });
 
   async execute() {
     if (!this.framework) {
@@ -16,6 +17,7 @@ export class CompliancePlanCommand extends Command {
         framework: this.framework,
         repoRoot: process.cwd(),
         stdout: this.context.stdout,
+        overlays: parseOverlayOption(this.overlays),
       });
       return 0;
     } catch (error: any) {
@@ -30,6 +32,7 @@ export class ComplianceVerifyCommand extends Command {
   static paths = [["compliance", "verify"]];
 
   framework = Option.String("--framework");
+  overlays = Option.String("--overlays", { required: false });
 
   async execute() {
     if (!this.framework) {
@@ -41,6 +44,7 @@ export class ComplianceVerifyCommand extends Command {
         framework: this.framework,
         repoRoot: process.cwd(),
         stdout: this.context.stdout,
+        overlays: parseOverlayOption(this.overlays),
       });
       return result.failed ? 1 : 0;
     } catch (error: any) {
@@ -49,4 +53,15 @@ export class ComplianceVerifyCommand extends Command {
       return 1;
     }
   }
+}
+
+function parseOverlayOption(value?: string | null): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const entries = value
+    .split(",")
+    .map(segment => segment.trim())
+    .filter(segment => segment.length > 0);
+  return entries.length > 0 ? entries : undefined;
 }

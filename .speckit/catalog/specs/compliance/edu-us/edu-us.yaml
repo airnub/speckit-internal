@@ -1,0 +1,118 @@
+version: "0.1.0"
+title: "Education (US) Secure Mode Catalog"
+references:
+  ferpa:
+    title: "Family Educational Rights and Privacy Act"
+    url: "https://studentprivacy.ed.gov/"
+  coppa:
+    title: "Children's Online Privacy Protection Act"
+    url: "https://www.ftc.gov/business-guidance/resources/childrens-online-privacy-protection-rule-six-step-compliance-plan-your-business"
+  cipa:
+    title: "Children's Internet Protection Act"
+    url: "https://www.fcc.gov/consumers/guides/childrens-internet-protection-act"
+  ppra:
+    title: "Protection of Pupil Rights Amendment"
+    url: "https://studentprivacy.ed.gov/resources/protection-pupil-rights-amendment-ppra"
+frameworks:
+  - id: ferpa
+    name: "FERPA"
+    authority: "Student Privacy Policy Office"
+    citation: "20 U.S.C. § 1232g; 34 CFR Part 99"
+    requirements:
+      - id: disclosure-logging
+        title: "Track and justify disclosures of education records"
+        citation: "34 CFR § 99.32"
+        description: "Maintain an auditable log for every disclosure of education records and document the legitimate educational interest or statutory exception applied."
+      - id: directory-information-opt-outs
+        title: "Honor directory information opt-outs"
+        citation: "34 CFR § 99.37"
+        description: "Maintain notice and opt-out workflows for directory information and enforce suppression across exports and integrations."
+      - id: access-requests
+        title: "Fulfil parent and eligible student access requests"
+        citation: "34 CFR § 99.10"
+        description: "Deliver education records within 45 days of a valid request and authenticate requesters before release."
+  - id: coppa
+    name: "COPPA"
+    authority: "Federal Trade Commission"
+    citation: "15 U.S.C. §§ 6501–6506; 16 CFR Part 312"
+    requirements:
+      - id: under-13-scope
+        title: "Determine if the service targets children under 13"
+        citation: "16 CFR § 312.2"
+        description: "Document why the service is or is not directed to children under 13 and identify any school-authorized use cases."
+      - id: verifiable-parental-consent
+        title: "Collect verifiable parental consent"
+        citation: "16 CFR § 312.5"
+        description: "Capture and document verifiable parental consent before collecting personal information from children under 13 or confirm district authority to consent."
+      - id: data-retention
+        title: "Limit retention of child personal information"
+        citation: "16 CFR § 312.10"
+        description: "Retain personal information only as long as necessary for the educational purpose and honor deletion requests promptly."
+  - id: cipa
+    name: "CIPA"
+    authority: "Federal Communications Commission"
+    citation: "47 U.S.C. § 254; 47 CFR § 54.520"
+    requirements:
+      - id: internet-safety-policy
+        title: "Publish an internet safety policy"
+        citation: "47 U.S.C. § 254(h)(5)(A)"
+        description: "Adopt an internet safety policy covering access to inappropriate material, student safety, security, and unauthorized access."
+      - id: technology-protection-measure
+        title: "Operate a technology protection measure"
+        citation: "47 U.S.C. § 254(h)(5)(B)"
+        description: "Implement and manage filtering or blocking technology on devices accessing E-Rate supported services."
+      - id: monitoring-and-education
+        title: "Monitor use and provide digital citizenship education"
+        citation: "47 U.S.C. § 254(h)(5)(B)(iii)"
+        description: "Document monitoring procedures for student activity and deliver required online safety education."
+  - id: ppra
+    name: "PPRA"
+    authority: "Student Privacy Policy Office"
+    citation: "20 U.S.C. § 1232h; 34 CFR Part 98"
+    requirements:
+      - id: sensitive-survey-inventory
+        title: "Inventory sensitive survey content"
+        citation: "20 U.S.C. § 1232h(b)"
+        description: "Identify surveys that cover protected PPRA categories and record funding sources that trigger PPRA."
+      - id: parental-notification
+        title: "Provide parental notice and consent"
+        citation: "34 CFR § 98.3"
+        description: "Notify parents and offer opt-out or opt-in (as required) before administering covered surveys."
+      - id: survey-data-security
+        title: "Secure and retain survey responses appropriately"
+        citation: "34 CFR § 98.4"
+        description: "Restrict access to survey data, enforce retention schedules, and document destruction procedures."
+states:
+  - id: ca-sopipa
+    name: "California SOPIPA"
+    citation: "Cal. Bus. & Prof. Code §§ 22584–22585"
+    authority: "California Legislature"
+    url: "https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?division=8.&chapter=22.&lawCode=BPC&article=5."
+    requirements:
+      - id: advertising-ban
+        title: "Block targeted advertising and profiling"
+        description: "Prohibit using K–12 student information for targeted advertising or profiling beyond K–12 purposes."
+      - id: sale-prohibition
+        title: "Ban sale of student personal information"
+        description: "Ensure contracts and technical controls prevent selling or renting student data."
+      - id: deletion-on-request
+        title: "Delete student information on district request"
+        description: "Provide deletion workflows to honor school or district requests when data is no longer needed."
+  - id: ny-2d
+    name: "New York Education Law 2-d"
+    citation: "N.Y. Educ. Law § 2-d; 8 NYCRR Part 121"
+    authority: "New York State Education Department"
+    url: "https://www.nysenate.gov/legislation/laws/EDN/2-D"
+    requirements:
+      - id: data-privacy-policy
+        title: "Publish Data Privacy & Security Policy"
+        description: "Post and maintain the NYSED-aligned Data Privacy and Security Policy, including encryption and breach response details."
+      - id: parents-bill-of-rights
+        title: "Provide Parent Bill of Rights"
+        description: "Distribute the Parent Bill of Rights and supplemental third-party contract disclosures."
+      - id: data-protection-officer
+        title: "Designate a Data Protection Officer"
+        description: "Assign a DPO responsible for policy compliance, incident response, and staff training."
+      - id: third-party-contracts
+        title: "Execute compliant third-party contracts"
+        description: "Ensure vendor contracts include encryption, breach notification, data minimization, and prohibition on selling student data."

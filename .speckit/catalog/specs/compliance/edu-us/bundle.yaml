@@ -1,0 +1,34 @@
+id: compliance-edu-us
+name: "Education (US) Compliance Bundle"
+kind: specs
+version: "0.1.0"
+engine: nunjucks
+requires_speckit: ">=0.1.0 <1"
+requires_dialect:
+  id: speckit.v1
+  range: ">=1.0.0 <2"
+outputs:
+  - id: edu-us-readme
+    from: README.njk
+    to: docs/internal/compliance/edu-us/README.md
+  - id: edu-us-controls
+    from: edu-us-controls.njk
+    to: docs/internal/compliance/edu-us/edu-us-controls.yaml
+  - id: ferpa-checklist
+    from: ferpa/ferpa-privacy-checklist.md
+    to: docs/internal/compliance/edu-us/ferpa-privacy-checklist.md
+  - id: coppa-workbook
+    from: coppa/coppa-consent-and-dataflow.md
+    to: docs/internal/compliance/edu-us/coppa-consent-and-dataflow.md
+  - id: cipa-controls
+    from: cipa/cipa-filtering-and-monitoring.md
+    to: docs/internal/compliance/edu-us/cipa-filtering-and-monitoring.md
+  - id: ppra-controls
+    from: ppra/ppra-survey-controls.md
+    to: docs/internal/compliance/edu-us/ppra-survey-controls.md
+  - id: overlay-ca-sopipa
+    from: state/ca-sopipa/ca-sopipa-overlay.md
+    to: docs/internal/compliance/edu-us/state/ca-sopipa.md
+  - id: overlay-ny-2d
+    from: state/ny-edlaw-2d/ny-edlaw-2d-overlay.md
+    to: docs/internal/compliance/edu-us/state/ny-edlaw-2d.md

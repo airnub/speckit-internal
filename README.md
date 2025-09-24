@@ -102,6 +102,20 @@ speckit compliance verify --framework hipaa  # evaluates safeguards, runs the OP
 
 The HIPAA catalog uses NIST SP 800-66 Rev.2 guidance and the OLIR HIPAA ↔︎ NIST SP 800-53 Rev.5 mapping. Objective technical safeguards (TLS enforcement, encryption at rest, unique user IDs, audit logging) must report `pass` or the verify step fails; all other safeguards surface as manual evidence for reviewers.
 
+### Secure mode: Education (US)
+
+K–12 initiatives can opt into a FERPA/COPPA/CIPA/PPRA workflow with optional state overlays for California SOPIPA and New York Education Law 2-d. Generate the bundle, capture evidence, and run policy checks:
+
+```bash
+speckit compliance plan --framework edu-us --overlays ca-sopipa,ny-2d
+speckit compliance verify --framework edu-us
+```
+
+- `plan` writes `docs/internal/compliance/edu-us/**`, including the FERPA, COPPA, CIPA, PPRA checklists and any overlays you request.
+- `verify` evaluates `docs/internal/compliance/edu-us/edu-us-controls.yaml`, enforces the COPPA/CIPA/NY 2-d guardrails, and produces `.speckit/compliance-report.(json|md)`.
+
+The generated README links to primary guidance from the U.S. Department of Education, FTC, FCC, and state regulators. Policy-as-code checks fail when under-13 processing lacks consent/retention documentation, E-Rate claims lack filtering or monitoring artefacts, or New York overlays miss the required public postings.
+
 ### Verify & troubleshoot
 
 ```bash
