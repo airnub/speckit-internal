@@ -1,0 +1,15 @@
+id: standard
+name: "Standard Coding Prompts"
+kind: prompts
+version: "0.1.0"
+description: "Consolidated prompts for codegen/review/refactor workflows."
+prompts:
+  - id: codegen
+    path: prompts/codegen
+    files: [system.md, user.md, rubric.md]
+  - id: review
+    path: prompts/review
+    files: [system.md, user.md, rubric.md]
+workflows:
+  - id: refactor-and-test
+    path: workflows/refactor-and-test.yaml

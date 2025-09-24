@@ -10,13 +10,13 @@
 - **Why:**  
 
 ## Scope — Requirements impacted
-List all requirement IDs (from `.dev/rtm.md`) touched by this PR.
+List all requirement IDs (from `docs/internal/rtm.md`) touched by this PR.
 
 - `FR-__`
 - `FR-__`
 
 ## Spec references
-Point to relevant sections/anchors in `.dev/specs/speckit-spec-v0.0.1.md`.
+Point to relevant sections/anchors in `docs/internal/specs/speckit-spec.md`.
 
 - `§<section>` – short note
 - `§<section>` – short note
@@ -44,8 +44,8 @@ Paste as **valid JSON** if you used an agent; otherwise skip. This helps reviewe
 > ```
 
 ## Acceptance Evidence
-- **Spec section(s):** `.dev/specs/speckit-spec-v0.0.1.md#<anchor>`
-- **RTM row(s):** `.dev/rtm.md` → FR-__
+- **Spec section(s):** `docs/internal/specs/speckit-spec.md#<anchor>`
+- **RTM row(s):** `docs/internal/rtm.md` → FR-__
 - **Screenshots / recordings:** (attach)
 - **Logs / reports:** (e.g., Spectral output, unit/e2e results)
 
@@ -55,7 +55,7 @@ Paste as **valid JSON** if you used an agent; otherwise skip. This helps reviewe
 - [ ] If scripts exist, I ran `pnpm run docs:gen` and `pnpm run rtm:build` and committed changes
 - [ ] Tests were added/updated and linked to **Req-ID(s)** in comments or filenames
 - [ ] No secrets / credentials committed
-- [ ] I linked relevant ADRs (or proposed a new one in `.dev/adrs/`)
+- [ ] I linked relevant ADRs (or proposed a new one in `docs/internal/adr/`)
 
 ## Breaking changes?
 - [ ] No

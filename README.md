@@ -17,6 +17,13 @@
 - **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
 - **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
 
+## Speckit Catalog & Internal Docs
+
+- **Working docs** live under `docs/internal/**`. Agents and contributors edit these Markdown files directly when updating the plan, RTM, ADRs, or internal briefs.
+- **Published bundles** live under `.speckit/catalog/**` (specs + prompts). Treat this directory as read-only; regenerate bundles with the Speckit CLI and open catalog PRs only when the `catalog:allowed` label is applied.
+- **Single source of truth** is `.speckit/spec.yaml`. Run `speckit gen --write` to refresh generated docs in `docs/specs/`, then commit the results.
+- **Verification** is enforced by the `speckit-verify` workflow, which fails the build if generated docs drift from the spec.
+
 ### Why it matters
 
 - **One source of truth at any scale** — distributed squads rely on the same living specification bundle, so onboarding, reviews, and compliance checks stay aligned no matter how many repos you operate. Product and platform changes point back to that single narrative instead of scattered docs.

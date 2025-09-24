@@ -2,7 +2,7 @@
 id: changelog-v0-0-1
 title: SpecKit — Changelog (v0.0.1)
 sidebar_label: Changelog v0.0.1
-slug: /dev/specs/changelog-v0-0-1
+slug: /internal/changelog
 created: "2025-09-22"
 updated: "2025-09-22"
 ---
@@ -15,4 +15,4 @@ updated: "2025-09-22"
 - RTM linking functional requirements to design, code, and tests.
 
 ## Notes
-- Orchestration plan is tracked as `.dev/orchestration-plan-v0.0.2.md` and your **root `AGENTS.md`** is maintained manually.
+- Orchestration plan is tracked as `docs/internal/orchestration-plan.md` and your **root `AGENTS.md`** is maintained manually.

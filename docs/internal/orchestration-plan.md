@@ -2,7 +2,7 @@
 id: orchestration-plan-v0-0-2
 title: SpecKit — Orchestration Plan (v0.0.2)
 sidebar_label: Orchestration Plan v0.0.2
-slug: /dev/specs/orchestration-plan-v0-0-2
+slug: /internal/orchestration-plan
 description: Internal orchestration plan aligning agents and humans to the SpecKit v0.0.1 baseline.
 created: "2025-09-22"
 updated: "2025-09-22"
@@ -13,10 +13,10 @@ updated: "2025-09-22"
 **Why a v0.0.2 filename?** This plan is iterated more frequently and separately from the v0.0.1 baseline spec; you maintain a root `AGENTS.md` manually. This internal plan complements it.
 
 ## Documents of Record
-- Spec (SRS): `.dev/specs/speckit-spec-v0.0.1.md`
-- Agent brief: `.dev/prompts/coding-agent-brief-v0.0.1.md`
-- RTM: `.dev/rtm.md`
-- ADRs: `.dev/adrs/*`
+- Spec (SRS): `docs/internal/specs/speckit-spec.md`
+- Agent brief: `docs/internal/agents/coding-agent-brief.md`
+- RTM: `docs/internal/rtm.md`
+- ADRs: `docs/internal/adr/*`
 
 ## Roles & Flow
 - **Planner (LLM)** → draft changes from requirement.
