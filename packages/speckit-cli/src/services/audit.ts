@@ -37,6 +37,19 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
   }
 
   const issues: string[] = [];
+  if (!speckitInfo.commit || speckitInfo.commit === "unknown") {
+    issues.push("Speckit git commit could not be determined");
+  }
+  if (manifest.speckit.version !== speckitInfo.version) {
+    issues.push(
+      `Manifest speckit.version (${manifest.speckit.version}) does not match current version (${speckitInfo.version})`
+    );
+  }
+  if (manifest.speckit.commit !== speckitInfo.commit) {
+    issues.push(
+      `Manifest speckit.commit (${manifest.speckit.commit}) does not match current commit (${speckitInfo.commit})`
+    );
+  }
   const manifestByPath = new Map<
     string,
     {
@@ -66,7 +79,6 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
 
   const rows: AuditRow[] = [];
   const seenPaths = new Set<string>();
-  const hasManifestMismatch = issues.length > 0;
 
   for (const relPath of files) {
     seenPaths.add(relPath);
@@ -97,6 +109,15 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
     if (!toolMatches) {
       status = "MISMATCH";
       issues.push(`${relPath}: tool version/commit mismatch`);
+    }
+
+    const currentToolMatches =
+      prov.tool_version === speckitInfo.version && prov.tool_commit === speckitInfo.commit;
+    if (!currentToolMatches) {
+      status = "MISMATCH";
+      issues.push(
+        `${relPath}: provenance records ${prov.tool_version}@${prov.tool_commit}, expected ${speckitInfo.version}@${speckitInfo.commit}`
+      );
     }
 
     if (!manifestEntry) {
@@ -132,6 +153,12 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
       ) {
         status = "MISMATCH";
         issues.push(`${relPath}: manifest synced_with does not match provenance`);
+      } else if (
+        manifestEntry.synced_with.version !== speckitInfo.version ||
+        manifestEntry.synced_with.commit !== speckitInfo.commit
+      ) {
+        status = "MISMATCH";
+        issues.push(`${relPath}: manifest synced_with ${manifestEntry.synced_with.version}@${manifestEntry.synced_with.commit} does not match current tool ${speckitInfo.version}@${speckitInfo.commit}`);
       }
     }
 
@@ -183,7 +210,7 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
     stderr.write(`- ${issue}\n`);
   }
 
-  const ok = rows.every(row => row.status === "OK") && !hasManifestMismatch;
+  const ok = issues.length === 0 && rows.every(row => row.status === "OK");
   return { ok };
 }
 
