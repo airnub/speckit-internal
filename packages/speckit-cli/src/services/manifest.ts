@@ -3,8 +3,11 @@ import fs from "fs-extra";
 import { z } from "zod";
 import type { SpeckitVersionInfo } from "./version.js";
 
+const GenerationModeSchema = z.enum(["classic", "secure"]);
+
 const ManifestRunSchema = z.object({
   at: z.string(),
+  mode: GenerationModeSchema.default("classic"),
   dialect: z
     .object({ id: z.string(), version: z.string() })
     .optional(),
@@ -69,6 +72,7 @@ export async function appendManifestRun(
   manifest.speckit = { version: info.version, commit: info.commit };
   const enriched: ManifestRun = {
     ...run,
+    mode: run.mode ?? "classic",
     dialect: run.dialect ?? { id: "unknown", version: "unknown" },
     synced_with: run.synced_with ?? { version: info.version, commit: info.commit },
   };

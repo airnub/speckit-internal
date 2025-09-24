@@ -1,6 +1,8 @@
 dialect:
   id: speckit.v1
   version: 1.0.0
+engine:
+  mode: classic
 spec:
   meta:
     id: speckit

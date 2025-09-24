@@ -49,7 +49,11 @@ const bundle: BundleDefinition = {
 };
 
 vi.mock("../../speckit-cli/src/services/spec.js", () => ({
-  loadSpecModel: vi.fn(async () => ({ model: mockModel, dialect: mockDialect, data: {} })),
+  loadSpecModel: vi.fn(async () => ({
+    model: mockModel,
+    dialect: mockDialect,
+    data: { engine: { mode: "classic" } },
+  })),
   hashSpecYaml: vi.fn(async () => "sha256:mock-spec-digest"),
 }));
 

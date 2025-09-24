@@ -5,6 +5,9 @@ import { z } from "zod";
 
 export * from "./model/SpecModel.js";
 
+export const GENERATION_MODES = ["classic", "secure"] as const;
+export type GenerationMode = (typeof GENERATION_MODES)[number];
+
 export const SpecMetaSchema = z.object({
   title: z.string().min(1),
   version: z.string().min(1),
@@ -36,11 +39,18 @@ export type TemplateEntry = {
   specRoot?: string; // default specs path
   postInit?: string[];
   localPath?: string; // absolute path when type === "local"
+  modes?: GenerationMode[];
 };
 
 export function getDefaultTemplates(): TemplateEntry[] {
   return [
-    { name: "blank", description: "Blank SpecKit spec (base.md)", type: "blank", specRoot: "docs/specs" },
+    {
+      name: "blank",
+      description: "Blank SpecKit spec (base.md)",
+      type: "blank",
+      specRoot: "docs/specs",
+      modes: ["classic"],
+    },
     {
       name: "next-supabase",
       description: "Next.js + Supabase — SpecKit template (official)",
@@ -49,7 +59,8 @@ export function getDefaultTemplates(): TemplateEntry[] {
       branch: "main",
       varsFile: "template.vars.json",
       specRoot: "docs/specs",
-      postInit: ["pnpm docs:gen", "pnpm rtm:build"]
+      postInit: ["pnpm docs:gen", "pnpm rtm:build"],
+      modes: ["classic"],
     },
     {
       name: "speckit-template",
@@ -57,7 +68,8 @@ export function getDefaultTemplates(): TemplateEntry[] {
       type: "github",
       repo: "airnub/speckit-template",
       branch: "main",
-      specRoot: "docs/specs"
+      specRoot: "docs/specs",
+      modes: ["classic"],
     }
   ];
 }
@@ -94,6 +106,7 @@ type LocalTemplateManifest = {
   varsFile?: string;
   specRoot?: string;
   postInit?: string[];
+  modes?: unknown;
 };
 
 async function discoverLocalTemplates(repoRoot: string): Promise<TemplateEntry[]> {
@@ -121,10 +134,12 @@ async function discoverLocalTemplates(repoRoot: string): Promise<TemplateEntry[]
 
       const name = sanitizeTemplateName(manifestName || rel);
       const description = manifestDescription || `Local template (${name})`;
+      const manifestModes = parseTemplateModes(manifest?.modes);
       const varsCandidate = manifestVars || "template.vars.json";
       const varsFile = await fs.pathExists(path.join(dir, varsCandidate)) ? varsCandidate : undefined;
       const postInit = manifestPostInit.length ? manifestPostInit : undefined;
       const specRoot = manifestSpecRoot;
+      const modes = manifestModes.length ? manifestModes : undefined;
 
       templates.push({
         name,
@@ -133,7 +148,8 @@ async function discoverLocalTemplates(repoRoot: string): Promise<TemplateEntry[]
         varsFile,
         specRoot,
         postInit,
-        localPath: dir
+        localPath: dir,
+        modes,
       });
       return;
     }
@@ -170,6 +186,21 @@ function sanitizeTemplateName(name: string): string {
   const normalized = trimmed.split(path.sep).filter(Boolean).join("/");
   return normalized || "local-template";
 }
+
+function parseTemplateModes(input: unknown): GenerationMode[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<GenerationMode>();
+  for (const value of input) {
+    if (typeof value !== "string") continue;
+    const normalized = value.trim().toLowerCase();
+    if (GENERATION_MODES_SET.has(normalized as GenerationMode)) {
+      seen.add(normalized as GenerationMode);
+    }
+  }
+  return Array.from(seen);
+}
+
+const GENERATION_MODES_SET = new Set<GenerationMode>(GENERATION_MODES);
 
 export function templateFromGithubUrl(input: string): TemplateEntry | null {
   let parsed: URL;

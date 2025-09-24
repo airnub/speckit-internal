@@ -8,6 +8,7 @@ import { TemplateListCommand, TemplateUseCommand } from "./commands/template.js"
 import { InitFromTemplateCommand } from "./commands/init.js";
 import { GenerateDocsCommand } from "./commands/gen.js";
 import { AuditCommand } from "./commands/audit.js";
+import { DoctorCommand } from "./commands/doctor.js";
 
 cfonts.say("speckit", { font: "block" });
 console.log(
@@ -29,5 +30,6 @@ cli.register(TemplateUseCommand);
 cli.register(InitFromTemplateCommand);
 cli.register(GenerateDocsCommand);
 cli.register(AuditCommand);
+cli.register(DoctorCommand);
 
 cli.runExit(args, Cli.defaultContext);
