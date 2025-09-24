@@ -116,7 +116,7 @@ packages/
 - `provider`: `openai` | `github`
 - `openai.model` (default **gpt-5-2025-08-07**) and `github.model` (default **openai/gpt-5**)
 - Editable lists:
-  - OpenAI → `[gpt-5-2025-08-07, gpt-5-mini-2025-08-07, gpt-5-nano-2025-08-07, gpt-4.1-2025-04-14, codex-mini-latest]`
+  - OpenAI → `[gpt-5-2025-08-07, gpt-5-mini-2025-08-07, gpt-5-nano-2025-08-07, gpt-5-codex, gpt-4.1-2025-04-14, codex-mini-latest]`
   - GitHub → `[openai/gpt-5, openai/gpt-5-mini, openai/gpt-5-nano, openai/gpt-5-chat, openai/gpt-4.1, openai/gpt-4.1-nano, openai/gpt-4.1-mini]`
 
 ---
