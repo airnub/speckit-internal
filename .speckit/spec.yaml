@@ -3,11 +3,6 @@ spec:
     id: speckit
     title: "Speckit Core"
     version: "1.0.0"
-    why_it_matters:
-      - "**One source of truth at any scale** — keep distributed teams anchored to the same curated spec library so every change request starts from shared context and audit logs stay tidy."
-      - "**Stack-flexible planning** — if you pivot frameworks or hosting platforms, you adjust the delivery path instead of rewriting requirements; the spec articulates outcomes, not implementation trivia."
-      - "**Requirements tracked like code** — housing specs beside your repo history means reviews, diffs, and approvals flow through the same pipelines as application code, locking in provenance."
-      - "**Full-context AI assistance** — when you invite the agent, it consumes the entire spec, recent edits, and linked artifacts, producing guidance grounded in the story the team already vetted."
 requirements:
   - id: REQ-CATALOG-IMMUTABLE
     title: Catalog is immutable in PRs

@@ -34,11 +34,6 @@ type PreparedOutput = {
   changed: boolean;
 };
 
-type PrepareOutputOptions = {
-  outputId?: string;
-  specMeta?: unknown;
-};
-
 export type GenerateOptions = {
   repoRoot?: string;
   write: boolean;
@@ -108,10 +103,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         generated_at: runTimestamp,
       };
 
-      const prepared = prepareOutput(rendered, targetRel, baseProvenance, existing, {
-        outputId: output.id,
-        specMeta,
-      });
+      const prepared = prepareOutput(rendered, targetRel, baseProvenance, existing);
 
       const digest = hashContent(prepared.content);
       const changed = existing === null || normalise(existing) !== normalise(prepared.content);
@@ -174,12 +166,11 @@ function prepareOutput(
   rendered: string,
   targetRel: string,
   provenance: Provenance,
-  existing: string | null,
-  options: PrepareOutputOptions = {}
+  existing: string | null
 ): { content: string; provenance: Provenance } {
   const ext = path.extname(targetRel).toLowerCase();
   if (ext === ".md" || ext === ".mdx") {
-    return prepareMarkdown(rendered, provenance, existing, options);
+    return prepareMarkdown(rendered, provenance, existing);
   }
   return prepareWithComment(rendered, provenance, existing, ext);
 }
@@ -187,8 +178,7 @@ function prepareOutput(
 function prepareMarkdown(
   rendered: string,
   provenance: Provenance,
-  existing: string | null,
-  options: PrepareOutputOptions = {}
+  existing: string | null
 ): { content: string; provenance: Provenance } {
   const parsed = matter(normalise(rendered));
   const body = parsed.content;
@@ -207,9 +197,8 @@ function prepareMarkdown(
     }
   }
 
-  const withWhyItMatters = maybeInjectWhyItMatters(body, options);
   const data = { ...parsed.data, speckit_provenance: finalProv };
-  const stringified = matter.stringify(withWhyItMatters, data).replace(/\r\n/g, "\n");
+  const stringified = matter.stringify(body, data).replace(/\r\n/g, "\n");
   return { content: ensureTrailingNewline(stringified), provenance: finalProv };
 }
 
@@ -230,52 +219,6 @@ function prepareWithComment(
 
 function ensureTrailingNewline(value: string): string {
   return value.endsWith("\n") ? value : `${value}\n`;
-}
-
-function maybeInjectWhyItMatters(
-  body: string,
-  options: PrepareOutputOptions
-): string {
-  const whyItMatters = extractWhyItMatters(options);
-  if (!whyItMatters || hasWhyItMattersSection(body)) {
-    return body;
-  }
-  const trimmed = body.replace(/\s+$/, "");
-  const section = formatWhyItMattersSection(whyItMatters);
-  if (!trimmed) {
-    return `${section}\n`;
-  }
-  return `${trimmed}\n\n${section}\n`;
-}
-
-function extractWhyItMatters(options: PrepareOutputOptions): string[] | undefined {
-  if (!options || options.outputId !== "spec") {
-    return undefined;
-  }
-  const meta = options.specMeta;
-  if (!meta || typeof meta !== "object") {
-    return undefined;
-  }
-  const candidate =
-    (meta as Record<string, unknown>)["why_it_matters"] ??
-    (meta as Record<string, unknown>)["whyItMatters"];
-  if (!Array.isArray(candidate)) {
-    return undefined;
-  }
-  const cleaned = candidate
-    .filter((item): item is string => typeof item === "string")
-    .map(item => item.trim())
-    .filter(item => item.length > 0);
-  return cleaned.length ? cleaned : undefined;
-}
-
-function hasWhyItMattersSection(body: string): boolean {
-  return /(^|\n)##\s+Why it matters\b/i.test(body);
-}
-
-function formatWhyItMattersSection(points: string[]): string {
-  const bullets = points.map(point => `- ${point}`).join("\n");
-  return `## Why it matters\n\n${bullets}`;
 }
 
 function buildComment(provenance: Provenance, ext: string): string {

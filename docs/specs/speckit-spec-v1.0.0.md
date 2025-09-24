@@ -18,8 +18,8 @@ speckit_provenance:
     sha: 92b3006e2ef148138f3494490a2e6e63349c7a26
   spec:
     version: 1.0.0
-    digest: 'sha256:7dcb77546f85fdcc2a8b42334311886a1be4f57ae4385f731ff764e8f3869bf7'
-  generated_at: '2025-09-24T13:03:17.842Z'
+    digest: 'sha256:16157fae448f0d7339a3238cf8e11bc4113a415b01320e4fbbb718cdb9917573'
+  generated_at: '2025-09-24T13:12:56.670Z'
 ---
 
 # Speckit Core — Internal Specification (v1.0.0)
@@ -76,10 +76,3 @@ This baseline specification defines the minimal, production-quality behavior of 
 - Template picker supports enter/return reliably.
 - PostInit output uses `args.join(' ')`.
 - Full OFF-path works without network calls.
-
-## Why it matters
-
-- **One source of truth at any scale** — keep distributed teams anchored to the same curated spec library so every change request starts from shared context and audit logs stay tidy.
-- **Stack-flexible planning** — if you pivot frameworks or hosting platforms, you adjust the delivery path instead of rewriting requirements; the spec articulates outcomes, not implementation trivia.
-- **Requirements tracked like code** — housing specs beside your repo history means reviews, diffs, and approvals flow through the same pipelines as application code, locking in provenance.
-- **Full-context AI assistance** — when you invite the agent, it consumes the entire spec, recent edits, and linked artifacts, producing guidance grounded in the story the team already vetted.
