@@ -1,0 +1,17 @@
+---
+title: {{ model.meta.title }}
+release: {{ model.version }}
+---
+
+# {{ model.meta.title }} overview
+
+Welcome to version {{ model.version }} of {{ model.meta.title }}.
+
+{% if model.requirements.length %}## Requirements
+{% for requirement in model.requirements -%}
+- {{ requirement.id }} — {{ requirement.title }}
+{% endfor %}
+{% else %}No requirements have been defined yet.
+{% endif %}
+
+Status token: {{ RELEASE_STATUS }}
