@@ -1,0 +1,65 @@
+version: "2024.09"
+title: "HIPAA Security Rule Core Safeguards"
+references:
+  nist_sp_800_66r2:
+    title: "NIST SP 800-66 Rev.2"
+    url: "https://csrc.nist.gov/publications/detail/sp/800-66/rev-2/final"
+  olir_mapping:
+    title: "NIST OLIR: HIPAA Security Rule ↔︎ SP 800-53 Rev.5"
+    url: "https://csrc.nist.gov/Projects/olir"
+families:
+  - id: "ADM"
+    name: "Administrative Safeguards"
+    citation: "45 CFR §164.308"
+    description: "Policies and procedures to manage the selection, development, implementation, and maintenance of security measures to protect electronic protected health information."
+    safeguards:
+      - id: "SEC-MGMT"
+        citation: "§164.308(a)(1)"
+        title: "Security Management Process"
+        description: "Implement policies and procedures to prevent, detect, contain, and correct security violations through risk analysis, risk management, sanction policy, and review of information system activity."
+        nist_800_53r5: ["RA-3", "CA-2", "AU-6"]
+      - id: "WORKFORCE"
+        citation: "§164.308(a)(3)"
+        title: "Workforce Security"
+        description: "Ensure that all members of the workforce have appropriate access to electronic protected health information and prevent unauthorized access."
+        nist_800_53r5: ["PS-2", "PS-3", "AC-5"]
+  - id: "PHY"
+    name: "Physical Safeguards"
+    citation: "45 CFR §164.310"
+    description: "Physical measures, policies, and procedures to protect electronic information systems and related buildings and equipment from natural and environmental hazards and unauthorized intrusion."
+    safeguards:
+      - id: "FACILITY-ACCESS"
+        citation: "§164.310(a)(1)"
+        title: "Facility Access Controls"
+        description: "Implement policies and procedures to limit physical access to electronic information systems and the facilities in which they are housed, while ensuring that properly authorized access is allowed."
+        nist_800_53r5: ["PE-2", "PE-3", "PE-6"]
+      - id: "DEVICE-MEDIA"
+        citation: "§164.310(d)(1)"
+        title: "Device and Media Controls"
+        description: "Implement policies and procedures that govern the receipt and removal of hardware and electronic media that contain electronic protected health information, including transfer, removal, disposal, and reuse."
+        nist_800_53r5: ["MP-6", "MP-7", "SC-12"]
+  - id: "TECH"
+    name: "Technical Safeguards"
+    citation: "45 CFR §164.312"
+    description: "Technology and the policy and procedures for its use that protect electronic protected health information and control access to it."
+    safeguards:
+      - id: "ACCESS-UNIQUE-ID"
+        citation: "§164.312(a)(2)(i)"
+        title: "Unique User Identification"
+        description: "Assign a unique name and/or number for identifying and tracking user identity."
+        nist_800_53r5: ["AC-2", "IA-2", "IA-4"]
+      - id: "AUDIT-CONTROLS"
+        citation: "§164.312(b)"
+        title: "Audit Controls"
+        description: "Implement hardware, software, and/or procedural mechanisms that record and examine activity in information systems that contain or use electronic protected health information."
+        nist_800_53r5: ["AU-2", "AU-6", "AU-12"]
+      - id: "INTEGRITY-ENCRYPTION"
+        citation: "§164.312(c)(1)"
+        title: "Encryption of ePHI at Rest"
+        description: "Implement policies and mechanisms to protect electronic protected health information from improper alteration or destruction, including encryption at rest for storage services."
+        nist_800_53r5: ["SC-28", "SC-12", "MP-6"]
+      - id: "TRANSMISSION-SECURITY"
+        citation: "§164.312(e)(1)"
+        title: "Transmission Security"
+        description: "Implement technical security measures to guard against unauthorized access to electronic protected health information that is being transmitted over an electronic communications network, including TLS 1.2+ enforcement."
+        nist_800_53r5: ["SC-8", "SC-12", "SC-13"]

@@ -3,6 +3,12 @@ dialect:
   version: 1.0.0
 engine:
   mode: classic
+compliance:
+  enabled: false
+  frameworks:
+    - id: hipaa
+      rules: ["privacy", "security", "breach"]
+      scope: ["covered-entity", "business-associate"]
 spec:
   meta:
     id: speckit

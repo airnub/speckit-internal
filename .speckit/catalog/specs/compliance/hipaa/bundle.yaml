@@ -1,0 +1,19 @@
+id: compliance-hipaa
+name: "HIPAA Secure Mode Bundle"
+kind: specs
+version: "0.1.0"
+engine: nunjucks
+requires_speckit: ">=0.1.0 <1"
+requires_dialect:
+  id: speckit.v1
+  range: ">=1.0.0 <2"
+outputs:
+  - id: hipaa_security_checklist
+    from: hipaa-security-checklist.njk
+    to: docs/internal/compliance/hipaa/hipaa-security-checklist.md
+  - id: hipaa_privacy_roles
+    from: hipaa-privacy-roles.njk
+    to: docs/internal/compliance/hipaa/hipaa-privacy-roles.md
+  - id: hipaa_breach_plan
+    from: hipaa-breach-plan.njk
+    to: docs/internal/compliance/hipaa/hipaa-breach-plan.md

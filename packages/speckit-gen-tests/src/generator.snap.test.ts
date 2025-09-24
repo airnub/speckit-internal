@@ -38,7 +38,7 @@ let activeCatalogEntry: CatalogLockEntry = createCatalogEntry(activeBundle);
 
 vi.mock("../../speckit-cli/src/services/spec.js", () => ({
   loadSpecModel: vi.fn(async () => ({
-    model: mockModel,
+    model: activeModel,
     dialect: mockDialect,
     data: { engine: { mode: "classic" } },
   })),

@@ -1,0 +1,64 @@
+name: compliance-hipaa
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
+
+jobs:
+  hipaa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine whether HIPAA verification is required
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHOULD_RUN="false"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SHOULD_RUN="true"
+          fi
+          if [ "$SHOULD_RUN" = "false" ]; then
+            LABELS_JSON='${{ toJson(github.event.pull_request.labels) }}'
+            if [ "$LABELS_JSON" != "null" ]; then
+              if echo "$LABELS_JSON" | jq -r '.[].name // empty' | grep -qi '^secure$'; then
+                SHOULD_RUN="true"
+              fi
+            fi
+          fi
+          if [ "$SHOULD_RUN" = "false" ] && [ -f ".speckit/spec.yaml" ]; then
+            if grep -q "id: hipaa" .speckit/spec.yaml; then
+              SHOULD_RUN="true"
+            fi
+          fi
+          echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+      - name: Skip HIPAA verification
+        if: steps.filter.outputs.should_run != 'true'
+        run: echo "HIPAA compliance verification skipped for this run."
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.should_run == 'true'
+        with:
+          node-version: '20'
+          cache: pnpm
+      - name: Install dependencies
+        if: steps.filter.outputs.should_run == 'true'
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Build workspace packages
+        if: steps.filter.outputs.should_run == 'true'
+        run: pnpm -w -r build
+      - name: Run HIPAA compliance verify
+        if: steps.filter.outputs.should_run == 'true'
+        run: node packages/speckit-cli/dist/cli.js compliance verify --framework hipaa
+      - name: Upload HIPAA compliance report
+        if: steps.filter.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hipaa-compliance-report
+          path: |
+            .speckit/compliance-report.json
+            .speckit/compliance-report.md
