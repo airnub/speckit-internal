@@ -15,4 +15,4 @@ updated: "2025-09-22"
 - RTM linking functional requirements to design, code, and tests.
 
 ## Notes
-- Orchestration plan is tracked as `.dev/orchestration-plan-v0.0.2.md` and your **root `AGENTS.md`** is maintained manually.
+- Orchestration plan is tracked as `docs/internal/orchestration-plan-v0.0.2.md` and your **root `AGENTS.md`** is maintained manually.

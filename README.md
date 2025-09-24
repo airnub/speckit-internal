@@ -12,6 +12,7 @@
 - **Templates**:
   - **Built-in** — `blank`, `next-supabase`, `speckit-template`
   - **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
+  - **Catalog bundles** — immutable assets published under `.speckit/catalog/**`; sync via `speckit catalog sync` and guard with the `catalog:allowed` label when edits are approved
 - **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
 - **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
 - **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
@@ -50,9 +51,16 @@ pnpm --filter @speckit/tui dev
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
 
+## Speckit Catalog & Internal Docs
+
+- `docs/internal/**` is the editable workspace for briefs, ADRs, orchestration plans, and the RTM.
+- `.speckit/spec.yaml` serves as the authoritative source for generated docs; regenerate via `speckit gen`.
+- `.speckit/catalog/**` holds published spec and prompt bundles. Use the Speckit CLI to sync or add bundles—never edit by hand.
+- CI enforces catalog immutability (CODEOWNERS + `block-catalog-edits`) and drift detection (`speckit-verify`).
+
 ## Repo-local templates
 
-SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`speckit template list`, `speckit template use`, `speckit init --template …`; alias: swap `speckit` for `spec`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `speckit template use …` or `speckit init --template …` (add `#branch` or `?ref=` if you need a branch other than the default—alias: `spec`).
+SpecKit automatically merges the built-in catalog with any directories that live under `.speckit/templates/**` in your current repo when you iterate locally. Treat `.speckit/catalog/**` as the published, read-only bundles managed through the CLI. Each directory becomes a selectable template (its name defaults to the relative path, e.g. `.speckit/templates/app/next` → `app/next`). Make sure the directory contains a manifest or at least one file; empty folders are ignored. The CLI (`speckit template list`, `speckit template use`, `speckit init --template …`; alias: swap `speckit` for `spec`) and the TUI picker (`N`) both surface these entries alongside the defaults. When you need something outside the catalog, pass a GitHub URL directly to `speckit template use …` or `speckit init --template …` (add `#branch` or `?ref=` if you need a branch other than the default—alias: `spec`).
 
 ### Optional manifest (`template.json`)
 

@@ -1,0 +1,32 @@
+# Orchestration Plan — {{ spec.meta.title }} (v{{ spec.meta.version }})
+
+## Launch Sequence
+1. `pnpm install` to hydrate workspace dependencies.
+2. `pnpm -w speckit gen --bundle nextjs-supabase` to materialize docs.
+3. `pnpm lint` and `pnpm test` to confirm baseline quality gates.
+4. Schedule stakeholder review with generated spec links.
+
+## Working Agreements
+- Keep `docs/internal/**` as the editable workspace for product + engineering.
+- Treat `.speckit/catalog/**` as immutable; changes require maintainer approval.
+- Document architecture choices via ADRs under `docs/internal/adr/`.
+
+## Milestones
+### M1 — Catalog setup
+- Ensure bundle manifest references outputs under `docs/specs/`.
+- Verify CODEOWNERS and CI guard rails are enabled.
+
+### M2 — Feature delivery
+- Implement Next.js routes for backlog, runbook, and changelog views.
+- Connect Supabase policies to enforce row-level security.
+- Instrument usage analytics (feature flags optional).
+
+### M3 — Handoff
+- Capture release notes in generated changelog output.
+- Run `speckit verify` prior to merge to catch drift.
+- Archive decision logs and link to release PR.
+
+## Risks & Mitigations
+- **Catalog edits bypass process** → Block PRs without `catalog:allowed` label.
+- **Spec drift** → Enforce `speckit verify` in CI and require clean diffs.
+- **Runtime churn** → Pin pnpm workspace versions and document upgrade steps.

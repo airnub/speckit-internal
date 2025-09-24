@@ -2,7 +2,7 @@
 id: coding-agent-brief-v0-0-1
 title: SpecKit — Coding Agent Brief (v0.0.1)
 sidebar_label: Agent Brief v0.0.1
-slug: /dev/specs/coding-agent-brief-v0-0-1
+slug: /internal/agents/coding-agent-brief-v0-0-1
 description: Canonical internal prompt for agents implementing SpecKit v0.0.1.
 created: "2025-09-22"
 updated: "2025-09-22"
@@ -10,9 +10,9 @@ updated: "2025-09-22"
 
 # Coding Agent Brief (v0.0.1)
 
-**Spec:** `.dev/specs/speckit-spec-v0.0.1.md`  
-**Plan:** `.dev/orchestration-plan-v0.0.2.md`  
-**RTM:** `.dev/rtm.md`
+**Spec:** `docs/internal/specs/speckit-spec-v0.0.1.md`  
+**Plan:** `docs/internal/orchestration-plan-v0.0.2.md`  
+**RTM:** `docs/internal/rtm.md`
 
 ## Guard Rails
 - Node 18+, TS strict, tsup builds.

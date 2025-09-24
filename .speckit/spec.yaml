@@ -1,0 +1,19 @@
+spec:
+  meta:
+    id: speckit
+    title: "Speckit Core"
+    version: "1.0.0"
+
+requirements:
+  - id: REQ-CATALOG-IMMUTABLE
+    title: Catalog is immutable in PRs
+    acceptance:
+      - { id: AC-CATALOG-BLOCK, given: "PR touches .speckit/catalog/**", when: "CI runs", then: "Job fails unless label 'catalog:allowed' present" }
+
+workplan:
+  milestones:
+    - { id: M-CATALOG, ac_refs: [AC-CATALOG-BLOCK], tasks: ["catalog skeleton", "CODEOWNERS", "CI blocker"] }
+
+rtm:
+  links:
+    - { req: REQ-CATALOG-IMMUTABLE, implemented_by: [".github/workflows/block-catalog-edits.yml"], ci: ["block-catalog-edits"] }

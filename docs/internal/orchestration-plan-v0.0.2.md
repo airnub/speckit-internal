@@ -13,10 +13,10 @@ updated: "2025-09-22"
 **Why a v0.0.2 filename?** This plan is iterated more frequently and separately from the v0.0.1 baseline spec; you maintain a root `AGENTS.md` manually. This internal plan complements it.
 
 ## Documents of Record
-- Spec (SRS): `.dev/specs/speckit-spec-v0.0.1.md`
-- Agent brief: `.dev/prompts/coding-agent-brief-v0.0.1.md`
-- RTM: `.dev/rtm.md`
-- ADRs: `.dev/adrs/*`
+- Spec (SRS): `docs/internal/specs/speckit-spec-v0.0.1.md`
+- Agent brief: `docs/internal/agents/coding-agent-brief.md`
+- RTM: `docs/internal/rtm.md`
+- ADRs: `docs/internal/adr/*`
 
 ## Roles & Flow
 - **Planner (LLM)** → draft changes from requirement.
