@@ -4,6 +4,7 @@ import { parse } from "yaml";
 import { z } from "zod";
 import semver from "semver";
 import { isLikelyCommitSha } from "./version.js";
+import type { DialectInfo } from "./spec.js";
 
 const SemverRangeSchema = z
   .string()
@@ -29,12 +30,23 @@ const CommitSchema = z
     message: "Invalid git commit",
   });
 
+const DialectIdSchema = z
+  .string()
+  .min(1)
+  .transform(value => value.trim());
+
+const DialectRequirementSchema = z.object({
+  id: DialectIdSchema,
+  range: SemverRangeSchema,
+});
+
 const CatalogLockSchema = z.array(
   z.object({
     id: z.string(),
     sha: z.string(),
     version: SemverVersionSchema,
     requires_speckit: SemverRangeSchema,
+    requires_dialect: DialectRequirementSchema,
     synced_with: z.object({ version: SemverVersionSchema, commit: CommitSchema }),
   })
 );
@@ -47,6 +59,7 @@ const BundleSchema = z.object({
   engine: z.enum(["nunjucks"]),
   requires_spec: SemverRangeSchema.optional(),
   requires_speckit: SemverRangeSchema,
+  requires_dialect: DialectRequirementSchema,
   outputs: z.array(
     z.object({ id: z.string(), from: z.string(), to: z.string() })
   ),
@@ -55,6 +68,7 @@ const BundleSchema = z.object({
 
 export type CatalogLockEntry = z.infer<typeof CatalogLockSchema>[number];
 export type BundleDefinition = z.infer<typeof BundleSchema> & { dir: string };
+type DialectRequirement = z.infer<typeof DialectRequirementSchema>;
 
 export async function loadCatalogLock(repoRoot: string): Promise<CatalogLockEntry[]> {
   const lockPath = path.join(repoRoot, ".speckit", "catalog.lock");
@@ -124,5 +138,32 @@ export function assertSpecCompatibility(
     throw new Error(
       `Bundle '${bundle.id}' requires spec version ${range} but current spec is ${specVersion}`
     );
+  }
+}
+
+export function assertDialectCompatibility(
+  dialect: DialectInfo,
+  entry: CatalogLockEntry,
+  bundle: BundleDefinition
+) {
+  const requirements: DialectRequirement[] = [entry.requires_dialect, bundle.requires_dialect];
+  const ids = new Set(requirements.map(req => req.id));
+  if (ids.size !== 1) {
+    throw new Error(
+      `Bundle '${bundle.id}' declares incompatible requires_dialect identifiers (${Array.from(ids).join(", ")})`
+    );
+  }
+  const expectedId = requirements[0].id;
+  if (dialect.id !== expectedId) {
+    throw new Error(
+      `Bundle '${bundle.id}' targets dialect '${expectedId}' but spec declares '${dialect.id}'`
+    );
+  }
+  for (const requirement of requirements) {
+    if (!semver.satisfies(dialect.version, requirement.range, { includePrerelease: true })) {
+      throw new Error(
+        `Bundle '${bundle.id}' requires dialect ${requirement.range} but spec uses ${dialect.version}`
+      );
+    }
   }
 }

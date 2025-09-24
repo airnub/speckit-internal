@@ -5,8 +5,14 @@ import { globby } from "globby";
 import { execa } from "execa";
 import { parseManifest, readManifest } from "./manifest.js";
 import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
-import { hashSpecYaml, loadSpecYaml } from "./spec.js";
-import { loadCatalogLock, loadBundle } from "./catalog.js";
+import { hashSpecYaml, loadSpecModel } from "./spec.js";
+import {
+  loadCatalogLock,
+  loadBundle,
+  assertSpecCompatibility,
+  assertSpeckitCompatibility,
+  assertDialectCompatibility,
+} from "./catalog.js";
 import { createHash } from "node:crypto";
 
 type AuditRow = {
@@ -26,14 +32,40 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
   const manifest = await readManifest(repoRoot);
   const speckitInfo = await getSpeckitVersion(repoRoot);
   const specDigest = await hashSpecYaml(repoRoot);
-  const { data: specData } = await loadSpecYaml(repoRoot);
-  const specVersion = specData?.spec?.meta?.version;
+  const { model, dialect } = await loadSpecModel(repoRoot);
+  const specVersion = typeof model.version === "string" ? model.version.trim() : "";
   const catalogEntries = await loadCatalogLock(repoRoot);
   const catalogById = new Map<string, { sha: string; version: string }>();
   const issues: string[] = [];
+  if (!specVersion) {
+    issues.push("SpecModel.version is missing or empty");
+  }
   for (const entry of catalogEntries) {
     const bundle = await loadBundle(repoRoot, entry);
     catalogById.set(entry.id, { sha: entry.sha, version: bundle.version });
+    try {
+      assertSpeckitCompatibility(speckitInfo.version, entry, bundle);
+    } catch (error: any) {
+      issues.push(
+        `Bundle '${bundle.id}' speckit compatibility: ${error?.message ?? String(error)}`
+      );
+    }
+    if (specVersion) {
+      try {
+        assertSpecCompatibility(specVersion, bundle);
+      } catch (error: any) {
+        issues.push(
+          `Bundle '${bundle.id}' spec compatibility: ${error?.message ?? String(error)}`
+        );
+      }
+    }
+    try {
+      assertDialectCompatibility(dialect, entry, bundle);
+    } catch (error: any) {
+      issues.push(
+        `Bundle '${bundle.id}' dialect compatibility: ${error?.message ?? String(error)}`
+      );
+    }
     if (!isLikelyCommitSha(entry.synced_with.commit)) {
       issues.push(
         `Catalog lock entry '${entry.id}' has invalid synced_with.commit '${entry.synced_with.commit}'`
@@ -69,6 +101,7 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
       at: string;
       digest: string;
       synced_with: { version: string; commit: string } | null;
+      dialect: { id: string; version: string } | null;
     }
   >();
   for (const run of manifest.runs) {
@@ -79,6 +112,21 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
         `Manifest run at ${run.at} has invalid synced_with.commit '${run.synced_with.commit}'`
       );
     }
+    let runDialect: { id: string; version: string } | null = null;
+    if (run.dialect && typeof run.dialect === "object") {
+      const id = typeof run.dialect.id === "string" ? run.dialect.id.trim() : "";
+      const version = typeof run.dialect.version === "string" ? run.dialect.version.trim() : "";
+      if (id && version) {
+        runDialect = { id, version };
+      }
+    }
+    if (!runDialect) {
+      issues.push(`Manifest run at ${run.at} missing dialect metadata`);
+    } else if (runDialect.id !== dialect.id || runDialect.version !== dialect.version) {
+      issues.push(
+        `Manifest run at ${run.at} recorded dialect ${runDialect.id}@${runDialect.version} but spec uses ${dialect.id}@${dialect.version}`
+      );
+    }
     for (const output of run.outputs) {
       manifestByPath.set(output.path, {
         spec: run.spec,
@@ -86,8 +134,18 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
         at: run.at,
         digest: output.digest,
         synced_with: run.synced_with ?? null,
+        dialect: runDialect,
       });
     }
+  }
+
+  const hasCurrentRun = manifest.runs.some(
+    run => run.spec?.digest === specDigest && run.spec?.version === specVersion
+  );
+  if (!hasCurrentRun) {
+    issues.push(
+      `generation-manifest.json missing run for spec ${specVersion || "unknown"} (${specDigest})`
+    );
   }
 
   const files = await globby(["docs/specs/**/*", "!docs/specs/templates/**"], { cwd: repoRoot, dot: false, onlyFiles: true });
@@ -117,6 +175,23 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
 
     const manifestEntry = manifestByPath.get(relPath);
     let status: AuditRow["status"] = "OK";
+
+    const provDialectId =
+      typeof prov.dialect?.id === "string" ? prov.dialect.id.trim() : "";
+    const provDialectVersion =
+      typeof prov.dialect?.version === "string" ? prov.dialect.version.trim() : "";
+    const provDialect = provDialectId && provDialectVersion
+      ? { id: provDialectId, version: provDialectVersion }
+      : null;
+    if (!provDialect) {
+      status = "MISMATCH";
+      issues.push(`${relPath}: provenance missing dialect metadata`);
+    } else if (provDialect.id !== dialect.id || provDialect.version !== dialect.version) {
+      status = "MISMATCH";
+      issues.push(
+        `${relPath}: dialect mismatch (found ${provDialect.id}@${provDialect.version}, expected ${dialect.id}@${dialect.version})`
+      );
+    }
 
     const provToolVersionRaw = typeof prov.tool_version === "string" ? prov.tool_version : "";
     const provToolVersion = provToolVersionRaw.trim();
@@ -164,6 +239,17 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
       if (manifestEntry.spec.version !== prov.spec?.version || manifestEntry.spec.digest !== prov.spec?.digest) {
         status = "MISMATCH";
         issues.push(`${relPath}: spec metadata mismatch`);
+      }
+
+      if (!manifestEntry.dialect) {
+        status = "MISMATCH";
+        issues.push(`${relPath}: manifest dialect metadata missing`);
+      } else if (
+        provDialect &&
+        (manifestEntry.dialect.id !== provDialect.id || manifestEntry.dialect.version !== provDialect.version)
+      ) {
+        status = "MISMATCH";
+        issues.push(`${relPath}: manifest dialect metadata mismatch`);
       }
 
       if (!manifestEntry.synced_with) {

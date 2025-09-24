@@ -24,6 +24,15 @@
 - **Single source of truth** is `.speckit/spec.yaml`. Run `speckit gen --write` to refresh generated docs in `docs/specs/`, then commit the results.
 - **Verification** is enforced by the `speckit-verify` workflow, which fails the build if generated docs drift from the spec.
 
+## Dialect & Adapters
+
+SpecKit now routes every generation through a normalized **SpecModel**. The repository declares its input dialect in `.speckit/spec.yaml` (`dialect.id` + `dialect.version`), and the CLI picks the matching adapter at runtime. Today the catalog ships with two adapters:
+
+- `@speckit/adapter-speckit-v1` — maps the classic SpecKit YAML into the normalized SpecModel.
+- `@speckit/adapter-owasp-asvs-v4` — scaffolds OWASP ASVS v4 sections into the same shape so we can swap in that standard later without rewriting templates.
+
+Generated Markdown and the append-only `generation-manifest.json` record the dialect alongside tool and template provenance. To migrate a repo to ASVS, point `.speckit/spec.yaml` at the `owasp.asvs.v4` dialect (and provide an ASVS-formatted input file), then run `speckit gen --write`. The adapters keep templates untouched while enforcing compatibility through bundle constraints.
+
 ### Why it matters
 
 This rationale lives in the repository README so generated specs stay focused while the full context stays easy to find.
