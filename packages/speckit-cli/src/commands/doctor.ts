@@ -1,4 +1,4 @@
-import { Command } from "clipanion";
+import { Command, Option } from "clipanion";
 import path from "node:path";
 import fs from "fs-extra";
 import { loadTemplates } from "@speckit/core";
@@ -11,6 +11,8 @@ import {
 
 export class DoctorCommand extends Command {
   static paths = [["doctor"]];
+
+  json = Option.Boolean("--json", false);
 
   async execute() {
     try {
@@ -36,6 +38,19 @@ export class DoctorCommand extends Command {
       }
 
       const policyResults: { label: string; ok: boolean; detail?: string }[] = [];
+      const classicTemplates = grouped.get("classic") ?? [];
+      const hasClassicTemplates = classicTemplates.length > 0;
+      policyResults.push({
+        label: "Classic templates available",
+        ok: hasClassicTemplates,
+        detail: hasClassicTemplates ? undefined : "No templates registered for classic mode",
+      });
+      const defaultModeIsClassic = defaultMode === "classic";
+      policyResults.push({
+        label: "Default mode is classic",
+        ok: defaultModeIsClassic,
+        detail: defaultModeIsClassic ? undefined : `Found '${defaultMode}'`,
+      });
       const catalogGatePath = path.join(repoRoot, ".github", "workflows", "catalog-protect.yml");
       const hasCatalogGate = await fs.pathExists(catalogGatePath);
       policyResults.push({ label: "Catalog gate workflow present", ok: hasCatalogGate });
@@ -55,24 +70,34 @@ export class DoctorCommand extends Command {
         });
       }
 
-      this.context.stdout.write("Speckit Doctor\n===============\n\n");
-      this.context.stdout.write(`Default generation mode: ${defaultMode}\n\n`);
-      this.context.stdout.write("Templates by mode:\n");
-      for (const mode of GENERATION_MODES) {
-        const templatesForMode = grouped.get(mode) ?? [];
-        const list = templatesForMode.length ? templatesForMode.join(", ") : "(none)";
-        this.context.stdout.write(`  - ${mode}: ${list}\n`);
-      }
+      const report = {
+        defaultMode,
+        templatesByMode: Object.fromEntries(
+          GENERATION_MODES.map((mode) => [mode, [...(grouped.get(mode) ?? [])]]),
+        ),
+        policies: policyResults,
+      };
 
-      this.context.stdout.write("\nPolicy checks:\n");
-      let hasFailures = false;
-      for (const result of policyResults) {
-        const symbol = result.ok ? "✔" : "✖";
-        if (!result.ok) {
-          hasFailures = true;
+      const hasFailures = policyResults.some((result) => !result.ok);
+
+      if (this.json) {
+        this.context.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+      } else {
+        this.context.stdout.write("Speckit Doctor\n===============\n\n");
+        this.context.stdout.write(`Default generation mode: ${defaultMode}\n\n`);
+        this.context.stdout.write("Templates by mode:\n");
+        for (const mode of GENERATION_MODES) {
+          const templatesForMode = report.templatesByMode[mode] ?? [];
+          const list = templatesForMode.length ? templatesForMode.join(", ") : "(none)";
+          this.context.stdout.write(`  - ${mode}: ${list}\n`);
         }
-        const detail = result.detail ? ` — ${result.detail}` : "";
-        this.context.stdout.write(`  ${symbol} ${result.label}${detail}\n`);
+
+        this.context.stdout.write("\nPolicy checks:\n");
+        for (const result of policyResults) {
+          const symbol = result.ok ? "✔" : "✖";
+          const detail = result.detail ? ` — ${result.detail}` : "";
+          this.context.stdout.write(`  ${symbol} ${result.label}${detail}\n`);
+        }
       }
 
       return hasFailures ? 1 : 0;
