@@ -10,15 +10,19 @@ import { GenerateDocsCommand } from "./commands/gen.js";
 import { AuditCommand } from "./commands/audit.js";
 import { DoctorCommand } from "./commands/doctor.js";
 
-cfonts.say("speckit", { font: "block" });
-console.log(
-  boxen(
-    "speckit v0.0.1 (alias: spec): `speckit template list` · `speckit init --template next-supabase` · `speckit init --template speckit-template`",
-    { padding: 1, borderStyle: "round" },
-  ),
-);
-
 const [, , ...args] = process.argv;
+const showBanner = !(args[0] === "doctor" && args.includes("--json"));
+
+if (showBanner) {
+  cfonts.say("speckit", { font: "block" });
+  console.log(
+    boxen(
+      "speckit v0.0.1 (alias: spec): `speckit template list` · `speckit init --template next-supabase` · `speckit init --template speckit-template`",
+      { padding: 1, borderStyle: "round" },
+    ),
+  );
+}
+
 const cli = new Cli({ binaryLabel: "speckit", binaryName: "speckit", binaryVersion: "0.0.1" });
 
 cli.register(Builtins.HelpCommand);

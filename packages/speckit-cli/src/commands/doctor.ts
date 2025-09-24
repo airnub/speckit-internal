@@ -1,4 +1,4 @@
-import { Command } from "clipanion";
+import { Command, Option } from "clipanion";
 import path from "node:path";
 import fs from "fs-extra";
 import { loadTemplates } from "@speckit/core";
@@ -9,8 +9,27 @@ import {
   templateModes,
 } from "../services/mode.js";
 
+type DoctorCheck = {
+  id: string;
+  label: string;
+  ok: boolean;
+  detail?: string;
+};
+
+type DoctorReport = {
+  defaultMode: string;
+  templatesByMode: Record<string, string[]>;
+  policyChecks: DoctorCheck[];
+  summary: {
+    ok: boolean;
+    failures: DoctorCheck[];
+  };
+};
+
 export class DoctorCommand extends Command {
   static paths = [["doctor"]];
+
+  json = Option.Boolean("--json", false);
 
   async execute() {
     try {
@@ -35,24 +54,75 @@ export class DoctorCommand extends Command {
         bucket.sort((a, b) => a.localeCompare(b));
       }
 
-      const policyResults: { label: string; ok: boolean; detail?: string }[] = [];
+      const policyChecks: DoctorCheck[] = [];
+      policyChecks.push({
+        id: "defaultModeClassic",
+        label: "Default generation mode is classic",
+        ok: defaultMode === "classic",
+        detail:
+          defaultMode === "classic"
+            ? undefined
+            : `Found default mode '${defaultMode}'.`,
+      });
+
+      const classicTemplates = grouped.get("classic") ?? [];
+      policyChecks.push({
+        id: "classicTemplatesPresent",
+        label: "Classic templates present",
+        ok: classicTemplates.length > 0,
+        detail:
+          classicTemplates.length > 0
+            ? undefined
+            : "No templates configured for classic mode.",
+      });
+
       const catalogGatePath = path.join(repoRoot, ".github", "workflows", "catalog-protect.yml");
       const hasCatalogGate = await fs.pathExists(catalogGatePath);
-      policyResults.push({ label: "Catalog gate workflow present", ok: hasCatalogGate });
+      policyChecks.push({
+        id: "catalogGateWorkflowPresent",
+        label: "Catalog gate workflow present",
+        ok: hasCatalogGate,
+        detail: hasCatalogGate
+          ? undefined
+          : "Missing .github/workflows/catalog-protect.yml",
+      });
       if (hasCatalogGate) {
         const content = await fs.readFile(catalogGatePath, "utf8");
         const enforcesLabel = content.includes("catalog:allowed");
-        policyResults.push({
+        policyChecks.push({
+          id: "catalogGateRequiresLabel",
           label: "Catalog gate requires 'catalog:allowed' label",
           ok: enforcesLabel,
           detail: enforcesLabel ? undefined : "Add label check to catalog-protect.yml",
         });
       } else {
-        policyResults.push({
+        policyChecks.push({
+          id: "catalogGateRequiresLabel",
           label: "Catalog gate requires 'catalog:allowed' label",
           ok: false,
           detail: "Missing .github/workflows/catalog-protect.yml",
         });
+      }
+
+      const templatesByMode = Object.fromEntries(
+        Array.from(grouped.entries()).map(([mode, entries]) => [mode, entries])
+      );
+
+      const failures = policyChecks.filter(check => !check.ok);
+      const report: DoctorReport = {
+        defaultMode,
+        templatesByMode,
+        policyChecks,
+        summary: {
+          ok: failures.length === 0,
+          failures,
+        },
+      };
+
+      if (this.json) {
+        this.context.stdout.write(JSON.stringify(report, null, 2));
+        this.context.stdout.write("\n");
+        return 0;
       }
 
       this.context.stdout.write("Speckit Doctor\n===============\n\n");
@@ -65,17 +135,13 @@ export class DoctorCommand extends Command {
       }
 
       this.context.stdout.write("\nPolicy checks:\n");
-      let hasFailures = false;
-      for (const result of policyResults) {
+      for (const result of policyChecks) {
         const symbol = result.ok ? "✔" : "✖";
-        if (!result.ok) {
-          hasFailures = true;
-        }
         const detail = result.detail ? ` — ${result.detail}` : "";
         this.context.stdout.write(`  ${symbol} ${result.label}${detail}\n`);
       }
 
-      return hasFailures ? 1 : 0;
+      return failures.length === 0 ? 0 : 1;
     } catch (error: any) {
       const message = error?.message ?? String(error);
       this.context.stderr.write(`speckit doctor failed: ${message}\n`);
