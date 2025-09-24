@@ -1,0 +1,58 @@
+name: Mode Policy Gate
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
+
+jobs:
+  opa-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Collect PR context
+        id: context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const labels = (pr.labels || []).map(label => label.name);
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100
+              }
+            );
+            const data = {
+              labels,
+              files: files.map(file => ({
+                path: file.filename,
+                status: file.status,
+                previous_path: file.previous_filename || null
+              }))
+            };
+            fs.writeFileSync('pr-context.json', JSON.stringify(data, null, 2));
+            core.setOutput('json-path', 'pr-context.json');
+
+      - name: Install Conftest
+        run: |
+          set -euo pipefail
+          version="0.45.0"
+          curl -sSL -o conftest.tar.gz "https://github.com/open-policy-agent/conftest/releases/download/v${version}/conftest_${version}_Linux_x86_64.tar.gz"
+          tar -xzf conftest.tar.gz
+          sudo install -m 0755 conftest /usr/local/bin/conftest
+          rm -f conftest.tar.gz
+          conftest --version
+
+      - name: Evaluate policies
+        run: conftest test pr-context.json --policy policy
