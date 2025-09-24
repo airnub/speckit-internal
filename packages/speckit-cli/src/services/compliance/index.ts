@@ -1,6 +1,7 @@
 import type { Writable } from "node:stream";
 import { generateHipaaPlan, verifyHipaaCompliance } from "./hipaa.js";
 import { generateEduUsPlan, verifyEduUsCompliance } from "./edu-us.js";
+import { generateEduEuIePlan, verifyEduEuIeCompliance } from "./edu-eu-ie.js";
 
 type BaseOptions = { repoRoot?: string; stdout?: Writable };
 
@@ -19,11 +20,13 @@ type VerifyHandler = (options: {
 const PLAN_HANDLERS: Record<string, PlanHandler> = {
   hipaa: generateHipaaPlan,
   "edu-us": generateEduUsPlan,
+  "edu-eu-ie": generateEduEuIePlan,
 };
 
 const VERIFY_HANDLERS: Record<string, VerifyHandler> = {
   hipaa: verifyHipaaCompliance,
   "edu-us": verifyEduUsCompliance,
+  "edu-eu-ie": verifyEduEuIeCompliance,
 };
 
 export async function runCompliancePlan(options: PlanOptions) {

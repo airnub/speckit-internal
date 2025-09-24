@@ -1,0 +1,22 @@
+id: compliance-edu-eu-ie
+name: "Education (EU/IE) Compliance Bundle"
+kind: specs
+version: "0.1.0"
+engine: nunjucks
+requires_speckit: ">=0.1.0 <1"
+requires_dialect:
+  id: speckit.v1
+  range: ">=1.0.0 <2"
+outputs:
+  - id: edu-eu-ie-readme
+    from: README.njk
+    to: docs/internal/compliance/edu-eu-ie/README.md
+  - id: edu-eu-ie-controls
+    from: edu-eu-ie-controls.njk
+    to: docs/internal/compliance/edu-eu-ie/edu-eu-ie-controls.yaml
+  - id: gdpr-student-data-checklist
+    from: ../edu-eu/gdpr-core/gdpr-student-data-checklist.md
+    to: docs/internal/compliance/edu-eu-ie/gdpr-student-data-checklist.md
+  - id: ie-children-fundamentals
+    from: ../edu-ie/children/ie-children-fundamentals.md
+    to: docs/internal/compliance/edu-eu-ie/ie-children-fundamentals.md
