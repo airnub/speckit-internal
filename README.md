@@ -24,6 +24,10 @@
 - **Single source of truth** is `.speckit/spec.yaml`. Run `speckit gen --write` to refresh generated docs in `docs/specs/`, then commit the results.
 - **Verification** is enforced by the `speckit-verify` workflow, which fails the build if generated docs drift from the spec.
 
+## Mode Policy Gate
+
+PRs that change `packages/speckit-cli/src/config/modes.ts` or remove files inside the classic templates (`blank`, `next-supabase`, `speckit-template`) must carry the `mode-change` label. The OPA/Conftest gate fails any pull request that makes those adjustments without the label applied.
+
 ## Dialect & Adapters
 
 SpecKit now routes every generation through a normalized **SpecModel**. The repository declares its input dialect in `.speckit/spec.yaml` (`dialect.id` + `dialect.version`), and the CLI picks the matching adapter at runtime. Today the catalog ships with two adapters:
