@@ -3,6 +3,9 @@ name: "Standard Coding Prompts"
 kind: prompts
 version: "0.1.0"
 requires_speckit: ">=0.1.0 <1"
+requires_dialect:
+  id: speckit.v1
+  range: ">=1.0.0 <2"
 description: "Consolidated prompts for codegen/review/refactor workflows."
 prompts:
   - id: codegen
