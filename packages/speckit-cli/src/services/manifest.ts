@@ -31,24 +31,30 @@ const DEFAULT_MANIFEST: Manifest = {
   runs: [],
 };
 
+export function parseManifest(raw: string): Manifest {
+  if (!raw.trim()) {
+    return { ...DEFAULT_MANIFEST };
+  }
+  const parsed = JSON.parse(raw);
+  return ManifestSchema.parse(parsed);
+}
+
 export async function readManifest(repoRoot: string): Promise<Manifest> {
   const manifestPath = path.join(repoRoot, ".speckit", "generation-manifest.json");
   if (!(await fs.pathExists(manifestPath))) {
     return { ...DEFAULT_MANIFEST };
   }
   const raw = await fs.readFile(manifestPath, "utf8");
-  if (!raw.trim()) {
-    return { ...DEFAULT_MANIFEST };
-  }
-  const parsed = JSON.parse(raw);
-  const manifest = ManifestSchema.parse(parsed);
-  return manifest;
+  return parseManifest(raw);
 }
 
 export async function writeManifest(repoRoot: string, manifest: Manifest): Promise<void> {
   const manifestPath = path.join(repoRoot, ".speckit", "generation-manifest.json");
   await fs.ensureDir(path.dirname(manifestPath));
-  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
+  const payload = JSON.stringify(manifest, null, 2) + "\n";
+  const tempPath = `${manifestPath}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(tempPath, payload, "utf8");
+  await fs.move(tempPath, manifestPath, { overwrite: true });
 }
 
 export async function appendManifestRun(
@@ -62,7 +68,10 @@ export async function appendManifestRun(
     ...run,
     synced_with: run.synced_with ?? { version: info.version, commit: info.commit },
   };
-  manifest.runs.push(enriched);
+  const alreadyPresent = manifest.runs.some(existing => existing.at === enriched.at);
+  if (!alreadyPresent) {
+    manifest.runs.push(enriched);
+  }
   await writeManifest(repoRoot, manifest);
 }
 

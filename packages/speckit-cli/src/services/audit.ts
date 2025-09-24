@@ -2,9 +2,8 @@ import path from "node:path";
 import fs from "fs-extra";
 import matter from "gray-matter";
 import { globby } from "globby";
-import {
-  readManifest,
-} from "./manifest.js";
+import { execa } from "execa";
+import { parseManifest, readManifest } from "./manifest.js";
 import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { hashSpecYaml, loadSpecYaml } from "./spec.js";
 import { loadCatalogLock, loadBundle } from "./catalog.js";
@@ -53,6 +52,13 @@ export async function auditGeneratedDocs(repoRoot: string, stdout: NodeJS.Writab
   if (manifest.speckit.version !== speckitInfo.version) {
     issues.push(
       `Manifest speckit.version (${manifest.speckit.version}) does not match current version (${speckitInfo.version})`
+    );
+  }
+
+  const baselineRunCount = await loadBaselineRunCount(repoRoot);
+  if (baselineRunCount !== null && manifest.runs.length < baselineRunCount) {
+    issues.push(
+      `generation-manifest runs[] shrank (${manifest.runs.length} < ${baselineRunCount}). The ledger must remain append-only.`
     );
   }
   const manifestByPath = new Map<
@@ -245,4 +251,26 @@ function printTable(rows: AuditRow[], stdout: NodeJS.WritableStream) {
 function hashString(content: string): string {
   const digest = createHash("sha256").update(content, "utf8").digest("hex");
   return `sha256:${digest}`;
+}
+
+async function loadBaselineRunCount(repoRoot: string): Promise<number | null> {
+  const refs = ["origin/main", "upstream/main", "main"];
+  for (const ref of refs) {
+    try {
+      const { stdout } = await execa("git", ["show", `${ref}:.speckit/generation-manifest.json`], {
+        cwd: repoRoot,
+      });
+      const manifest = parseManifest(stdout);
+      return manifest.runs.length;
+    } catch (error: any) {
+      if (error?.exitCode === 128 || error?.exitCode === 129) {
+        continue;
+      }
+      if (typeof error?.message === "string" && /not a valid object name/.test(error.message)) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  return null;
 }
