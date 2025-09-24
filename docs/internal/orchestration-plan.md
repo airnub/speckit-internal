@@ -36,6 +36,7 @@ updated: "2025-09-22"
 3. Runners (K/B).
 4. Settings (provider/model lists).
 5. AI Propose (gated stub).
+6. Security control alignment: baseline taxonomy + RTM export paths for OWASP ASVS/SAMM, PCI DSS, ISO 27001, GDPR.
 
 ## CI Gates
 - Typecheck, build all packages.
