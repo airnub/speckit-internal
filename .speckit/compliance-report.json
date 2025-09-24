@@ -1,0 +1,144 @@
+{
+  "framework": "hipaa",
+  "generated_at": "2025-09-24T22:41:38.361Z",
+  "spec": {
+    "engine_mode": "classic",
+    "compliance_enabled": false,
+    "hipaa_requested": true,
+    "frameworks": [
+      {
+        "id": "hipaa",
+        "scope": [
+          "covered-entity",
+          "business-associate"
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "version": "2024.09",
+    "title": "HIPAA Security Rule Core Safeguards",
+    "crosswalks": {
+      "nist_sp_800_66r2": {
+        "title": "NIST SP 800-66 Rev.2",
+        "url": "https://csrc.nist.gov/publications/detail/sp/800-66/rev-2/final"
+      },
+      "olir_mapping": {
+        "title": "NIST OLIR: HIPAA Security Rule ↔︎ SP 800-53 Rev.5",
+        "url": "https://csrc.nist.gov/Projects/olir"
+      }
+    }
+  },
+  "summary": {
+    "total": 8,
+    "passed": 4,
+    "failed": 0,
+    "manual": 4,
+    "objective_failures": 0
+  },
+  "controls": [
+    {
+      "requirementId": "HIPAA-SR-ADM-SEC-MGMT",
+      "title": "Security Management Process",
+      "hipaaCitation": "45 CFR §164.308 §164.308(a)(1)",
+      "objective": false,
+      "status": "manual",
+      "mappedNistControls": [
+        "RA-3",
+        "CA-2",
+        "AU-6"
+      ]
+    },
+    {
+      "requirementId": "HIPAA-SR-ADM-WORKFORCE",
+      "title": "Workforce Security",
+      "hipaaCitation": "45 CFR §164.308 §164.308(a)(3)",
+      "objective": false,
+      "status": "manual",
+      "mappedNistControls": [
+        "PS-2",
+        "PS-3",
+        "AC-5"
+      ]
+    },
+    {
+      "requirementId": "HIPAA-SR-PHY-FACILITY-ACCESS",
+      "title": "Facility Access Controls",
+      "hipaaCitation": "45 CFR §164.310 §164.310(a)(1)",
+      "objective": false,
+      "status": "manual",
+      "mappedNistControls": [
+        "PE-2",
+        "PE-3",
+        "PE-6"
+      ]
+    },
+    {
+      "requirementId": "HIPAA-SR-PHY-DEVICE-MEDIA",
+      "title": "Device and Media Controls",
+      "hipaaCitation": "45 CFR §164.310 §164.310(d)(1)",
+      "objective": false,
+      "status": "manual",
+      "mappedNistControls": [
+        "MP-6",
+        "MP-7",
+        "SC-12"
+      ]
+    },
+    {
+      "requirementId": "HIPAA-SR-TECH-ACCESS-UNIQUE-ID",
+      "title": "Unique User Identification",
+      "hipaaCitation": "45 CFR §164.312 §164.312(a)(2)(i)",
+      "objective": true,
+      "status": "pass",
+      "evidence": "Workforce SSO issues immutable UUIDs; see infra/iac/iam.tf",
+      "mappedNistControls": [
+        "AC-2",
+        "IA-2",
+        "IA-4"
+      ]
+    },
+    {
+      "requirementId": "HIPAA-SR-TECH-AUDIT-CONTROLS",
+      "title": "Audit Controls",
+      "hipaaCitation": "45 CFR §164.312 §164.312(b)",
+      "objective": true,
+      "status": "pass",
+      "evidence": "Application and infrastructure logs aggregated in CloudWatch with 365-day retention (observability/logging.tf).",
+      "mappedNistControls": [
+        "AU-2",
+        "AU-6",
+        "AU-12"
+      ]
+    },
+    {
+      "requirementId": "HIPAA-SR-TECH-INTEGRITY-ENCRYPTION",
+      "title": "Encryption of ePHI at Rest",
+      "hipaaCitation": "45 CFR §164.312 §164.312(c)(1)",
+      "objective": true,
+      "status": "pass",
+      "evidence": "Managed database storage enforces AES-256 encryption via terraform/modules/database/encryption.tf.",
+      "mappedNistControls": [
+        "SC-28",
+        "SC-12",
+        "MP-6"
+      ]
+    },
+    {
+      "requirementId": "HIPAA-SR-TECH-TRANSMISSION-SECURITY",
+      "title": "Transmission Security",
+      "hipaaCitation": "45 CFR §164.312 §164.312(e)(1)",
+      "objective": true,
+      "status": "pass",
+      "evidence": "All external endpoints terminate TLS 1.2+ through AWS ACM certificates (infra/networking/tls.tf).",
+      "mappedNistControls": [
+        "SC-8",
+        "SC-12",
+        "SC-13"
+      ]
+    }
+  ],
+  "opa_policy": {
+    "path": "policy/opa/hipaa/technical.rego"
+  }
+}

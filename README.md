@@ -85,6 +85,23 @@ pnpm --filter @speckit/tui dev
 
 Classic keeps things lightweight with no external framework dependencies. Secure enables hardened scaffolds and standards enforcement; pass `--mode secure` whenever you need the guardrails.
 
+### Secure mode: HIPAA compliance pack
+
+Secure initiatives can now opt into a curated HIPAA Security Rule workflow without affecting the classic path. To enable it:
+
+1. Switch `.speckit/spec.yaml` to secure mode (`engine.mode: secure`) and set `compliance.enabled: true`.
+2. Keep the bundled HIPAA framework entry (`id: hipaa`) or add it to `compliance.frameworks` with any custom scope values.
+3. Capture technical safeguard evidence in `docs/internal/compliance/hipaa/technical-safeguards.yaml`.
+
+Then run the compliance helpers:
+
+```bash
+speckit compliance plan --framework hipaa    # generates the HIPAA checklist, privacy role guide, and breach plan
+speckit compliance verify --framework hipaa  # evaluates safeguards, runs the OPA policy, and writes .speckit/compliance-report.*
+```
+
+The HIPAA catalog uses NIST SP 800-66 Rev.2 guidance and the OLIR HIPAA ↔︎ NIST SP 800-53 Rev.5 mapping. Objective technical safeguards (TLS enforcement, encryption at rest, unique user IDs, audit logging) must report `pass` or the verify step fails; all other safeguards surface as manual evidence for reviewers.
+
 ### Verify & troubleshoot
 
 ```bash

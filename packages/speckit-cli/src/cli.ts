@@ -9,6 +9,7 @@ import { InitFromTemplateCommand } from "./commands/init.js";
 import { GenerateDocsCommand } from "./commands/gen.js";
 import { AuditCommand } from "./commands/audit.js";
 import { DoctorCommand } from "./commands/doctor.js";
+import { CompliancePlanCommand, ComplianceVerifyCommand } from "./commands/compliance.js";
 
 const [, , ...args] = process.argv;
 
@@ -35,5 +36,7 @@ cli.register(InitFromTemplateCommand);
 cli.register(GenerateDocsCommand);
 cli.register(AuditCommand);
 cli.register(DoctorCommand);
+cli.register(CompliancePlanCommand);
+cli.register(ComplianceVerifyCommand);
 
 cli.runExit(args, Cli.defaultContext);

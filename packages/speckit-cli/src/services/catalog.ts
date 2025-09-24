@@ -51,7 +51,7 @@ const CatalogLockSchema = z.array(
   })
 );
 
-const BundleSchema = z.object({
+export const BundleSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   kind: z.string(),

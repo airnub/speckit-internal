@@ -30,6 +30,7 @@
     "start": "node dist/cli.js"
   },
   "dependencies": {
+    "@speckit/adapter-hipaa": "workspace:*",
     "@speckit/adapter-owasp-asvs-v4": "workspace:*",
     "@speckit/adapter-speckit-v1": "workspace:*",
     "@inquirer/prompts": "^7.0.0",

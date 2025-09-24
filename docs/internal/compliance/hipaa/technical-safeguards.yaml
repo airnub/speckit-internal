@@ -1,0 +1,15 @@
+version: 1
+updated: 2024-09-01
+controls:
+  HIPAA-SR-TECH-ACCESS-UNIQUE-ID:
+    status: pass
+    evidence: "Workforce SSO issues immutable UUIDs; see infra/iac/iam.tf"
+  HIPAA-SR-TECH-AUDIT-CONTROLS:
+    status: pass
+    evidence: "Application and infrastructure logs aggregated in CloudWatch with 365-day retention (observability/logging.tf)."
+  HIPAA-SR-TECH-INTEGRITY-ENCRYPTION:
+    status: pass
+    evidence: "Managed database storage enforces AES-256 encryption via terraform/modules/database/encryption.tf."
+  HIPAA-SR-TECH-TRANSMISSION-SECURITY:
+    status: pass
+    evidence: "All external endpoints terminate TLS 1.2+ through AWS ACM certificates (infra/networking/tls.tf)."

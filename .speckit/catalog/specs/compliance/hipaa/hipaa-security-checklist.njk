@@ -1,0 +1,36 @@
+---
+title: "HIPAA Security Rule Checklist"
+requires_dialect: "speckit.v1@>=1.0.0"
+tags: ["secure", "hipaa"]
+---
+# HIPAA Security Rule Checklist
+
+This checklist summarises the administrative, physical, and technical safeguards drawn from the HIPAA Security Rule. It is derived from NIST SP 800-66 Rev.2 guidance and the NIST OLIR mapping to SP 800-53 Rev.5 controls to support secure-mode compliance planning.
+
+## Crosswalk references
+
+- NIST SP 800-66 Rev.2 — {{ hipaa.meta.crosswalks.nist_sp_800_66r2.title }} ({{ hipaa.meta.crosswalks.nist_sp_800_66r2.url }})
+- NIST OLIR Mapping — {{ hipaa.meta.crosswalks.olir_mapping.title }} ({{ hipaa.meta.crosswalks.olir_mapping.url }})
+
+## Safeguard status overview
+
+{% for family in hipaa.meta.families %}
+### {{ family.name }} ({{ family.citation }})
+
+{{ family.description }}
+
+| Safeguard | HIPAA Citation | Status | Evidence | Mapped NIST SP 800-53 Rev.5 Controls |
+| --- | --- | --- | --- | --- |
+{% for safeguard in family.safeguards %}
+{% set requirement_id = safeguard.requirement_id %}
+{% set status = hipaa.statuses[requirement_id] %}
+{% set evidence = status and status.evidence or 'Manual evidence required' %}
+| {{ safeguard.title }} | {{ family.citation }} {{ safeguard.citation }} | {{ status and status.status | upper or 'MANUAL' }} | {{ evidence }} | {{ safeguard.nist_800_53r5 | join(", ") }} |
+{% endfor %}
+{% endfor %}
+
+## Next steps
+
+1. Capture or link evidence for any safeguards marked as MANUAL.
+2. Update `docs/internal/compliance/hipaa/technical-safeguards.yaml` with objective evidence when controls are automated.
+3. Run `speckit compliance verify --framework hipaa` to refresh the compliance report.
