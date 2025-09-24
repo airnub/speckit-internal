@@ -116,6 +116,20 @@ speckit compliance verify --framework edu-us
 
 The generated README links to primary guidance from the U.S. Department of Education, FTC, FCC, and state regulators. Policy-as-code checks fail when under-13 processing lacks consent/retention documentation, E-Rate claims lack filtering or monitoring artefacts, or New York overlays miss the required public postings.
 
+### Secure mode: Education (EU/IE)
+
+Opt into an EU/Ireland bundle when processing student data for Irish schools or EU programmes that follow the Data Protection Commission’s guidance.
+
+```bash
+speckit compliance plan --framework edu-eu-ie
+speckit compliance verify --framework edu-eu-ie
+```
+
+- `plan` writes GDPR and DPC fundamentals docs to `docs/internal/compliance/edu-eu-ie/**` and seeds an evidence tracker that reflects your configured age of digital consent.
+- `verify` enforces age-of-digital-consent alignment, DPIA coverage, parental consent flows (when consent is the lawful basis), behavioural advertising bans, and retention limits. Results land in `.speckit/compliance-report.(json|md)`.
+
+Age defaults to 16 for Ireland. To support another EU/EEA Member State, edit `.speckit/spec.yaml` and set `compliance.frameworks[].config` for `edu-eu-ie`, then re-run the plan command to refresh docs with the new age.
+
 ### Verify & troubleshoot
 
 ```bash

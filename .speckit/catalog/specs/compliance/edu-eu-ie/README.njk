@@ -1,0 +1,43 @@
+# Secure mode: Education (EU/IE)
+
+This pack adds GDPR-aligned student privacy workflows plus the Irish Data Protection Commission’s “Children’s Fundamentals”. It is opt-in and keeps classic templates untouched.
+
+## Getting started
+
+```bash
+speckit compliance plan --framework edu-eu-ie
+speckit compliance verify --framework edu-eu-ie
+```
+
+- `plan` writes working docs to `docs/internal/compliance/edu-eu-ie/**`, including the GDPR checklist and DPC fundamentals.
+- `verify` inspects `edu-eu-ie-controls.yaml`, enforces the age-of-digital-consent guardrail, and writes `.speckit/compliance-report.(json|md)`.
+
+## Bundle contents
+
+| Artifact | Focus |
+| --- | --- |
+| `gdpr-student-data-checklist.md` | Lawful bases, transparency, data-subject rights, DPIA triggers |
+| `ie-children-fundamentals.md` | DPC best-interests principle, profiling/marketing limits, retention |
+| `edu-eu-ie-controls.yaml` | Evidence tracker for objective checks |
+
+## Age of digital consent
+
+Ireland defaults to age {{ edu_eu_ie.config.age_of_digital_consent }} for digital consent under GDPR Article 8. To support another Member State, edit `.speckit/spec.yaml`:
+
+```yaml
+compliance:
+  enabled: true
+  frameworks:
+    - id: edu-eu-ie
+      config:
+        member_state: "fr"
+        age_of_digital_consent: 15
+```
+
+Re-run `speckit compliance plan --framework edu-eu-ie` to refresh docs after updating the config. Templates cite GDPR Article 8 and the DPC guidance automatically using your configured age.
+
+## Reference links
+
+- GDPR Article 8 — [Children’s consent in relation to information society services](https://eur-lex.europa.eu/eli/reg/2016/679/art_8/oj)
+- Data Protection Commission (Ireland) — [Children’s Fundamentals](https://www.dataprotection.ie/en/dpc-guidance/childrens-data-protection)
+- European Data Protection Board — [Guidelines on DPIAs](https://edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-202002-article-64-1a-opinion-dpia-template_en)
