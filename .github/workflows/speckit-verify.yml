@@ -29,13 +29,13 @@ jobs:
         run: node packages/speckit-cli/dist/cli.js doctor --json > doctor-report.json
         continue-on-error: true
       - name: Upload doctor report
-        if: always()
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: doctor-report
           path: doctor-report.json
       - name: Comment doctor summary
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && always() }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -88,9 +88,11 @@ jobs:
           const fs = require('fs');
           const failures = [];
           const outcome = process.env.DOCTOR_OUTCOME;
+
           if (!fs.existsSync('doctor-report.json')) {
             failures.push('doctor-report.json was not produced.');
           }
+
           let report = null;
           if (fs.existsSync('doctor-report.json')) {
             try {
@@ -99,30 +101,40 @@ jobs:
               failures.push(`Failed to parse doctor-report.json: ${error.message}`);
             }
           }
+
           if (report) {
-            const defaultMode = typeof report.defaultMode === 'string' ? report.defaultMode.toLowerCase() : '';
-            if (defaultMode !== 'classic') {
-              failures.push(`Default mode must be 'classic' but was '${report.defaultMode ?? 'unknown'}'.`);
-            }
-            const templatesByMode = report.templatesByMode ?? {};
-            const classicTemplates = Array.isArray(templatesByMode.classic) ? templatesByMode.classic : [];
-            if (classicTemplates.length === 0) {
-              failures.push('No templates registered for classic mode.');
-            }
             const policies = Array.isArray(report.policies) ? report.policies : [];
-            const requirePolicyOk = (label, message) => {
-              const entry = policies.find((policy) => policy.label === label);
+            const policyByLabel = new Map(policies.map((policy) => [policy.label, policy]));
+
+            const ensurePolicy = (label, message) => {
+              const entry = policyByLabel.get(label);
               if (!entry || !entry.ok) {
                 const detail = entry && entry.detail ? ` (${entry.detail})` : '';
                 failures.push(`${message}${detail}`);
               }
             };
-            requirePolicyOk('Catalog gate workflow present', 'Catalog gate workflow is missing.');
-            requirePolicyOk("Catalog gate requires 'catalog:allowed' label", "Catalog guard must require the 'catalog:allowed' label.");
+
+            ensurePolicy('Classic templates available', 'No templates registered for classic mode.');
+            ensurePolicy('Default mode is classic', "Default mode must be 'classic'.");
+            ensurePolicy('Catalog gate workflow present', 'Catalog gate workflow is missing.');
+            ensurePolicy("Catalog gate requires 'catalog:allowed' label", "Catalog guard must require the 'catalog:allowed' label.");
+
+            const templatesByMode = report.templatesByMode ?? {};
+            const classicTemplates = Array.isArray(templatesByMode.classic) ? templatesByMode.classic : [];
+            if (classicTemplates.length === 0) {
+              failures.push('doctor-report.json shows no templates for classic mode.');
+            }
+
+            const defaultMode = typeof report.defaultMode === 'string' ? report.defaultMode.toLowerCase() : '';
+            if (defaultMode !== 'classic') {
+              failures.push(`doctor-report.json reported default mode '${report.defaultMode ?? 'unknown'}'.`);
+            }
           }
+
           if (outcome && outcome !== 'success') {
             failures.push('speckit doctor command reported a failure.');
           }
+
           if (failures.length > 0) {
             console.error('Doctor guard failures:\n - ' + failures.join('\n - '));
             process.exit(1);
