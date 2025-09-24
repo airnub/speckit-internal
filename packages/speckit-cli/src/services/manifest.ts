@@ -3,6 +3,16 @@ import fs from "fs-extra";
 import { z } from "zod";
 import type { SpeckitVersionInfo } from "./version.js";
 
+const ManifestRunSchema = z.object({
+  at: z.string(),
+  synced_with: z
+    .object({ version: z.string(), commit: z.string() })
+    .optional(),
+  spec: z.object({ version: z.string(), digest: z.string() }),
+  template: z.object({ id: z.string(), version: z.string(), sha: z.string() }),
+  outputs: z.array(z.object({ path: z.string(), digest: z.string() })),
+});
+
 const ManifestSchema = z.object({
   speckit: z
     .object({
@@ -10,18 +20,11 @@ const ManifestSchema = z.object({
       commit: z.string(),
     })
     .default({ version: "0.0.0", commit: "unknown" }),
-  runs: z.array(
-    z.object({
-      at: z.string(),
-      spec: z.object({ version: z.string(), digest: z.string() }),
-      template: z.object({ id: z.string(), version: z.string(), sha: z.string() }),
-      outputs: z.array(z.object({ path: z.string(), digest: z.string() })),
-    })
-  ),
+  runs: z.array(ManifestRunSchema).default([]),
 });
 
 export type Manifest = z.infer<typeof ManifestSchema>;
-export type ManifestRun = Manifest["runs"][number];
+export type ManifestRun = z.infer<typeof ManifestRunSchema>;
 
 const DEFAULT_MANIFEST: Manifest = {
   speckit: { version: "0.0.0", commit: "unknown" },
@@ -55,6 +58,25 @@ export async function appendManifestRun(
 ): Promise<void> {
   const manifest = await readManifest(repoRoot);
   manifest.speckit = { version: info.version, commit: info.commit };
-  manifest.runs.push(run);
+  const enriched: ManifestRun = {
+    ...run,
+    synced_with: run.synced_with ?? { version: info.version, commit: info.commit },
+  };
+  manifest.runs.push(enriched);
+  await writeManifest(repoRoot, manifest);
+}
+
+export async function updateManifestSpeckit(
+  repoRoot: string,
+  info: SpeckitVersionInfo
+): Promise<void> {
+  const manifest = await readManifest(repoRoot);
+  if (
+    manifest.speckit.version === info.version &&
+    manifest.speckit.commit === info.commit
+  ) {
+    return;
+  }
+  manifest.speckit = { version: info.version, commit: info.commit };
   await writeManifest(repoRoot, manifest);
 }

@@ -4,15 +4,15 @@ import { parse } from "yaml";
 import { z } from "zod";
 import semver from "semver";
 
-const CatalogLockSchema = z.array(z.object({
-  id: z.string(),
-  sha: z.string(),
-  version: z.string(),
-  requires_speckit: z.string().optional(),
-  synced_with: z
-    .object({ version: z.string(), commit: z.string() })
-    .optional(),
-}));
+const CatalogLockSchema = z.array(
+  z.object({
+    id: z.string(),
+    sha: z.string(),
+    version: z.string(),
+    requires_speckit: z.string(),
+    synced_with: z.object({ version: z.string(), commit: z.string() }),
+  })
+);
 
 const BundleSchema = z.object({
   id: z.string(),
@@ -71,6 +71,9 @@ export function assertSpeckitCompatibility(
   bundle: BundleDefinition
 ) {
   const ranges = [entry.requires_speckit, bundle.requires_speckit].filter(Boolean) as string[];
+  if (ranges.length === 0) {
+    throw new Error(`Bundle '${bundle.id}' is missing a requires_speckit range`);
+  }
   for (const range of ranges) {
     if (!semver.validRange(range, { includePrerelease: true })) {
       throw new Error(`Invalid requires_speckit range '${range}' for bundle '${bundle.id}'`);

@@ -11,8 +11,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20', cache: 'pnpm' }
       - run: corepack enable
-      - run: pnpm install --frozen-lockfile || true
-      - run: pnpm -w -r build || true
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -w -r build
       - name: Build Speckit Core
         run: pnpm --filter @speckit/core run build
       - name: Build Speckit CLI

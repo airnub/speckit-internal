@@ -1,5 +1,5 @@
 import path from "node:path";
-import { execa } from "execa";
+import { execSync } from "node:child_process";
 import fs from "fs-extra";
 
 export type SpeckitVersionInfo = {
@@ -12,33 +12,44 @@ export async function getSpeckitVersion(repoRoot?: string): Promise<SpeckitVersi
   const pkgPath = path.join(root, "packages", "speckit-cli", "package.json");
 
   let version = "0.0.0";
-  let commit = "unknown";
+  let commit = resolveCommitFromEnv() ?? "";
 
   try {
     const pkg = await fs.readJson(pkgPath);
     version = normaliseString(pkg?.version) || version;
-    commit =
-      normaliseString(pkg?.speckitCommit) ||
-      normaliseString(pkg?.gitHead) ||
-      (await resolveGitCommit(root)) ||
-      commit;
   } catch {
-    commit = (await resolveGitCommit(root)) || commit;
+    // ignore missing package metadata
   }
 
-  return { version, commit };
+  if (!commit) {
+    commit = resolveGitCommit(root) ?? "";
+  }
+
+  return { version, commit: commit || "unknown" };
 }
 
 function normaliseString(input: unknown): string {
   return typeof input === "string" && input.trim() ? input.trim() : "";
 }
 
-async function resolveGitCommit(root: string): Promise<string | null> {
+function resolveCommitFromEnv(): string | null {
+  const envSha = normaliseString(process.env.GITHUB_SHA);
+  if (!envSha) return null;
+  return shortenSha(envSha);
+}
+
+function resolveGitCommit(root: string): string | null {
   try {
-    const { stdout } = await execa("git", ["rev-parse", "--short", "HEAD"], { cwd: root });
-    const short = stdout.trim();
-    return short || null;
+    const stdout = execSync("git rev-parse --short HEAD", { cwd: root, stdio: ["ignore", "pipe", "ignore"] });
+    const short = stdout.toString("utf8").trim();
+    return short ? short : null;
   } catch {
     return null;
   }
+}
+
+function shortenSha(sha: string): string {
+  const clean = sha.trim();
+  if (clean.length <= 7) return clean;
+  return clean.slice(0, 7);
 }

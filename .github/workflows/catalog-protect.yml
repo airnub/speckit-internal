@@ -1,0 +1,14 @@
+name: catalog-protect
+on:
+  pull_request:
+    paths:
+      - '.speckit/catalog/**'
+      - '.speckit/catalog.lock'
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block unlabelled catalog edits
+        if: ${{ ! contains(github.event.pull_request.labels.*.name, 'catalog:allowed') }}
+        run: |
+          echo "Edits to .speckit/catalog/** require label 'catalog:allowed'."; exit 1
