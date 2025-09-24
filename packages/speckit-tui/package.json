@@ -27,7 +27,8 @@
     "env-paths": "^3.0.0",
     "@speckit/core": "workspace:*",
     "@speckit/agent": "workspace:*",
-    "@speckit/cli": "workspace:*"
+    "@speckit/cli": "workspace:*",
+    "yaml": "^2.6.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",

@@ -55,14 +55,19 @@ pnpm install
 # CLI (use `speckit`; legacy alias: `spec` works interchangeably)
 pnpm --filter @speckit/cli dev
 speckit template list
-speckit template use next-supabase ./my-next-app
+# Classic mode (no external frameworks)
+speckit init --template speckit-template
 speckit template use speckit-template ./my-generic-spec
+
+# Secure mode (standards enforced)
+speckit init --mode secure --template next-supabase
+speckit template use next-supabase ./my-next-app
 # or pull directly from any GitHub repo (optionally add #branch or ?ref=branch)
 speckit template use https://github.com/acme/awesome-spec-kit ./awesome-spec
 # merge a GitHub template into the current repo:
 speckit init --template https://github.com/acme/awesome-spec-kit#feature/onboarding
-# or merge into current repo:
-speckit init --template next-supabase
+# or merge into current repo using your chosen mode
+speckit init --mode secure --template next-supabase
 speckit init --template speckit-template
 
 # TUI
@@ -71,6 +76,11 @@ pnpm --filter @speckit/tui dev
 # K → Spectral lint, B → docs/RTM build, A → AI propose (if enabled),
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
+
+### Choosing a mode
+
+- **Classic** (default, no external frameworks): run `speckit init --template <name>` or omit `--mode` entirely. The CLI prints "Using Classic mode (set --mode secure to enable standards.)" to confirm you are staying in the lightweight path.
+- **Secure** (standards enforced): pass `--mode secure` to `speckit init` when you want hardened scaffolds. The TUI header now shows `Mode: Classic | Secure` with the active option highlighted so you always know which posture is loaded.
 
 ## Repo-local templates
 
