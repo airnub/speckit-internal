@@ -7,3 +7,6 @@ coverage
 docs/website/node_modules
 docs/website/.docusaurus
 docs/website/build
+
+# Speckit cache and generated previews
+.speckit/cache/

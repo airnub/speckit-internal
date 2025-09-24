@@ -1,0 +1,14 @@
+version: 1
+description: Standard workflow for implementing a change and validating it locally.
+steps:
+  - id: plan-and-implement
+    uses: standard.codegen
+    with:
+      task_description: "<describe the refactor or feature here>"
+  - id: review
+    uses: standard.review
+    needs: [plan-and-implement]
+    with:
+      change_summary: "<summary of changes>"
+      diff: "<paste diff here>"
+      context: "<testing notes and risks>"

@@ -3,7 +3,7 @@
 - **Status:** Proposed | Accepted | Rejected | Superseded by ADR-XXXX
 - **Date:** 2025-09-22
 - **Owner(s):** <team/people>
-- **Related Requirements:** FR-? (from `.dev/rtm.md`)
+- **Related Requirements:** FR-? (from `docs/internal/rtm.md`)
 - **Affected Areas:** packages/<name>, docs, build, etc.
 
 ## Context
@@ -27,4 +27,4 @@
 - Backout plan if issues found.
 
 ## References
-- Links to issues, PRs, specs: `.dev/specs/speckit-spec-v0.0.1.md#<section>`
+- Links to issues, PRs, specs: `docs/internal/specs/speckit-spec.md#<section>`

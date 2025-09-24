@@ -1,0 +1,14 @@
+id: speckit-core
+name: "Speckit Core Bundle"
+kind: specs
+version: "0.1.0"
+engine: nunjucks
+requires_spec: ">=1.0 <2"
+outputs:
+  - { id: spec, from: "spec.njk", to: "docs/specs/speckit-spec-v{{ spec.meta.version }}.md" }
+  - { id: orchestration, from: "orchestration-plan.njk", to: "docs/specs/orchestration-plan-v{{ spec.meta.version }}.md" }
+  - { id: agent_brief, from: "coding-agent-brief.njk", to: "docs/specs/coding-agent-brief-v{{ spec.meta.version }}.md" }
+  - { id: changelog, from: "changelog.njk", to: "docs/specs/changelog-v{{ spec.meta.version }}.md" }
+validators:
+  - { plugin: ids-unique }
+  - { plugin: rtm-consistency }

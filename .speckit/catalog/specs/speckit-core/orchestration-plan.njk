@@ -1,18 +1,22 @@
-# Agent Guidance & Orchestration Plan (v0.0.2)
+---
+id: orchestration-plan-v{{ spec.meta.version | replace('.', '-') }}
+title: Speckit — Orchestration Plan (v{{ spec.meta.version }})
+sidebar_label: Orchestration Plan v{{ spec.meta.version }}
+slug: /dev/specs/orchestration-plan-v{{ spec.meta.version | replace('.', '-') }}
+description: Internal orchestration plan aligning agents and humans to the Speckit {{ spec.meta.version }} baseline.
+created: "2025-09-22"
+updated: "2025-09-22"
+---
 
-> **Work here:** `docs/internal/**`
->
-> **Distribution (read-only):** `.speckit/catalog/**`
->
-> **Generation pipeline:** `.speckit/spec.yaml` → `speckit gen --write`
+# Orchestration Plan (v{{ spec.meta.version }})
 
-This internal plan complements the canonical documents and keeps agents oriented around the latest repo authority.
+**Why a v{{ spec.meta.version }} filename?** This plan is iterated more frequently and separately from the {{ spec.meta.version }} baseline spec; you maintain a root `AGENTS.md` manually. This internal plan complements it.
 
 ## Documents of Record
 - Spec (SRS): `docs/internal/specs/speckit-spec.md`
 - Agent brief: `docs/internal/agents/coding-agent-brief.md`
 - RTM: `docs/internal/rtm.md`
-- ADRs: `docs/internal/adr/*`
+- ADRs: `docs/internal/adrs/*`
 
 ## Roles & Flow
 - **Planner (LLM)** → draft changes from requirement.

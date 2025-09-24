@@ -1,0 +1,12 @@
+name: block-catalog-edits
+on:
+  pull_request:
+    paths: ['.speckit/catalog/**']
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce catalog immutability
+        if: "! contains(github.event.pull_request.labels.*.name, 'catalog:allowed')"
+        run: |
+          echo "Edits in .speckit/catalog/** are blocked. Add label 'catalog:allowed' if this is an intentional catalog update."; exit 1
