@@ -1,0 +1,12 @@
+version: 1
+name: refactor-and-test
+steps:
+  - id: analyze
+    prompt: codegen
+    goal: Outline the approach and impacted files.
+  - id: implement
+    prompt: codegen
+    goal: Apply changes, run tests, and summarize results.
+  - id: review
+    prompt: review
+    goal: Self-review the diff before requesting human approval.

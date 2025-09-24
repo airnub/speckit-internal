@@ -3,7 +3,7 @@
 **Date:** 2025-09-23  
 **Status:** Draft (internal)  
 **Audience:** Engineering, DX, Security, Product  
-**Related docs:** `.dev/specs/speckit-spec-v0.0.1.md`, `.dev/rtm.md`, `.dev/adrs/*`, `.github/pull_request_template.md`, `.dev/orchestration-plan-v0.0.2.md`
+**Related docs:** `docs/internal/specs/speckit-spec-v0.0.1.md`, `docs/internal/rtm.md`, `docs/internal/adr/*`, `.github/pull_request_template.md`, `docs/internal/orchestration-plan-v0.0.2.md`
 
 ---
 
@@ -122,11 +122,11 @@ packages/
 ---
 
 ## 9) Governance & Anti‑Drift
-- **RTM (`.dev/rtm.md`)** tracks each requirement to design/code/tests/evidence.
-- **Changelog (`.dev/changelog-v*.md`)** narrates changes between versions.
-- **ADRs (`.dev/adrs/*`)** capture architectural decisions; template provided.
+- **RTM (`docs/internal/rtm.md`)** tracks each requirement to design/code/tests/evidence.
+- **Changelog (`docs/internal/changelog-v*.md`)** narrates changes between versions.
+- **ADRs (`docs/internal/adr/*`)** capture architectural decisions; template provided.
 - **PR template** enforces Req‑IDs, spec references, and (optional) Agent Context Envelope.
-- **.dev/** directory holds internal docs: spec, agent brief, orchestration plan, RTM, ADRs.
+- **docs/internal/** directory holds internal docs: spec, agent brief, orchestration plan, RTM, ADRs.
 
 **Commit trailers (suggested):**
 ```

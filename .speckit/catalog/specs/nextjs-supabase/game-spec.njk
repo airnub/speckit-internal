@@ -1,0 +1,36 @@
+# {{ spec.meta.title }} — Solution Blueprint (v{{ spec.meta.version }})
+
+## Overview
+- **Stack:** Next.js frontend with Supabase auth, data, and edge functions.
+- **Runtime:** Node 20+, pnpm workspace with strict TypeScript settings.
+- **Primary goal:** Deliver a collaborative product spec and orchestration loop that keeps code and docs aligned.
+
+## Experience Goals
+1. Fast setup from the CLI (`speckit init nextjs-supabase`).
+2. Team-friendly review flow with generated spec docs under `docs/specs/`.
+3. Safe AI usage toggles (`ai.enabled` defaults to `false`).
+
+## Functional Scope
+### Workspace bootstrap
+- Generate Next.js app with shared UI shell.
+- Prewire Supabase client, auth guard, and row-level security policies.
+- Seed demo data for planning sessions.
+
+### Spec-driven loop
+- Ship default spec bundle outputs (`game-spec`, `orchestration plan`, `coding agent brief`, `changelog`).
+- Add pnpm scripts for `speckit gen`, `speckit verify`, and docs preview.
+- Provide lint + test harness for generated Markdown.
+
+### Governance
+- Include CODEOWNERS template for `.speckit/catalog/**`.
+- Provide CI examples to block catalog edits without approval.
+- Document how to request catalog updates via `catalog:allowed` label.
+
+## Non-goals
+- Deploying Supabase infrastructure (out of scope).
+- Designing bespoke UI beyond shell + sample views.
+
+## Success Metrics
+- Spec bundle installs cleanly via `speckit catalog add airnub/nextjs-supabase`.
+- Teams can regenerate docs without manual edits to catalog assets.
+- CI stays green when `speckit verify` runs with no drift.

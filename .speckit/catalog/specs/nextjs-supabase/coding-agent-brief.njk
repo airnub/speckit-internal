@@ -1,0 +1,26 @@
+# Coding Agent Brief — {{ spec.meta.title }} (v{{ spec.meta.version }})
+
+**Spec bundle:** `nextjs-supabase`
+**Generated from:** `.speckit/catalog/specs/nextjs-supabase`
+**Living docs:** `docs/internal/agents/coding-agent-brief.md`
+
+## Guard Rails
+- Node 20+, pnpm workspace, strict TypeScript config.
+- No provider calls unless `ai.enabled` is explicitly set to `true`.
+- Keep diffs small; rely on interactive review before merge.
+
+## Deliverables per Run
+1. Unified diff for modified files only.
+2. Tests + `pnpm -w speckit verify` run clean locally.
+3. Summary of reasoning ≤ 6 bullet lines.
+
+## Focus Areas
+- CLI/TUI parity for template discovery and preview.
+- Catalog sync commands (`speckit catalog pull`, `speckit catalog status`).
+- CI guard rails and drift detection.
+
+## Pre-flight Checklist
+- `pnpm -w build`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm -w speckit verify`
