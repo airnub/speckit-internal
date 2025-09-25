@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm -r --filter '@speckit/*' --filter '!@speckit/docs-website' build",
     "dev": "pnpm --filter @speckit/cli dev",
     "tui": "pnpm --filter @speckit/tui dev",
     "start": "pnpm --filter @speckit/cli start",
@@ -17,7 +17,8 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "changeset publish",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "pnpm build"
   },
   "keywords": [
     "spec-driven-development",
@@ -38,5 +39,10 @@
     "@commitlint/config-conventional": "^19.3.0",
     "@types/node": "^24.5.2",
     "husky": "^9.1.6"
+  },
+  "pnpm": {
+    "overrides": {
+      "fs-extra": "11.2.0"
+    }
   }
 }

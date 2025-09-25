@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "speckit": "dist/cli.js",
-    "spec": "dist/cli.js"
+    "speckit": "bin/speckit.js",
+    "spec": "bin/speckit.js"
   },
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -27,7 +27,8 @@
   "scripts": {
     "build": "tsup src/cli.ts src/index.ts --format esm,cjs --dts --clean --target node18",
     "dev": "tsx src/cli.ts",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "prepare": "pnpm run build"
   },
   "dependencies": {
     "@speckit/adapter-edu-us": "workspace:*",
