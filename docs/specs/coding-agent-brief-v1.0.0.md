@@ -32,7 +32,7 @@ speckit_provenance:
 **RTM:** `docs/internal/rtm.md`
 
 ## Guard Rails
-- Node 18+, TS strict, tsup builds.
+- Node 24+, TS strict, tsup builds.
 - **AI optional**; do not call providers unless `ai.enabled=true`.
 - Produce small, reviewable diffs; no background daemons.
 

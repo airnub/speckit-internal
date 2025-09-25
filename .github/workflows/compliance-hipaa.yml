@@ -41,7 +41,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.should_run == 'true'
         with:
-          node-version: '20'
+          node-version: '24'
           cache: pnpm
       - name: Install dependencies
         if: steps.filter.outputs.should_run == 'true'

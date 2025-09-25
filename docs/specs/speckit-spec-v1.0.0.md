@@ -38,7 +38,7 @@ This baseline specification defines the minimal, production-quality behavior of 
 - AI: optional; **off by default**; settings for provider/model exist.
 
 ## 1) Runtime & Constraints
-- Node 18+, TypeScript strict, tsup build.
+- Node 24+, TypeScript strict, tsup build.
 - No background daemons; no telemetry by default.
 - Never import/call AI providers unless `ai.enabled = true`.
 
