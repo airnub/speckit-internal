@@ -103,7 +103,7 @@ expands to a curated list (`iso27001`, `soc2`, `gdpr`). You can always override 
 When you pass explicit frameworks they win over any preset. The CLI still accepts `--mode secure` for backward compatibility but
 prints a hint reminding you to prefer `--frameworks …` for precise control.
 
-> #### Modes & experimental gate
+> ### Modes & experimental gate
 >
 > ```bash
 > # Classic is default
