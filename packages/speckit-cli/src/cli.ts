@@ -10,6 +10,8 @@ import { GenerateDocsCommand } from "./commands/gen.js";
 import { AuditCommand } from "./commands/audit.js";
 import { DoctorCommand } from "./commands/doctor.js";
 import { CompliancePlanCommand, ComplianceVerifyCommand } from "./commands/compliance.js";
+import { FrameworksListCommand } from "./commands/frameworks.js";
+import { ConfigPrintCommand } from "./commands/config.js";
 
 const [, , ...args] = process.argv;
 
@@ -38,5 +40,7 @@ cli.register(AuditCommand);
 cli.register(DoctorCommand);
 cli.register(CompliancePlanCommand);
 cli.register(ComplianceVerifyCommand);
+cli.register(FrameworksListCommand);
+cli.register(ConfigPrintCommand);
 
 cli.runExit(args, Cli.defaultContext);

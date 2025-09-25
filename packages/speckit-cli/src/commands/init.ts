@@ -1,8 +1,10 @@
-import { Command, Option } from "clipanion";
+import { Option } from "clipanion";
 import { loadTemplates, templateFromGithubUrl, TemplateEntry } from "@speckit/core";
 import { useTemplateIntoDir } from "../services/template.js";
+import { assertModeAllowed } from "../config/featureFlags.js";
+import { SpeckitCommand } from "./base.js";
 
-export class InitFromTemplateCommand extends Command {
+export class InitFromTemplateCommand extends SpeckitCommand {
   static paths = [["init"]];
   tpl = Option.String("--template");
   mode = Option.String("--mode");
@@ -11,6 +13,14 @@ export class InitFromTemplateCommand extends Command {
     const normalizedMode = (this.mode ?? "classic").toLowerCase();
     if (normalizedMode !== "classic" && normalizedMode !== "secure") {
       this.context.stderr.write(`Unknown mode '${this.mode}'. Use 'classic' or 'secure'.\n`);
+      return 1;
+    }
+    const flags = this.resolveFeatureFlags();
+    try {
+      assertModeAllowed(normalizedMode as "classic" | "secure", flags);
+    } catch (error: any) {
+      const message = error?.message ?? String(error);
+      this.context.stderr.write(`speckit init failed: ${message}\n`);
       return 1;
     }
     const list = await loadTemplates({ repoRoot: process.cwd() });

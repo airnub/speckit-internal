@@ -1,7 +1,10 @@
-import { Command, Option } from "clipanion";
+import { Option } from "clipanion";
 import { runCompliancePlan, runComplianceVerify } from "../services/compliance/index.js";
+import { assertFrameworksAllowed, FRAMEWORKS, type FrameworkId } from "../config/frameworkRegistry.js";
+import { assertModeAllowed } from "../config/featureFlags.js";
+import { SpeckitCommand } from "./base.js";
 
-export class CompliancePlanCommand extends Command {
+export class CompliancePlanCommand extends SpeckitCommand {
   static paths = [["compliance", "plan"]];
 
   framework = Option.String("--framework");
@@ -10,6 +13,26 @@ export class CompliancePlanCommand extends Command {
   async execute() {
     if (!this.framework) {
       this.context.stderr.write("speckit compliance plan failed: --framework is required\n");
+      return 1;
+    }
+    const flags = this.resolveFeatureFlags();
+    try {
+      assertModeAllowed("secure", flags);
+    } catch (error: any) {
+      const message = error?.message ?? String(error);
+      this.context.stderr.write(`speckit compliance plan failed: ${message}\n`);
+      return 1;
+    }
+    const frameworkId = this.framework as FrameworkId;
+    if (!Object.prototype.hasOwnProperty.call(FRAMEWORKS, frameworkId)) {
+      this.context.stderr.write(`speckit compliance plan failed: Unknown framework '${this.framework}'\n`);
+      return 1;
+    }
+    try {
+      assertFrameworksAllowed([frameworkId], flags);
+    } catch (error: any) {
+      const message = error?.message ?? String(error);
+      this.context.stderr.write(`speckit compliance plan failed: ${message}\n`);
       return 1;
     }
     try {
@@ -28,7 +51,7 @@ export class CompliancePlanCommand extends Command {
   }
 }
 
-export class ComplianceVerifyCommand extends Command {
+export class ComplianceVerifyCommand extends SpeckitCommand {
   static paths = [["compliance", "verify"]];
 
   framework = Option.String("--framework");
@@ -37,6 +60,26 @@ export class ComplianceVerifyCommand extends Command {
   async execute() {
     if (!this.framework) {
       this.context.stderr.write("speckit compliance verify failed: --framework is required\n");
+      return 1;
+    }
+    const flags = this.resolveFeatureFlags();
+    try {
+      assertModeAllowed("secure", flags);
+    } catch (error: any) {
+      const message = error?.message ?? String(error);
+      this.context.stderr.write(`speckit compliance verify failed: ${message}\n`);
+      return 1;
+    }
+    const frameworkId = this.framework as FrameworkId;
+    if (!Object.prototype.hasOwnProperty.call(FRAMEWORKS, frameworkId)) {
+      this.context.stderr.write(`speckit compliance verify failed: Unknown framework '${this.framework}'\n`);
+      return 1;
+    }
+    try {
+      assertFrameworksAllowed([frameworkId], flags);
+    } catch (error: any) {
+      const message = error?.message ?? String(error);
+      this.context.stderr.write(`speckit compliance verify failed: ${message}\n`);
       return 1;
     }
     try {

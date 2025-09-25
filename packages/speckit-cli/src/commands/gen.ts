@@ -1,8 +1,10 @@
-import { Command, Option } from "clipanion";
+import { Option } from "clipanion";
 import { generateDocs } from "../services/generator.js";
 import { parseGenerationMode } from "../services/mode.js";
+import { assertModeAllowed } from "../config/featureFlags.js";
+import { SpeckitCommand } from "./base.js";
 
-export class GenerateDocsCommand extends Command {
+export class GenerateDocsCommand extends SpeckitCommand {
   static paths = [["gen"]];
 
   write = Option.Boolean("--write", false);
@@ -18,10 +20,22 @@ export class GenerateDocsCommand extends Command {
         return 1;
       }
 
+      const flags = this.resolveFeatureFlags();
+      if (parsedMode) {
+        try {
+          assertModeAllowed(parsedMode, flags);
+        } catch (error: any) {
+          const message = error?.message ?? String(error);
+          this.context.stderr.write(`speckit gen failed: ${message}\n`);
+          return 1;
+        }
+      }
+
       const result = await generateDocs({
         write: this.write,
         stdout: this.context.stdout,
         mode: parsedMode ?? undefined,
+        flags,
       });
       const changed = result.outputs.filter(o => o.changed);
 
