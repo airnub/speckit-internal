@@ -14,16 +14,23 @@ import {
 } from "./catalog.js";
 import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { appendManifestRun, updateManifestSpeckit } from "./manifest.js";
-import { resolveDefaultGenerationMode } from "./mode.js";
+import { resolveDefaultGenerationMode } from "./generationMode.js";
+import {
+  buildFrameworkProvenanceEntries,
+  extractFrameworkIdsFromSpec,
+  resolveEffectiveFrameworkIds,
+  type FrameworkStatus,
+} from "./frameworks.js";
 import type { EntitlementProvider, EvaluationContext, FeatureFlags } from "../config/featureFlags.js";
 import { assertModeAllowed, getFlags, isExperimentalEnabled, resolveCliEntitlements } from "../config/featureFlags.js";
-import { FRAMEWORKS, type FrameworkId, type FrameworkMeta } from "../config/frameworkRegistry.js";
 
 type Provenance = {
   tool: "speckit";
   tool_version: string;
   tool_commit: string;
   mode: GenerationMode;
+  source?: "oss" | "saas";
+  tenant_id?: string;
   experimental: boolean;
   frameworks: { id: string; status: FrameworkStatus }[];
   dialect: { id: string; version: string };
@@ -31,8 +38,6 @@ type Provenance = {
   spec: { version: string; digest: string };
   generated_at: string;
 };
-
-type FrameworkStatus = FrameworkMeta["availability"]["status"];
 
 type PreparedOutput = {
   relPath: string;
@@ -47,7 +52,8 @@ export type GenerateOptions = {
   repoRoot?: string;
   write: boolean;
   stdout?: NodeJS.WritableStream;
-  mode?: GenerationMode;
+  preset?: GenerationMode;
+  frameworks?: string[];
   flags?: FeatureFlags;
   entitlements?: EntitlementProvider;
   evaluationContext?: EvaluationContext;
@@ -65,7 +71,14 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
     throw new Error("SpecModel.version is required");
   }
   const specDigest = await hashSpecYaml(repoRoot);
-  const resolvedMode = options.mode ?? resolveDefaultGenerationMode(data);
+  const resolvedMode = options.preset ?? resolveDefaultGenerationMode(data);
+  const specFrameworkIds = extractFrameworkIdsFromSpec(data);
+  const providedFrameworks = Array.isArray(options.frameworks) ? options.frameworks : [];
+  const effectiveFrameworkIds = resolveEffectiveFrameworkIds({
+    preset: resolvedMode,
+    provided: providedFrameworks,
+    spec: specFrameworkIds,
+  });
   const flags = options.flags ?? getFlags({ cwd: repoRoot });
   let provider = options.entitlements;
   let context = options.evaluationContext;
@@ -77,9 +90,11 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
   if (!provider || !context) {
     throw new Error("Unable to resolve entitlements for generation");
   }
-  await assertModeAllowed(resolvedMode, provider, context);
+  if (resolvedMode === "secure") {
+    await assertModeAllowed(resolvedMode, provider, context);
+  }
   const experimentalEnabled = isExperimentalEnabled(flags);
-  const frameworksForProvenance = resolveFrameworksForProvenance(data);
+  const frameworksForProvenance = buildFrameworkProvenanceEntries(effectiveFrameworkIds);
 
   const speckitInfo = await getSpeckitVersion(repoRoot);
   if (!isLikelyCommitSha(speckitInfo.commit)) {
@@ -129,6 +144,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         tool_version: speckitInfo.version,
         tool_commit: speckitInfo.commit,
         mode: resolvedMode,
+        source: "oss",
         experimental: experimentalEnabled,
         frameworks: frameworksForProvenance,
         dialect: { ...dialect },
@@ -281,25 +297,6 @@ function buildComment(provenance: Provenance, ext: string): string {
     default:
       return `<!-- ${message} -->`;
   }
-}
-
-function resolveFrameworksForProvenance(data: any): { id: string; status: FrameworkStatus }[] {
-  if (!Array.isArray(data?.compliance?.frameworks)) {
-    return [];
-  }
-  const ids = data.compliance.frameworks
-    .map((entry: any) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
-    .filter((id: string): id is string => Boolean(id));
-  const seen = new Set<string>();
-  const result: { id: string; status: FrameworkStatus }[] = [];
-  for (const id of ids) {
-    if (seen.has(id)) continue;
-    seen.add(id);
-    const meta = FRAMEWORKS[id as FrameworkId] as FrameworkMeta | undefined;
-    const status: FrameworkStatus = meta?.availability.status ?? "experimental";
-    result.push({ id, status });
-  }
-  return result;
 }
 
 function createRenderingContext(model: SpecModel, dialect: { id: string; version: string }): any {

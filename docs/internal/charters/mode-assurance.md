@@ -1,27 +1,26 @@
 # Speckit “Mode Assurance & Anti-Regression” Charter
 
 **Purpose.** Guarantee Speckit always offers:
-- **Classic mode** — lightweight Spec-Driven Development (generate → edit → diff → commit), AI optional, **no external security frameworks required**.
-- **Secure mode** — security-requirement–driven development powered by standards (e.g., ASVS/OSCAL) and crosswalks.
+- **Classic preset** — lightweight Spec-Driven Development (generate → edit → diff → commit), AI optional, **no external security frameworks required**.
+- **Secure preset** — security-requirement–driven development powered by standards (e.g., ASVS/OSCAL) and crosswalks.
 
 These are invariant product guarantees that must not change silently.
 
 ---
 
-## 1) Protect the default mode & mode routing
-- **Policy:** The default mode is **Classic**. Changing the default requires an explicit PR labeled `mode-change`.
-- **Governance:** Protect the file that defines the default (e.g., `packages/speckit-cli/src/config/modes.ts`) with:
+## 1) Protect the default preset & routing
+- **Policy:** The default preset is **Classic**. Changing the default requires an explicit PR labeled `preset-change`.
+- **Governance:** Protect the preset source of truth (`packages/speckit-presets/src/index.ts`) with:
   - GitHub **Push Rulesets** restricting that path (PR + required checks only).
   - Branch protection requiring reviews.  
   _Refs:_ GitHub Rulesets (push rules, restrict file paths).
 
 ## 2) CODEOWNERS + required review on guarded paths
-- **Policy:** Changes to `.speckit/catalog/**`, `.speckit/catalog.lock`, and the mode config path require Code Owner review.
+- **Policy:** Changes to `.speckit/catalog/**`, `.speckit/catalog.lock`, and the preset config path require Code Owner review.
 - **Governance:** `.github/CODEOWNERS` + branch protection “Require review from Code Owners.”  
   _Refs:_ CODEOWNERS docs.
 
-## 3) Policy-as-code in CI for mode integrity
-- **Policy:** PRs that change the default mode or remove Classic templates must carry the `mode-change` label.
+- **Policy:** PRs that change the default preset or remove Classic templates must carry the `preset-change` label.
 - **Governance:** CI runs **OPA/Conftest** policies that fail unlabeled changes.  
   _Refs:_ OPA in CI/CD; Conftest.
 
@@ -35,11 +34,12 @@ These are invariant product guarantees that must not change silently.
 - **Governance:** Conventional Commits + release CI that blocks non-major bumps when guarded files change.  
   _Refs:_ Conventional Commits (pairs with SemVer).
 
-## 6) Provenance must include **mode**
+## 6) Provenance must include **mode & frameworks**
 - **Policy:** Every generated doc and each ledger run entry includes:
   ```yaml
   speckit_provenance:
     mode: classic|secure
+    frameworks: [] # or [{ id, status }]
     tool_version: <SemVer>
     tool_commit: <shortSHA>
     template: { id, version, sha }

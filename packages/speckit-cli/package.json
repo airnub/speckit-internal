@@ -38,6 +38,7 @@
     "@speckit/engine": "workspace:*",
     "@speckit/feature-flags": "workspace:*",
     "@speckit/framework-registry": "workspace:*",
+    "@speckit/presets": "workspace:*",
     "boxen": "^8.0.1",
     "cfonts": "^3.3.0",
     "clipanion": "^4.0.0-rc.4",

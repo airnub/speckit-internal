@@ -58,11 +58,14 @@ test("compliance plan blocks secure mode when experimental is disabled", async (
   try {
     const command = new CompliancePlanCommand();
     command.context = io.context as any;
-    command.framework = "hipaa";
+    command.framework = ["hipaa"] as any;
     const exitCode = await command.execute();
     assert.equal(exitCode, 1);
     const stderr = io.getStderr();
-    assert.match(stderr, /speckit compliance plan failed: Secure mode is experimental/);
+    assert.match(
+      stderr,
+      /speckit compliance plan failed: Framework selection blocked: HIPAA \(US Healthcare\) is experimental. Enable with --experimental or set it in config\./
+    );
   } finally {
     if (prev === undefined) {
       delete process.env.SPECKIT_EXPERIMENTAL;

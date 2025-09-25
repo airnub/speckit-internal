@@ -28,6 +28,8 @@
     "@speckit/engine": "workspace:*",
     "@speckit/agent": "workspace:*",
     "@speckit/cli": "workspace:*",
+    "@speckit/framework-registry": "workspace:*",
+    "@speckit/presets": "workspace:*",
     "yaml": "^2.6.0"
   },
   "devDependencies": {
