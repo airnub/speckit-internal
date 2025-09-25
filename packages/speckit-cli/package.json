@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "speckit": "dist/cli.js",
-    "spec": "dist/cli.js"
+    "speckit": "bin/run.mjs",
+    "spec": "bin/run.mjs"
   },
   "main": "dist/index.cjs",
   "module": "dist/index.js",
