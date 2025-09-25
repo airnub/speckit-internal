@@ -1,6 +1,6 @@
 # SpecKit — turn specs into commits
 
-**Spec-Driven Development (SDD) CLI/TUI**: create and edit specs, preview diffs, and commit with confidence. Generate docs and RTM, import templates (built-in, repo-local, or GitHub), and enforce drift/policy gates. **AI & analytics are OFF by default.**
+**Spec-Driven Development (SDD) with SpecKit** turns a single specification into actionable outputs—generated docs and a Requirements Traceability Matrix (RTM)—and enforces drift/policy gates for safe, auditable commits. Use built-in, repo-local, or remote GitHub templates; the **CLI & TUI** help you lint (Spectral), preview diffs, build docs/RTM, and propose patches (**AI optional; analytics off by default**).
 
 [![CI: speckit-verify](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml)
 [![CI: CodeQL](https://github.com/airnub/speckit/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/codeql.yml)
@@ -9,8 +9,6 @@
 [![CI: Mode Policy Gate](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml)
 [![CI: Framework Guard](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml)
 [![Powered by Speckit](https://img.shields.io/badge/powered%20by-speckit-blueviolet)](https://github.com/airnub/speckit)
-
-**Spec Driven Development (SDD)** with SpecKit turns a single specification into actionable outputs: generated docs, a Requirements Traceability Matrix (RTM), and policy-guarded commits. Use **built-in**, **repo-local**, or **remote GitHub templates**; the TUI helps lint (Spectral), build docs/RTM, and propose patches (AI optional).
 
 * **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
 * **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/engine` (all `0.1.0`)
