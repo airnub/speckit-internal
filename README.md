@@ -3,8 +3,11 @@
 **TUI + optional AI assistant for spec-driven development:** edit specs, preview diffs, and commit. AI and analytics are **disabled by default**.
 
 [![CI: speckit-verify](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml)
-[![CI: tests](https://github.com/airnub/speckit/actions/workflows/tests.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/tests.yml)
-[![CI: preset policy gate](https://github.com/airnub/speckit/actions/workflows/preset-policy-gate.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/preset-policy-gate.yml)
+[![CI: CodeQL](https://github.com/airnub/speckit/actions/workflows/codeql.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/codeql.yml)
+[![CI: SBOM](https://github.com/airnub/speckit/actions/workflows/sbom.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/sbom.yml)
+[![CI: Catalog Protect](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml)
+[![CI: Mode Policy Gate](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml)
+[![CI: Framework Guard](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml)
 [![Powered by Speckit](https://img.shields.io/badge/powered%20by-speckit-blueviolet)](https://github.com/airnub/speckit)
 
 * **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
