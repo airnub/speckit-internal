@@ -21,13 +21,18 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.12.0
+
       - name: Install dependencies
         run: |
           corepack enable
           pnpm install --frozen-lockfile=false
 
       - name: Generate CycloneDX SBOM
-        run: npx @cyclonedx/cyclonedx-node-npm --output-format JSON --output-file bom.json
+        run: npx @cyclonedx/cyclonedx-npm --output-format JSON --output-file bom.json
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
