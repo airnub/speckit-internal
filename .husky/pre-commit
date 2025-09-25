@@ -1,2 +1,40 @@
 #!/usr/bin/env sh
+set -eu
+
+# Ensure we are running on a modern Node.js runtime so Corepack's pnpm shim
+# (which uses nullish coalescing assignment) doesn't explode on older shells.
+NODE_VERSION=0
+if command -v node >/dev/null 2>&1; then
+  NODE_VERSION=$(node -p "parseInt(process.versions.node.split('.')[0], 10)")
+fi
+
+if [ "$NODE_VERSION" -lt 18 ]; then
+  # Try to activate nvm if it's installed so we can switch to a supported
+  # version automatically when running inside GUI git clients.
+  if [ -z "${NVM_DIR-}" ]; then
+    NVM_DIR="$HOME/.nvm"
+  fi
+  export NVM_DIR
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$NVM_DIR/nvm.sh"
+    if [ -f .nvmrc ]; then
+      nvm use >/dev/null
+    else
+      nvm use 18 >/dev/null || nvm install 18 >/dev/null
+    fi
+    NODE_VERSION=$(node -p "parseInt(process.versions.node.split('.')[0], 10)")
+  fi
+fi
+
+if [ "$NODE_VERSION" -lt 18 ]; then
+  echo "[husky] Node.js 18+ is required to run workspace tests (pnpm)." >&2
+  echo "[husky] Install a modern Node.js via https://nodejs.org/ or nvm." >&2
+  exit 1
+fi
+
+if command -v corepack >/dev/null 2>&1; then
+  corepack enable pnpm >/dev/null 2>&1 || true
+fi
+
 pnpm --filter @speckit/gen-tests test
