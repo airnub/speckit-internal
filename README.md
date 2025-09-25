@@ -48,7 +48,7 @@ This rationale lives in the repository README so generated specs stay focused wh
 
 ## Quick start
 ```bash
-# Install pnpm via Corepack (Node 24+ ships with it)
+# Enable Corepack for pnpm (Node 18+ bundles it)
 corepack enable pnpm
 pnpm install
 
