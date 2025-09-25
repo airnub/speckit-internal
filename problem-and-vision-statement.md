@@ -55,7 +55,7 @@ A developer‑friendly **SDD + SRDD workstation** that:
 
 ## 4) Product Overview
 **Packages** (pnpm workspaces):
-- `@speckit/core` — zod schemas, template registry, shared types.
+- `@speckit/engine` — zod schemas, template registry, shared types.
 - `@speckit/cli` — `speckit` binary (alias: `spec`); ASCII banner; create wizard; template ops; REPL.
 - `@speckit/tui` — Ink app (spec list/preview, diff, commit, Spectral, PostInit, Settings, AI gate).
 - `@speckit/agent` — provider adapters (OpenAI now; GitHub Models later) returning `{ summary, rationale, patch }`.
@@ -112,7 +112,7 @@ A developer‑friendly **SDD + SRDD workstation** that:
 ## 8) High‑Level Architecture
 ```
 packages/
-  speckit-core   → zod schemas, template registry, shared types
+  speckit-engine   → zod schemas, template registry, shared types
   speckit-cli    → spec (binary), prompts, REPL
   speckit-tui    → Ink UI: list/preview/diff/commit, runners, settings, AI gate
   speckit-agent  → generatePatch(cfg, requirement, context) → {summary,rationale,patch}

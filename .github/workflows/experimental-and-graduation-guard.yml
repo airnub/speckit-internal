@@ -10,6 +10,7 @@ jobs:
     env:
       HAS_EXPERIMENTAL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'experimental:allowed') }}
       HAS_GRADUATION_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'graduation:approved') }}
+      HAS_PRESET_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'preset-change') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,38 +39,36 @@ jobs:
             echo "Experimental default enabled. Require label 'experimental:allowed'."
             exit 1
           fi
+      - name: Guard preset bundle changes
+        if: contains(steps.diff.outputs.files, 'packages/speckit-presets/src/index.ts')
+        run: |
+          if [ "${HAS_PRESET_LABEL}" != "true" ]; then
+            echo "preset-change label is required when editing packages/speckit-presets/src/index.ts"
+            exit 1
+          fi
       - name: Guard framework status flips
-        if: contains(steps.diff.outputs.files, 'packages/speckit-cli/src/config/frameworkRegistry.ts')
+        if: contains(steps.diff.outputs.files, 'packages/speckit-framework-registry/src/data/frameworks.json')
         run: |
           base=origin/${{ github.base_ref }}
-          git show $base:packages/speckit-cli/src/config/frameworkRegistry.ts > before.ts
-          cp packages/speckit-cli/src/config/frameworkRegistry.ts after.ts
+          git show $base:packages/speckit-framework-registry/src/data/frameworks.json > before.json
+          cp packages/speckit-framework-registry/src/data/frameworks.json after.json
           node <<'NODE'
           const fs = require('fs');
-          const before = fs.readFileSync('before.ts', 'utf8');
-          const after = fs.readFileSync('after.ts', 'utf8');
-          const regex = /(hipaa|gdpr|soc2|iso27001|edu-us|edu-eu-ie)"?\s*:\s*\{[\s\S]*?status:\s*"(experimental|ga)"/g;
-          const extract = (src) => {
-            const result = {};
-            let match;
-            while ((match = regex.exec(src)) !== null) {
-              result[match[1]] = match[2];
-            }
-            return result;
-          };
-          const beforeMap = extract(before);
-          const afterMap = extract(after);
+          const before = JSON.parse(fs.readFileSync('before.json', 'utf8'));
+          const after = JSON.parse(fs.readFileSync('after.json', 'utf8'));
           const hasGraduationLabel = process.env.HAS_GRADUATION_LABEL === 'true';
           let failure = false;
-          for (const id of Object.keys(afterMap)) {
-            if (!beforeMap[id]) continue;
-            if (beforeMap[id] === afterMap[id]) continue;
-            if (beforeMap[id] === 'experimental' && afterMap[id] === 'ga') {
+          for (const id of Object.keys(after)) {
+            if (!before[id]) continue;
+            const beforeStatus = before[id]?.availability?.status;
+            const afterStatus = after[id]?.availability?.status;
+            if (!beforeStatus || !afterStatus || beforeStatus === afterStatus) continue;
+            if (beforeStatus === 'experimental' && afterStatus === 'ga') {
               if (!hasGraduationLabel) {
                 console.log(`Framework ${id} graduated to GA. Require label 'graduation:approved'.`);
                 failure = true;
               }
-            } else if (beforeMap[id] === 'ga' && afterMap[id] === 'experimental') {
+            } else if (beforeStatus === 'ga' && afterStatus === 'experimental') {
               if (!hasGraduationLabel) {
                 console.log(`Regression detected for ${id} (ga -> experimental). Require label 'graduation:approved'.`);
                 failure = true;
@@ -78,4 +77,4 @@ jobs:
           }
           if (failure) process.exit(1);
           NODE
-          rm -f before.ts after.ts
+          rm -f before.json after.json

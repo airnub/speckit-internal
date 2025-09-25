@@ -1,6 +1,6 @@
 import { Option } from "clipanion";
 import { SpeckitCommand } from "./base.js";
-import { FRAMEWORKS, isFrameworkAllowed } from "../config/frameworkRegistry.js";
+import { FRAMEWORKS } from "../config/frameworkRegistry.js";
 import { isExperimentalEnabled } from "../config/featureFlags.js";
 
 export class FrameworksListCommand extends SpeckitCommand {
@@ -10,15 +10,22 @@ export class FrameworksListCommand extends SpeckitCommand {
 
   async execute() {
     const flags = this.resolveFeatureFlags();
+    const { provider, context } = this.resolveEntitlements(flags);
     const experimentalOn = isExperimentalEnabled(flags);
-    const entries = Object.values(FRAMEWORKS).map(meta => ({
-      id: meta.id,
-      title: meta.title,
-      status: meta.status,
-      tags: [...meta.tags],
-      bundles: [...meta.bundles],
-      allowed: isFrameworkAllowed(meta.id, flags),
-    }));
+    const entries = await Promise.all(
+      Object.values(FRAMEWORKS).map(async meta => {
+        const result = await provider.isAllowed(`framework.${meta.id}`, context);
+        return {
+          id: meta.id,
+          title: meta.title,
+          status: meta.availability.status,
+          tags: [...meta.tags],
+          bundles: [...meta.bundles],
+          allowed: result.allowed,
+          minPlan: meta.availability.requires?.minPlan ?? null,
+        };
+      })
+    );
 
     if (this.json) {
       this.context.stdout.write(
@@ -36,8 +43,9 @@ export class FrameworksListCommand extends SpeckitCommand {
       const availability = entry.allowed
         ? "available"
         : "locked — enable with --experimental or SPECKIT_EXPERIMENTAL=1";
+      const planBadge = entry.minPlan ? ` (requires ${entry.minPlan} plan)` : "";
       this.context.stdout.write(
-        `- ${entry.id.padEnd(8)} ${badge} ${entry.title} — ${availability}\n`
+        `- ${entry.id.padEnd(8)} ${badge} ${entry.title}${planBadge} — ${availability}\n`
       );
       if (entry.tags.length) {
         this.context.stdout.write(`  tags: ${entry.tags.join(", ")}\n`);

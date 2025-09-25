@@ -1,15 +1,21 @@
 import { Option } from "clipanion";
 import path from "node:path";
 import fs from "fs-extra";
-import { loadTemplates } from "@speckit/core";
+import { loadTemplates } from "@speckit/engine";
 import { loadSpecModel } from "../services/spec.js";
 import {
   GENERATION_MODES,
   resolveDefaultGenerationMode,
   templateModes,
-} from "../services/mode.js";
+} from "../services/generationMode.js";
+import {
+  buildFrameworkProvenanceEntries,
+  extractFrameworkIdsFromSpec,
+  resolveEffectiveFrameworkIds,
+  type FrameworkStatus,
+} from "../services/frameworks.js";
 import { SpeckitCommand } from "./base.js";
-import { FRAMEWORKS, type FrameworkId, type FrameworkStatus, isFrameworkAllowed } from "../config/frameworkRegistry.js";
+import { FRAMEWORKS, type FrameworkId, type FrameworkMeta } from "../config/frameworkRegistry.js";
 import { isExperimentalEnabled } from "../config/featureFlags.js";
 
 type FrameworkReportEntry = {
@@ -17,6 +23,7 @@ type FrameworkReportEntry = {
   title: string;
   status: FrameworkStatus;
   allowed: boolean;
+  minPlan: string | null;
 };
 
 type SelectedFrameworkReportEntry = {
@@ -24,6 +31,7 @@ type SelectedFrameworkReportEntry = {
   title: string;
   status: FrameworkStatus;
   allowed: boolean;
+  minPlan: string | null;
 };
 
 export class DoctorCommand extends SpeckitCommand {
@@ -35,8 +43,15 @@ export class DoctorCommand extends SpeckitCommand {
     try {
       const repoRoot = process.cwd();
       const flags = this.resolveFeatureFlags();
+      const { provider, context } = this.resolveEntitlements(flags);
       const { data } = await loadSpecModel(repoRoot);
       const defaultMode = resolveDefaultGenerationMode(data);
+      const specFrameworkIds = extractFrameworkIdsFromSpec(data);
+      const effectiveFrameworkIds = resolveEffectiveFrameworkIds({
+        preset: defaultMode,
+        spec: specFrameworkIds,
+      });
+      const provenanceFrameworks = buildFrameworkProvenanceEntries(effectiveFrameworkIds);
       const templates = await loadTemplates({ repoRoot });
 
       const grouped = new Map<string, string[]>();
@@ -55,36 +70,42 @@ export class DoctorCommand extends SpeckitCommand {
         bucket.sort((a, b) => a.localeCompare(b));
       }
 
-      const frameworksReport: FrameworkReportEntry[] = Object.values(FRAMEWORKS).map(meta => ({
-        id: meta.id,
-        title: meta.title,
-        status: meta.status,
-        allowed: isFrameworkAllowed(meta.id, flags),
-      }));
-
-      const selectedFrameworkIds: string[] = Array.isArray(data?.compliance?.frameworks)
-        ? data.compliance.frameworks
-            .map((entry: any) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
-            .filter((id: string): id is string => Boolean(id))
-        : [];
-
-      const selectedFrameworks: SelectedFrameworkReportEntry[] = selectedFrameworkIds.map(id => {
-        const meta = FRAMEWORKS[id as FrameworkId];
-        if (meta) {
+      const frameworksReport: FrameworkReportEntry[] = await Promise.all(
+        Object.values(FRAMEWORKS).map(async meta => {
+          const result = await provider.isAllowed(`framework.${meta.id}`, context);
           return {
             id: meta.id,
             title: meta.title,
-            status: meta.status,
-            allowed: isFrameworkAllowed(meta.id, flags),
-          };
-        }
-        return {
-          id,
-          title: id,
-          status: "experimental",
-          allowed: isExperimentalEnabled(flags),
-        };
-      });
+            status: meta.availability.status,
+            allowed: result.allowed,
+            minPlan: meta.availability.requires?.minPlan ?? null,
+          } satisfies FrameworkReportEntry;
+        })
+      );
+
+      const selectedFrameworks: SelectedFrameworkReportEntry[] = await Promise.all(
+        effectiveFrameworkIds.map(async id => {
+          const meta = FRAMEWORKS[id as FrameworkId] as FrameworkMeta | undefined;
+          const result = await provider.isAllowed(`framework.${id}`, context);
+          const metaInfo = meta
+            ? {
+                id: meta.id,
+                title: meta.title,
+                status: meta.availability.status,
+                minPlan: meta.availability.requires?.minPlan ?? null,
+              }
+            : {
+                id,
+                title: id,
+                status: "experimental" as FrameworkStatus,
+                minPlan: null,
+              };
+          return {
+            ...metaInfo,
+            allowed: result.allowed,
+          } satisfies SelectedFrameworkReportEntry;
+        })
+      );
 
       const hasExperimentalFrameworkSelected = selectedFrameworks.some(entry => entry.status === "experimental");
       const experimentalEnabled = isExperimentalEnabled(flags);
@@ -135,13 +156,15 @@ export class DoctorCommand extends SpeckitCommand {
       }
 
       const report = {
-        default_mode: defaultMode,
+        preset: defaultMode,
+        frameworks_resolved: [...effectiveFrameworkIds],
         experimental: { ...flags.experimental },
         templatesByMode: Object.fromEntries(
           GENERATION_MODES.map((mode) => [mode, [...(grouped.get(mode) ?? [])]]),
         ),
         frameworks: frameworksReport,
         selected_frameworks: selectedFrameworks,
+        frameworks_provenance: provenanceFrameworks,
         policies: policyResults,
       };
 
@@ -151,7 +174,10 @@ export class DoctorCommand extends SpeckitCommand {
         this.context.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
       } else {
         this.context.stdout.write("Speckit Doctor\n===============\n\n");
-        this.context.stdout.write(`Default generation mode: ${defaultMode}\n`);
+        this.context.stdout.write(`Preset: ${defaultMode}\n`);
+        this.context.stdout.write(
+          `Resolved frameworks: ${effectiveFrameworkIds.length ? effectiveFrameworkIds.join(", ") : "(none)"}\n`
+        );
         this.context.stdout.write(
           `Experimental gate: ${experimentalEnabled ? "ENABLED" : "DISABLED"}\n\n`
         );
@@ -168,18 +194,20 @@ export class DoctorCommand extends SpeckitCommand {
           const availability = entry.allowed
             ? "available"
             : "locked (enable with --experimental or SPECKIT_EXPERIMENTAL=1)";
+          const planNote = entry.minPlan ? ` (requires ${entry.minPlan} plan)` : "";
           this.context.stdout.write(
-            `  - ${entry.id.padEnd(8)} ${badge} ${entry.title} — ${availability}\n`
+            `  - ${entry.id.padEnd(8)} ${badge} ${entry.title}${planNote} — ${availability}\n`
           );
         }
 
         if (selectedFrameworks.length > 0) {
-          this.context.stdout.write("\nSelected frameworks:\n");
+          this.context.stdout.write("\nEffective frameworks:\n");
           for (const entry of selectedFrameworks) {
             const badge = entry.status === "ga" ? "[GA]" : "[Experimental]";
             const availability = entry.allowed ? "allowed" : "locked";
+            const planNote = entry.minPlan ? ` (requires ${entry.minPlan} plan)` : "";
             this.context.stdout.write(
-              `  - ${entry.id}: ${badge} ${entry.title} — ${availability}\n`
+              `  - ${entry.id}: ${badge} ${entry.title}${planNote} — ${availability}\n`
             );
           }
         }

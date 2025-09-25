@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import { parse } from "yaml";
 import { z } from "zod";
-import type { Level, Requirement, SpecModel, Reference } from "@speckit/core";
+import type { Level, Requirement, SpecModel, Reference } from "@speckit/engine";
 
 const LevelSchema = z
   .object({

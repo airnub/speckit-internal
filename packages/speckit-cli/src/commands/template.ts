@@ -1,5 +1,5 @@
 import { Command, Option } from "clipanion";
-import { loadTemplates, templateFromGithubUrl, TemplateEntry } from "@speckit/core";
+import { loadTemplates, templateFromGithubUrl, TemplateEntry } from "@speckit/engine";
 import { useTemplateIntoDir } from "../services/template.js";
 
 export class TemplateListCommand extends Command {

@@ -19,6 +19,7 @@
         "version": "0.1.0",
         "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
       },
+      "frameworks": [],
       "outputs": [
         {
           "path": "docs/specs/speckit-spec-v1.0.0.md",
@@ -57,6 +58,7 @@
         "version": "0.1.0",
         "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
       },
+      "frameworks": [],
       "outputs": [
         {
           "path": "docs/specs/speckit-spec-v1.0.0.md",
@@ -95,6 +97,7 @@
         "version": "0.1.0",
         "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
       },
+      "frameworks": [],
       "outputs": [
         {
           "path": "docs/specs/speckit-spec-v1.0.0.md",
@@ -133,6 +136,7 @@
         "version": "0.1.0",
         "sha": "92b3006e2ef148138f3494490a2e6e63349c7a26"
       },
+      "frameworks": [],
       "outputs": [
         {
           "path": "docs/specs/speckit-spec-v1.0.0.md",

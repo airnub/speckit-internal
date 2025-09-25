@@ -3,7 +3,7 @@
 **TUI + optional AI assistant for spec-driven development:** edit specs, preview diffs, and commit. AI and analytics are **disabled by default**.
 
 - **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
-- **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/core` (all `0.1.0`)
+- **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/engine` (all `0.1.0`)
 
 ## Features
 - **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.
@@ -24,9 +24,9 @@
 - **Single source of truth** is `.speckit/spec.yaml`. Run `speckit gen --write` to refresh generated docs in `docs/specs/`, then commit the results.
 - **Verification** is enforced by the `speckit-verify` workflow, which fails the build if generated docs drift from the spec.
 
-## Mode Policy Gate
+## Preset Policy Gate
 
-PRs that change `packages/speckit-cli/src/config/modes.ts` or remove files inside the classic templates (`blank`, `next-supabase`, `speckit-template`) must carry the `mode-change` label. The OPA/Conftest gate fails any pull request that makes those adjustments without the label applied.
+PRs that change the preset bundle (`packages/speckit-presets/src/index.ts`) or remove files inside the classic templates (`blank`, `next-supabase`, `speckit-template`) must carry the `preset-change` label. The policy guard fails any pull request that tweaks the curated frameworks without the label applied, and it blocks attempts to add frameworks to the classic preset.
 
 ## Dialect & Adapters
 
@@ -56,19 +56,23 @@ pnpm install
 pnpm --filter @speckit/cli dev
 speckit template list
 
-# Classic mode (default, no external frameworks)
-speckit init --mode classic --template speckit-template   # classic
-speckit template use speckit-template ./my-generic-spec   # classic
+# Classic preset (default, no frameworks)
+speckit init --template speckit-template                   # classic
+speckit template use speckit-template ./my-generic-spec    # classic
 
-# Secure mode (standards enforced)
-speckit init --mode secure --template next-supabase       # secure
-speckit template use next-supabase ./my-next-app          # secure
+# Secure preset (alias expands to curated frameworks)
+speckit init --mode secure --template next-supabase        # secure preset
+speckit template use next-supabase ./my-next-app           # secure preset
+
+# Explicit frameworks (preferred for granular control)
+speckit init --frameworks iso27001,soc2,gdpr --template next-supabase
+speckit template use speckit-template ./app --framework iso27001 --framework soc2
 
 # Or pull directly from any GitHub repo (optionally add #branch or ?ref=branch)
 speckit template use https://github.com/acme/awesome-spec-kit ./awesome-spec
-# Merge a GitHub template into the current repo (pick your mode first)
-speckit init --mode classic --template https://github.com/acme/awesome-spec-kit#feature/onboarding   # classic
-speckit init --mode secure --template https://github.com/acme/awesome-spec-kit#feature/onboarding    # secure
+# Merge a GitHub template into the current repo (preset optional)
+speckit init --template https://github.com/acme/awesome-spec-kit#feature/onboarding
+speckit init --mode secure --template https://github.com/acme/awesome-spec-kit#feature/onboarding
 
 # TUI
 pnpm --filter @speckit/tui dev
@@ -76,6 +80,17 @@ pnpm --filter @speckit/tui dev
 # K → Spectral lint, B → docs/RTM build, A → AI propose (if enabled),
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
+
+## Presets & Frameworks
+
+Speckit treats **presets** as shortcuts for framework bundles. Classic remains the default and keeps frameworks empty. Secure now
+expands to a curated list (`iso27001`, `soc2`, `gdpr`). You can always override the preset by passing explicit frameworks:
+
+- `--frameworks iso27001,soc2,gdpr` for a CSV.
+- `--framework iso27001 --framework soc2` for repeated flags.
+
+When you pass explicit frameworks they win over any preset. The CLI still accepts `--mode secure` for backward compatibility but
+prints a hint reminding you to prefer `--frameworks …` for precise control.
 
 > #### Modes & experimental gate
 > ```bash
@@ -87,7 +102,7 @@ pnpm --filter @speckit/tui dev
 > speckit frameworks list
 > ```
 
-Classic keeps things lightweight with no external framework dependencies. Secure enables hardened scaffolds and standards enforcement; pass `--mode secure` whenever you need the guardrails.
+Classic keeps things lightweight with no external framework dependencies. Secure enables hardened scaffolds and standards enforcement; `--mode secure` now prints the equivalent `--frameworks iso27001,soc2,gdpr` hint so you can tweak the bundle explicitly when needed.
 
 ### Framework statuses (GA vs Experimental)
 

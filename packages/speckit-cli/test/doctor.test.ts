@@ -37,9 +37,11 @@ test("doctor --json reports experimental flags and frameworks", async () => {
     // Doctor may warn about catalog policies; accept non-zero exit but require JSON payload.
     assert.ok(exitCode === 0 || exitCode === 1);
     const report = JSON.parse(io.getStdout());
-    assert.equal(report.default_mode, "classic");
+    assert.equal(report.preset, "classic");
     assert.equal(typeof report.experimental?.enabled, "boolean");
+    assert.ok(Array.isArray(report.frameworks_resolved));
     assert.ok(Array.isArray(report.frameworks));
+    assert.ok(Array.isArray(report.frameworks_provenance));
     assert.ok(
       report.frameworks.some((entry: any) => entry.status === "experimental" && entry.allowed === false)
     );

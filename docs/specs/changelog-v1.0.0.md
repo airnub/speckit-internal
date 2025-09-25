@@ -10,11 +10,12 @@ speckit_provenance:
   tool_version: 0.1.0
   tool_commit: 59a61d9
   mode: classic
+  frameworks: []
   dialect:
     id: speckit.v1
     version: 1.0.0
   template:
-    id: speckit-core
+    id: speckit-engine
     version: 0.1.0
     sha: 92b3006e2ef148138f3494490a2e6e63349c7a26
   spec:

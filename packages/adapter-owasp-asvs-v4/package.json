@@ -10,7 +10,7 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "@speckit/core": "workspace:*",
+    "@speckit/engine": "workspace:*",
     "fs-extra": "^11.2.0",
     "yaml": "^2.6.0",
     "zod": "^3.23.8"

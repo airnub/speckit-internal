@@ -8,7 +8,7 @@ We need a cohesive developer experience across CLI and TUI with shared types/uti
 
 ## Decision
 Adopt a **pnpm monorepo** with packages:
-- `@speckit/core` (types, registry)
+- `@speckit/engine` (types, registry)
 - `@speckit/cli` (clipanion)
 - `@speckit/tui` (Ink React)
 - `@speckit/agent` (provider adapters, lazy imports)

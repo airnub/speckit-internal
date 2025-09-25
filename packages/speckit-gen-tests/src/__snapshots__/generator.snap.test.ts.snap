@@ -9,6 +9,7 @@ speckit_provenance:
   tool_version: 0.1.0
   tool_commit: abc1234
   mode: classic
+  source: oss
   experimental: false
   frameworks: []
   dialect:
@@ -71,6 +72,7 @@ speckit_provenance:
   tool_version: 0.1.0
   tool_commit: abc1234
   mode: classic
+  source: oss
   experimental: false
   frameworks: []
   dialect:
@@ -101,6 +103,7 @@ speckit_provenance:
   tool_version: 0.1.0
   tool_commit: abc1234
   mode: classic
+  source: oss
   experimental: false
   frameworks: []
   dialect:

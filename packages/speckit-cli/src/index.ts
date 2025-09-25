@@ -4,12 +4,29 @@ export {
   getFlags,
   isExperimentalEnabled,
   assertModeAllowed,
+  assertFrameworksAllowed,
   DEFAULT_FEATURE_FLAGS,
+  createLocalEntitlements,
+  buildEvaluationContext,
+  resolveCliEntitlements,
 } from "./config/featureFlags.js";
-export type { FeatureFlags, CliArgs } from "./config/featureFlags.js";
+export type {
+  FeatureFlags,
+  CliArgs,
+  EntitlementProvider,
+  EvaluationContext,
+} from "./config/featureFlags.js";
 export {
   FRAMEWORKS,
+  FRAMEWORK_IDS,
+  createFrameworkRegistry,
   isFrameworkAllowed,
-  assertFrameworksAllowed,
+  listFrameworks,
 } from "./config/frameworkRegistry.js";
-export type { FrameworkId, FrameworkMeta, FrameworkStatus } from "./config/frameworkRegistry.js";
+export type {
+  FrameworkId,
+  FrameworkMeta,
+  Availability,
+  AvailabilityRequirements,
+} from "./config/frameworkRegistry.js";
+export type FrameworkStatus = FrameworkMeta["availability"]["status"];

@@ -25,9 +25,11 @@
     "execa": "^9.3.0",
     "zod": "^3.23.8",
     "env-paths": "^3.0.0",
-    "@speckit/core": "workspace:*",
+    "@speckit/engine": "workspace:*",
     "@speckit/agent": "workspace:*",
     "@speckit/cli": "workspace:*",
+    "@speckit/framework-registry": "workspace:*",
+    "@speckit/presets": "workspace:*",
     "yaml": "^2.6.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 import { input as inquirerInput } from "@inquirer/prompts";
-import { TemplateEntry } from "@speckit/core";
+import { TemplateEntry } from "@speckit/engine";
 import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";

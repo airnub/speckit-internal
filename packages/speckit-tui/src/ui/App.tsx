@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { globby } from "globby";
 import matter from "gray-matter";
 import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
-import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
+import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/engine";
 import {
   useTemplateIntoDir,
   getFlags,
@@ -13,6 +13,8 @@ import {
   DEFAULT_FEATURE_FLAGS,
 } from "@speckit/cli";
 import type { PostInitCommandEvent, FeatureFlags } from "@speckit/cli";
+import { listFrameworks, type FrameworkMeta } from "@speckit/framework-registry";
+import { resolvePreset, type PresetId } from "@speckit/presets";
 import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult, gitEnsureGithubRepo } from "../git.js";
 import { execa } from "execa";
@@ -72,6 +74,24 @@ export default function App() {
   const [mode, setMode] = useState<Mode>("preview");
   const [commitMsg, setCommitMsg] = useState<string>("chore(specs): update");
 
+  const frameworkOptions = useMemo<FrameworkMeta[]>(() => listFrameworks(), []);
+  const [presetChoice, setPresetChoice] = useState<PresetId>("classic");
+  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(() => resolvePreset("classic"));
+
+  const applyPreset = useCallback((nextPreset: PresetId) => {
+    setPresetChoice(nextPreset);
+    setSelectedFrameworks(resolvePreset(nextPreset));
+  }, []);
+
+  const toggleFrameworkSelection = useCallback((id: string) => {
+    setSelectedFrameworks(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(entry => entry !== id);
+      }
+      return [...prev, id];
+    });
+  }, []);
+
   // template modal
   const [tplIndex, setTplIndex] = useState(0);
   const [templates, setTemplates] = useState<TemplateEntry[]>([]);
@@ -93,6 +113,18 @@ export default function App() {
 
   const experimentalGateOn = isExperimentalGateEnabled(featureFlags);
   const secureModeExperimental = featureFlags.modes.secure.experimental;
+
+  useEffect(() => {
+    if (experimentalGateOn) {
+      return;
+    }
+    setSelectedFrameworks(prev =>
+      prev.filter(id => {
+        const meta = frameworkOptions.find(entry => entry.id === id);
+        return !meta || meta.availability.status !== "experimental";
+      })
+    );
+  }, [experimentalGateOn, frameworkOptions]);
 
   async function refreshRepo(rootOverride?: string, options?: RefreshOptions): Promise<RefreshResult> {
     const conf = await loadConfig();
@@ -326,6 +358,11 @@ export default function App() {
         setTplIndex(i => Math.min(templates.length-1, i+1));
         return;
       }
+      if (key.return) {
+        await confirmTemplateSelection();
+        return;
+      }
+      return;
     }
 
     if (textInputActive) {
@@ -375,9 +412,6 @@ export default function App() {
       } else {
         setMode("ai");
       }
-    }
-    if (key.return && mode === "new-template") {
-      await confirmTemplateSelection();
     }
   });
 
@@ -733,6 +767,13 @@ export default function App() {
               onConfirm={confirmTemplateSelection}
               onCancel={() => setMode("preview")}
               repoPath={repoPath}
+              frameworks={frameworkOptions}
+              selectedFrameworks={selectedFrameworks}
+              onToggleFramework={toggleFrameworkSelection}
+              preset={presetChoice}
+              onPresetChange={applyPreset}
+              experimentalGateOn={experimentalGateOn}
+              setStatusMessage={setStatus}
             />
           )}
           {mode === "template-prompt" && templatePrompt && (
@@ -1077,12 +1118,96 @@ function SettingsUI({ fields, cursor, editing, editValue, editField, onChangeEdi
   );
 }
 
-function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, onCancel, repoPath }: { templates: TemplateEntry[]; index: number; targetDir: string; setTargetDir: (s:string)=>void; onConfirm: () => Promise<void>; onCancel: () => void; repoPath: string }) {
+function TemplatePicker({
+  templates,
+  index,
+  targetDir,
+  setTargetDir,
+  onConfirm,
+  onCancel,
+  repoPath,
+  frameworks,
+  selectedFrameworks,
+  onToggleFramework,
+  preset,
+  onPresetChange,
+  experimentalGateOn,
+  setStatusMessage,
+}: {
+  templates: TemplateEntry[];
+  index: number;
+  targetDir: string;
+  setTargetDir: (s: string) => void;
+  onConfirm: () => Promise<void>;
+  onCancel: () => void;
+  repoPath: string;
+  frameworks: FrameworkMeta[];
+  selectedFrameworks: string[];
+  onToggleFramework: (id: string) => void;
+  preset: PresetId;
+  onPresetChange: (preset: PresetId) => void;
+  experimentalGateOn: boolean;
+  setStatusMessage: (value: string) => void;
+}) {
   const active = templates[index];
   const requiresTarget = active?.type === "github";
+  const frameworkItems = useMemo(() =>
+    frameworks.map((meta, idx) => {
+      const disabled = !experimentalGateOn && meta.availability.status === "experimental";
+      const selected = selectedFrameworks.includes(meta.id);
+      const statusBadge = meta.availability.status === "ga" ? "[GA]" : "[Experimental]";
+      const planBadge = meta.availability.requires?.minPlan ? ` (requires ${meta.availability.requires.minPlan} plan)` : "";
+      return {
+        meta,
+        index: idx + 1,
+        disabled,
+        selected,
+        statusBadge,
+        planBadge,
+      };
+    }),
+    [frameworks, experimentalGateOn, selectedFrameworks]
+  );
+
+  const handlePreset = useCallback(
+    (nextPreset: PresetId) => {
+      onPresetChange(nextPreset);
+    },
+    [onPresetChange]
+  );
+
+  const handleFrameworkToggle = useCallback(
+    (idx: number) => {
+      const item = frameworkItems[idx];
+      if (!item) return;
+      if (item.disabled) {
+        setStatusMessage(
+          `${item.meta.title} is experimental. Enable experimental mode (e.g. --experimental) to select it.`
+        );
+        return;
+      }
+      onToggleFramework(item.meta.id);
+    },
+    [frameworkItems, onToggleFramework, setStatusMessage]
+  );
+
   useInput((input, key) => {
     if (key.escape) {
       onCancel();
+      return;
+    }
+    const lower = input?.toLowerCase?.() ?? "";
+    if (lower === "c") {
+      handlePreset("classic");
+      return;
+    }
+    if (lower === "s") {
+      handlePreset("secure");
+      return;
+    }
+    const digit = Number.parseInt(input, 10);
+    if (!Number.isNaN(digit) && digit >= 1 && digit <= frameworkItems.length) {
+      handleFrameworkToggle(digit - 1);
     }
   });
   const sourceLabel = active?.type === "local" && active.localPath
@@ -1091,6 +1216,7 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, 
         return rel && !rel.startsWith("..") ? rel : active.localPath;
       })()
     : null;
+  const presetLabel = preset === "classic" ? "Classic" : "Secure";
   return (
     <>
       <Text>Select a template (Enter to confirm):</Text>
@@ -1109,6 +1235,21 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, 
           </React.Fragment>
         );
       })}
+      <Box marginTop={1} flexDirection="column">
+        <Text>
+          Preset: {presetLabel} (press C for Classic, S for Secure)
+        </Text>
+        <Text dimColor>Frameworks (press 1-9 to toggle)</Text>
+        {frameworkItems.map(item => {
+          const mark = item.selected ? "x" : " ";
+          const disabledNote = item.disabled ? " — locked (enable experimental to use)" : "";
+          return (
+            <Text key={item.meta.id} color={item.disabled ? "gray" : undefined}>
+              {`${item.index}) [${mark}] ${item.meta.title} ${item.statusBadge}${item.planBadge}${disabledNote}`}
+            </Text>
+          );
+        })}
+      </Box>
       {requiresTarget && (
         <>
           <Text>Target directory for clone:</Text>
@@ -1127,6 +1268,8 @@ function TemplatePicker({ templates, index, targetDir, setTargetDir, onConfirm, 
     </>
   );
 }
+
+export { TemplatePicker };
 
 function formatPostInitCommand(event: PostInitCommandEvent): string {
   const status = event.result.ok ? "✓" : "✗";
