@@ -180,7 +180,7 @@ Read the root `AGENTS.md` to discover the current coding agent brief. Load that 
 
 The `.speckit/templates` convention already copies arbitrary files from either local directories or GitHub repositories, which makes it feasible to distribute customized prompt bundles alongside spec templates:
 
-- `discoverLocalTemplates` treats any populated directory beneath `.speckit/templates` as a selectable template, so a template author can ship a prompts bundle (for example, `.speckit/templates/prompts/iterative`) that drops the curated Markdown files directly into `docs/internal/prompts` when applied locally.【F:packages/speckit-core/src/index.ts†L98-L157】
+- `discoverLocalTemplates` treats any populated directory beneath `.speckit/templates` as a selectable template, so a template author can ship a prompts bundle (for example, `.speckit/templates/prompts/iterative`) that drops the curated Markdown files directly into `docs/internal/prompts` when applied locally.【F:packages/speckit-engine/src/index.ts†L98-L157】
 - `useTemplateIntoDir` clones or copies the template contents wholesale—then optionally runs variable substitution and post-init hooks—meaning external repositories like `nextjs-supabase-speckit-template` can already deliver prompt catalogs together with specs without extra wiring.【F:packages/speckit-cli/src/services/template.ts†L30-L164】
 - Because the copier is path-agnostic, teams can version prompt libraries in their own template repos, annotate them with `template.vars.json` for customization, and consume them through the existing CLI/TUI flows just like any other SpecKit template.【F:packages/speckit-cli/src/services/template.ts†L165-L205】
 

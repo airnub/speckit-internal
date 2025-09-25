@@ -1,6 +1,6 @@
 import { Option } from "clipanion";
 import { SpeckitCommand } from "./base.js";
-import { FRAMEWORKS, isFrameworkAllowed } from "../config/frameworkRegistry.js";
+import { FRAMEWORKS } from "../config/frameworkRegistry.js";
 import { isExperimentalEnabled } from "../config/featureFlags.js";
 
 export class FrameworksListCommand extends SpeckitCommand {
@@ -10,17 +10,27 @@ export class FrameworksListCommand extends SpeckitCommand {
 
   async execute() {
     const flags = this.resolveFeatureFlags();
+    const bundle = this.buildEntitlementsBundle(flags);
     const experimentalOn = isExperimentalEnabled(flags);
-    const entries = Object.values(FRAMEWORKS).map(meta => ({
-      id: meta.id,
-      title: meta.title,
-      status: meta.status,
-      tags: [...meta.tags],
-      bundles: [...meta.bundles],
-      allowed: isFrameworkAllowed(meta.id, flags),
-    }));
+    const entries = await Promise.all(
+      Object.values(FRAMEWORKS).map(async meta => {
+        const decision = await bundle.entitlements.isAllowed(`framework.${meta.id}`, bundle.context);
+        return {
+          id: meta.id,
+          title: meta.title,
+          status: meta.availability.status,
+          requires: meta.availability.requires ?? {},
+          tags: [...meta.tags],
+          bundles: [...meta.bundles],
+          allowed: decision.allowed,
+          reason: decision.reason,
+        };
+      })
+    );
 
-    if (this.json) {
+    const jsonOutput = this.json === true;
+
+    if (jsonOutput) {
       this.context.stdout.write(
         `${JSON.stringify({ experimental: flags.experimental, frameworks: entries }, null, 2)}\n`
       );
@@ -32,12 +42,13 @@ export class FrameworksListCommand extends SpeckitCommand {
       `Experimental gate: ${experimentalOn ? "ENABLED" : "DISABLED"}\n\n`
     );
     for (const entry of entries) {
-      const badge = entry.status === "ga" ? "[GA]" : "[Experimental]";
+      const statusBadge = entry.status === "ga" ? "[GA]" : "[Experimental]";
+      const planBadge = entry.requires?.minPlan ? ` [${entry.requires.minPlan.toUpperCase()}]` : "";
       const availability = entry.allowed
         ? "available"
-        : "locked — enable with --experimental or SPECKIT_EXPERIMENTAL=1";
+        : entry.reason ?? "locked — enable with --experimental or SPECKIT_EXPERIMENTAL=1";
       this.context.stdout.write(
-        `- ${entry.id.padEnd(8)} ${badge} ${entry.title} — ${availability}\n`
+        `- ${entry.id.padEnd(8)} ${statusBadge}${planBadge} ${entry.title} — ${availability}\n`
       );
       if (entry.tags.length) {
         this.context.stdout.write(`  tags: ${entry.tags.join(", ")}\n`);

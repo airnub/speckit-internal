@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import fs from "fs-extra";
-import type { TemplateEntry } from "@speckit/core";
+import type { TemplateEntry } from "@speckit/engine";
 import {
   useTemplateIntoDir,
   __setTemplatePromptInput,

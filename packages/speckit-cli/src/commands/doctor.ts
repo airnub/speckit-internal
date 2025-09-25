@@ -1,7 +1,7 @@
 import { Option } from "clipanion";
 import path from "node:path";
 import fs from "fs-extra";
-import { loadTemplates } from "@speckit/core";
+import { loadTemplates } from "@speckit/engine";
 import { loadSpecModel } from "../services/spec.js";
 import {
   GENERATION_MODES,
@@ -9,7 +9,12 @@ import {
   templateModes,
 } from "../services/mode.js";
 import { SpeckitCommand } from "./base.js";
-import { FRAMEWORKS, type FrameworkId, type FrameworkStatus, isFrameworkAllowed } from "../config/frameworkRegistry.js";
+import {
+  FRAMEWORKS,
+  type FrameworkAvailability,
+  type FrameworkId,
+  type FrameworkStatus,
+} from "../config/frameworkRegistry.js";
 import { isExperimentalEnabled } from "../config/featureFlags.js";
 
 type FrameworkReportEntry = {
@@ -17,6 +22,8 @@ type FrameworkReportEntry = {
   title: string;
   status: FrameworkStatus;
   allowed: boolean;
+  requires: FrameworkAvailability["requires"];
+  reason?: string;
 };
 
 type SelectedFrameworkReportEntry = {
@@ -24,6 +31,8 @@ type SelectedFrameworkReportEntry = {
   title: string;
   status: FrameworkStatus;
   allowed: boolean;
+  requires?: FrameworkAvailability["requires"];
+  reason?: string;
 };
 
 export class DoctorCommand extends SpeckitCommand {
@@ -35,6 +44,7 @@ export class DoctorCommand extends SpeckitCommand {
     try {
       const repoRoot = process.cwd();
       const flags = this.resolveFeatureFlags();
+      const bundle = this.buildEntitlementsBundle(flags);
       const { data } = await loadSpecModel(repoRoot);
       const defaultMode = resolveDefaultGenerationMode(data);
       const templates = await loadTemplates({ repoRoot });
@@ -55,12 +65,21 @@ export class DoctorCommand extends SpeckitCommand {
         bucket.sort((a, b) => a.localeCompare(b));
       }
 
-      const frameworksReport: FrameworkReportEntry[] = Object.values(FRAMEWORKS).map(meta => ({
-        id: meta.id,
-        title: meta.title,
-        status: meta.status,
-        allowed: isFrameworkAllowed(meta.id, flags),
-      }));
+      const frameworksReport: FrameworkReportEntry[] = await Promise.all(
+        Object.values(FRAMEWORKS).map(async meta => {
+          const decision = await bundle.entitlements.isAllowed(`framework.${meta.id}`, bundle.context);
+          return {
+            id: meta.id,
+            title: meta.title,
+            status: meta.availability.status,
+            allowed: decision.allowed,
+            requires: meta.availability.requires,
+            reason: decision.reason,
+          } satisfies FrameworkReportEntry;
+        })
+      );
+
+      const frameworksById = new Map(frameworksReport.map(entry => [entry.id, entry] as const));
 
       const selectedFrameworkIds: string[] = Array.isArray(data?.compliance?.frameworks)
         ? data.compliance.frameworks
@@ -68,28 +87,27 @@ export class DoctorCommand extends SpeckitCommand {
             .filter((id: string): id is string => Boolean(id))
         : [];
 
-      const selectedFrameworks: SelectedFrameworkReportEntry[] = selectedFrameworkIds.map(id => {
-        const meta = FRAMEWORKS[id as FrameworkId];
-        if (meta) {
+      const selectedFrameworks: SelectedFrameworkReportEntry[] = await Promise.all(
+        selectedFrameworkIds.map(async id => {
+          const entry = frameworksById.get(id as FrameworkId);
+          if (entry) {
+            return { ...entry };
+          }
+          const decision = await bundle.entitlements.isAllowed(`framework.${id}`, bundle.context);
           return {
-            id: meta.id,
-            title: meta.title,
-            status: meta.status,
-            allowed: isFrameworkAllowed(meta.id, flags),
-          };
-        }
-        return {
-          id,
-          title: id,
-          status: "experimental",
-          allowed: isExperimentalEnabled(flags),
-        };
-      });
+            id,
+            title: id,
+            status: "experimental",
+            allowed: decision.allowed,
+            requires: undefined,
+            reason: decision.reason,
+          } satisfies SelectedFrameworkReportEntry;
+        })
+      );
 
       const hasExperimentalFrameworkSelected = selectedFrameworks.some(entry => entry.status === "experimental");
       const experimentalEnabled = isExperimentalEnabled(flags);
-      const secureBlocked =
-        defaultMode === "secure" && hasExperimentalFrameworkSelected && !experimentalEnabled;
+      const secureBlocked = defaultMode === "secure" && selectedFrameworks.some(entry => !entry.allowed);
 
       const policyResults: { label: string; ok: boolean; detail?: string }[] = [];
       const classicTemplates = grouped.get("classic") ?? [];
@@ -124,13 +142,14 @@ export class DoctorCommand extends SpeckitCommand {
         });
       }
 
-      if (hasExperimentalFrameworkSelected) {
+      if (hasExperimentalFrameworkSelected || secureBlocked) {
+        const blocked = selectedFrameworks.find(entry => !entry.allowed);
         policyResults.push({
-          label: "Secure mode allowed with experimental frameworks",
+          label: "Secure mode allowed with selected frameworks",
           ok: !secureBlocked,
           detail: secureBlocked
-            ? "Experimental gate is disabled. Enable with --experimental or SPECKIT_EXPERIMENTAL=1."
-            : "Experimental frameworks available under current flags.",
+            ? blocked?.reason ?? "One or more frameworks are not allowed under current plan or flags."
+            : "Selected frameworks available under current flags.",
         });
       }
 
@@ -165,11 +184,12 @@ export class DoctorCommand extends SpeckitCommand {
         this.context.stdout.write("\nFramework registry:\n");
         for (const entry of frameworksReport) {
           const badge = entry.status === "ga" ? "[GA]" : "[Experimental]";
+          const planBadge = entry.requires?.minPlan ? ` [${entry.requires.minPlan.toUpperCase()}]` : "";
           const availability = entry.allowed
             ? "available"
-            : "locked (enable with --experimental or SPECKIT_EXPERIMENTAL=1)";
+            : entry.reason ?? "locked (enable with --experimental or SPECKIT_EXPERIMENTAL=1)";
           this.context.stdout.write(
-            `  - ${entry.id.padEnd(8)} ${badge} ${entry.title} — ${availability}\n`
+            `  - ${entry.id.padEnd(8)} ${badge}${planBadge} ${entry.title} — ${availability}\n`
           );
         }
 
@@ -177,9 +197,10 @@ export class DoctorCommand extends SpeckitCommand {
           this.context.stdout.write("\nSelected frameworks:\n");
           for (const entry of selectedFrameworks) {
             const badge = entry.status === "ga" ? "[GA]" : "[Experimental]";
-            const availability = entry.allowed ? "allowed" : "locked";
+            const planBadge = entry.requires?.minPlan ? ` [${entry.requires.minPlan.toUpperCase()}]` : "";
+            const availability = entry.allowed ? "allowed" : entry.reason ?? "locked";
             this.context.stdout.write(
-              `  - ${entry.id}: ${badge} ${entry.title} — ${availability}\n`
+              `  - ${entry.id}: ${badge}${planBadge} ${entry.title} — ${availability}\n`
             );
           }
         }

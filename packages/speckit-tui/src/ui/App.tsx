@@ -5,7 +5,7 @@ import matter from "gray-matter";
 import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
-import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
+import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/engine";
 import {
   useTemplateIntoDir,
   getFlags,

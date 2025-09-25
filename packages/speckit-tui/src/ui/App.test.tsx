@@ -48,7 +48,7 @@ vi.mock("../config.js", () => ({
   saveConfig: saveConfigMock
 }));
 
-vi.mock("@speckit/core", () => ({
+vi.mock("@speckit/engine", () => ({
   loadTemplates: loadTemplatesMock
 }));
 

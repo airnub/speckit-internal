@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import fs from "fs-extra";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import type { SpecModel } from "../../speckit-core/src/model/SpecModel.js";
+import type { SpecModel } from "../../speckit-engine/src/model/SpecModel.js";
 import type { BundleDefinition, CatalogLockEntry } from "../../speckit-cli/src/services/catalog.js";
 import { generateDocs } from "../../speckit-cli/src/services/generator.js";
 import { DEFAULT_FEATURE_FLAGS } from "../../speckit-cli/src/config/featureFlags.js";

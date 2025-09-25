@@ -14,7 +14,7 @@ import {
   assertDialectCompatibility,
 } from "./catalog.js";
 import { createHash } from "node:crypto";
-import type { GenerationMode } from "@speckit/core";
+import type { GenerationMode } from "@speckit/engine";
 import { DEFAULT_GENERATION_MODE, parseGenerationMode } from "./mode.js";
 
 type AuditRow = {

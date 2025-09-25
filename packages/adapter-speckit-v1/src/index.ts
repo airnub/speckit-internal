@@ -4,7 +4,7 @@ import fs from "fs-extra";
 import { parse } from "yaml";
 import Ajv2020 from "ajv/dist/2020";
 import type { ValidateFunction } from "ajv";
-import type { SpecModel, Requirement, Reference, Level } from "@speckit/core";
+import type { SpecModel, Requirement, Reference, Level } from "@speckit/engine";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 let validator: ValidateFunction | null = null;

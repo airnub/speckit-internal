@@ -5,7 +5,7 @@ import nunjucks from "nunjucks";
 import { parse } from "yaml";
 import { z } from "zod";
 import { loadToModel as loadEduUsCatalog } from "@speckit/adapter-edu-us";
-import type { Requirement } from "@speckit/core";
+import type { Requirement } from "@speckit/engine";
 import { BundleSchema } from "../catalog.js";
 import { loadSpecYaml } from "../spec.js";
 

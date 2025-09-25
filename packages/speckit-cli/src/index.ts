@@ -4,12 +4,15 @@ export {
   getFlags,
   isExperimentalEnabled,
   assertModeAllowed,
+  createLocalEntitlements,
+  createEvaluationContext,
+  createLocalEntitlementsBundle,
+  assertFrameworksAllowed,
   DEFAULT_FEATURE_FLAGS,
 } from "./config/featureFlags.js";
-export type { FeatureFlags, CliArgs } from "./config/featureFlags.js";
+export type { FeatureFlags, CliArgs, LocalEntitlementsBundle } from "./config/featureFlags.js";
 export {
   FRAMEWORKS,
   isFrameworkAllowed,
-  assertFrameworksAllowed,
 } from "./config/frameworkRegistry.js";
 export type { FrameworkId, FrameworkMeta, FrameworkStatus } from "./config/frameworkRegistry.js";
