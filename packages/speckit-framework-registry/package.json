@@ -1,24 +1,20 @@
 {
-  "name": "@speckit/adapter-owasp-asvs-v4",
-  "version": "0.1.0",
+  "name": "@speckit/framework-registry",
+  "version": "0.0.1",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "files": ["dist", "data"],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean --target node18",
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "@speckit/engine": "workspace:*",
-    "fs-extra": "^11.2.0",
-    "yaml": "^2.6.0",
-    "zod": "^3.23.8"
   },
   "devDependencies": {
     "tsup": "^8.0.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.2",
-    "@types/fs-extra": "^11.0.4"
+    "typescript": "^5.6.2"
   }
 }

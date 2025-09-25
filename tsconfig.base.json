@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -14,7 +15,9 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@speckit/core": ["packages/speckit-core/src/index.ts"],
+      "@speckit/engine": ["packages/speckit-engine/src/index.ts"],
+      "@speckit/feature-flags": ["packages/speckit-feature-flags/src/index.ts"],
+      "@speckit/framework-registry": ["packages/speckit-framework-registry/src/index.ts"],
       "@speckit/agent": ["packages/speckit-agent/src/index.ts"],
       "@speckit/tui": ["packages/speckit-tui/src/index.tsx"],
       "@speckit/cli": ["packages/speckit-cli/src/index.ts"],

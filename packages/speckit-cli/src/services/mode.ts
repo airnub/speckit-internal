@@ -1,4 +1,4 @@
-import type { GenerationMode, TemplateEntry } from "@speckit/core";
+import type { GenerationMode, TemplateEntry } from "@speckit/engine";
 
 export const DEFAULT_GENERATION_MODE: GenerationMode = "classic";
 export const GENERATION_MODES: GenerationMode[] = ["classic", "secure"];

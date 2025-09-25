@@ -55,10 +55,12 @@ A developer‑friendly **SDD + SRDD workstation** that:
 
 ## 4) Product Overview
 **Packages** (pnpm workspaces):
-- `@speckit/core` — zod schemas, template registry, shared types.
+- `@speckit/engine` — normalized SpecModel, adapters, rendering primitives.
 - `@speckit/cli` — `speckit` binary (alias: `spec`); ASCII banner; create wizard; template ops; REPL.
 - `@speckit/tui` — Ink app (spec list/preview, diff, commit, Spectral, PostInit, Settings, AI gate).
 - `@speckit/agent` — provider adapters (OpenAI now; GitHub Models later) returning `{ summary, rationale, patch }`.
+- `@speckit/feature-flags` — shared config precedence, experimental gates, entitlement interfaces.
+- `@speckit/framework-registry` — framework metadata (HIPAA/GDPR/etc.), availability, and helpers.
 
 **Repo awareness** (TUI header): Repo path · Branch · Spec Root · **AI ON/OFF** · Provider · Model.
 
@@ -112,10 +114,12 @@ A developer‑friendly **SDD + SRDD workstation** that:
 ## 8) High‑Level Architecture
 ```
 packages/
-  speckit-core   → zod schemas, template registry, shared types
+  speckit-engine           → normalized IR, adapters, rendering primitives
   speckit-cli    → spec (binary), prompts, REPL
   speckit-tui    → Ink UI: list/preview/diff/commit, runners, settings, AI gate
   speckit-agent  → generatePatch(cfg, requirement, context) → {summary,rationale,patch}
+  speckit-feature-flags    → config precedence, experimental gating, entitlements
+  speckit-framework-registry → compliance frameworks metadata & helpers
 ```
 **User config:** `~/.config/spec-studio/config.json`
 - `ai.enabled`: `false` by default

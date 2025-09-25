@@ -5,7 +5,7 @@ import nunjucks from "nunjucks";
 import { parse } from "yaml";
 import { z } from "zod";
 import { loadToModel as loadHipaaCatalog } from "@speckit/adapter-hipaa";
-import type { SpecModel } from "@speckit/core";
+import type { SpecModel } from "@speckit/engine";
 import { BundleSchema } from "../catalog.js";
 import { loadSpecYaml } from "../spec.js";
 

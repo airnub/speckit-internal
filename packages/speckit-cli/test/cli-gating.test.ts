@@ -41,7 +41,7 @@ test("frameworks list highlights experimental badges when gate is off", async ()
     assert.equal(exitCode, 0);
     const output = io.getStdout();
     assert.match(output, /\[Experimental]/);
-    assert.match(output, /locked — enable with --experimental/);
+    assert.match(output, /Enable experimental with `--experimental`/);
   } finally {
     if (prev === undefined) {
       delete process.env.SPECKIT_EXPERIMENTAL;

@@ -3,7 +3,7 @@
 **TUI + optional AI assistant for spec-driven development:** edit specs, preview diffs, and commit. AI and analytics are **disabled by default**.
 
 - **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
-- **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/core` (all `0.1.0`)
+- **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/engine`, `@speckit/feature-flags`, `@speckit/framework-registry` (all `0.1.0`)
 
 ## Features
 - **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.

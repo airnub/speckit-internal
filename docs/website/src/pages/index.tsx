@@ -69,7 +69,7 @@ function HomepageHero(): JSX.Element {
           <div className={styles.heroActions}>
             <Link
               className={clsx('button button--lg button--primary', styles.primaryButton)}
-              to="/docs/speckit-spec"
+              to="/docs/dev/specs/speckit-spec-v1-0-0"
             >
               Explore the docs
             </Link>
@@ -182,7 +182,10 @@ function CtaSection(): JSX.Element {
             into existing repos without forcing a rewrite.
           </p>
         </div>
-        <Link className={clsx('button button--lg button--primary', styles.primaryButton)} to="/docs/speckit-spec">
+        <Link
+          className={clsx('button button--lg button--primary', styles.primaryButton)}
+          to="/docs/dev/specs/speckit-spec-v1-0-0"
+        >
           View the specification
         </Link>
       </div>

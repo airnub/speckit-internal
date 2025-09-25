@@ -8,10 +8,12 @@ We need a cohesive developer experience across CLI and TUI with shared types/uti
 
 ## Decision
 Adopt a **pnpm monorepo** with packages:
-- `@speckit/core` (types, registry)
+- `@speckit/engine` (normalized IR, adapters, rendering primitives)
 - `@speckit/cli` (clipanion)
 - `@speckit/tui` (Ink React)
 - `@speckit/agent` (provider adapters, lazy imports)
+- `@speckit/feature-flags` (config precedence, entitlements)
+- `@speckit/framework-registry` (framework metadata & helpers)
 
 Use **TypeScript (strict)** and **tsup** to build ESM+CJS.
 

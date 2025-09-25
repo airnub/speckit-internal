@@ -22,6 +22,7 @@ speckit_provenance:
     version: '2024.09'
     digest: 'sha256:mock-spec-digest'
   generated_at: '2024-01-02T03:04:05.000Z'
+  source: oss
 ---
 
 # SpecKit Demo overview
@@ -84,6 +85,7 @@ speckit_provenance:
     version: '2024.09'
     digest: 'sha256:mock-spec-digest'
   generated_at: '2024-01-02T03:04:05.000Z'
+  source: oss
 ---
 
 # Classic mode snapshot
@@ -114,6 +116,7 @@ speckit_provenance:
     version: '2024.09'
     digest: 'sha256:mock-spec-digest'
   generated_at: '2024-01-02T03:04:05.000Z'
+  source: oss
 ---
 
 # Secure mode snapshot

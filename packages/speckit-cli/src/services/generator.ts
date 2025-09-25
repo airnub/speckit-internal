@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "fs-extra";
 import nunjucks from "nunjucks";
 import matter from "gray-matter";
-import type { GenerationMode, SpecModel } from "@speckit/core";
+import type { GenerationMode, SpecModel } from "@speckit/engine";
 import { loadSpecModel, hashSpecYaml } from "./spec.js";
 import {
   loadCatalogLock,
@@ -15,8 +15,13 @@ import {
 import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { appendManifestRun, updateManifestSpeckit } from "./manifest.js";
 import { resolveDefaultGenerationMode } from "./mode.js";
-import type { FeatureFlags } from "../config/featureFlags.js";
-import { assertModeAllowed, getFlags, isExperimentalEnabled } from "../config/featureFlags.js";
+import type { FeatureFlags, LocalEntitlementsBundle } from "../config/featureFlags.js";
+import {
+  assertModeAllowed,
+  createLocalEntitlementsBundle,
+  getFlags,
+  isExperimentalEnabled,
+} from "../config/featureFlags.js";
 import { FRAMEWORKS, type FrameworkId, type FrameworkStatus } from "../config/frameworkRegistry.js";
 
 type Provenance = {
@@ -30,6 +35,8 @@ type Provenance = {
   template: { id: string; version: string; sha: string };
   spec: { version: string; digest: string };
   generated_at: string;
+  source?: "oss" | "saas";
+  tenant_id?: string;
 };
 
 type PreparedOutput = {
@@ -47,6 +54,7 @@ export type GenerateOptions = {
   stdout?: NodeJS.WritableStream;
   mode?: GenerationMode;
   flags?: FeatureFlags;
+  entitlements?: LocalEntitlementsBundle;
 };
 
 export type GenerateResult = {
@@ -63,7 +71,8 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
   const specDigest = await hashSpecYaml(repoRoot);
   const resolvedMode = options.mode ?? resolveDefaultGenerationMode(data);
   const flags = options.flags ?? getFlags({ cwd: repoRoot });
-  assertModeAllowed(resolvedMode, flags);
+  const entitlements = options.entitlements ?? createLocalEntitlementsBundle(flags);
+  await assertModeAllowed(resolvedMode, entitlements.entitlements, entitlements.context);
   const experimentalEnabled = isExperimentalEnabled(flags);
   const frameworksForProvenance = resolveFrameworksForProvenance(data);
 
@@ -121,6 +130,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         template: { id: bundle.id, version: bundle.version, sha: entry.sha },
         spec: { version: specVersion, digest: specDigest },
         generated_at: runTimestamp,
+        source: "oss",
       };
 
       const prepared = prepareOutput(rendered, targetRel, baseProvenance, existing);
