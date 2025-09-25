@@ -1,7 +1,7 @@
 import { Option } from "clipanion";
 import { runCompliancePlan, runComplianceVerify } from "../services/compliance/index.js";
-import { assertFrameworksAllowed, FRAMEWORKS, type FrameworkId } from "../config/frameworkRegistry.js";
-import { assertModeAllowed } from "../config/featureFlags.js";
+import { FRAMEWORKS, type FrameworkId } from "../config/frameworkRegistry.js";
+import { assertModeAllowed, assertFrameworksAllowed } from "../config/featureFlags.js";
 import { SpeckitCommand } from "./base.js";
 
 export class CompliancePlanCommand extends SpeckitCommand {
@@ -16,8 +16,9 @@ export class CompliancePlanCommand extends SpeckitCommand {
       return 1;
     }
     const flags = this.resolveFeatureFlags();
+    const { provider, context } = this.resolveEntitlements(flags);
     try {
-      assertModeAllowed("secure", flags);
+      await assertModeAllowed("secure", provider, context);
     } catch (error: any) {
       const message = error?.message ?? String(error);
       this.context.stderr.write(`speckit compliance plan failed: ${message}\n`);
@@ -29,7 +30,7 @@ export class CompliancePlanCommand extends SpeckitCommand {
       return 1;
     }
     try {
-      assertFrameworksAllowed([frameworkId], flags);
+      await assertFrameworksAllowed([frameworkId], provider, context);
     } catch (error: any) {
       const message = error?.message ?? String(error);
       this.context.stderr.write(`speckit compliance plan failed: ${message}\n`);
@@ -63,8 +64,9 @@ export class ComplianceVerifyCommand extends SpeckitCommand {
       return 1;
     }
     const flags = this.resolveFeatureFlags();
+    const { provider, context } = this.resolveEntitlements(flags);
     try {
-      assertModeAllowed("secure", flags);
+      await assertModeAllowed("secure", provider, context);
     } catch (error: any) {
       const message = error?.message ?? String(error);
       this.context.stderr.write(`speckit compliance verify failed: ${message}\n`);
@@ -76,7 +78,7 @@ export class ComplianceVerifyCommand extends SpeckitCommand {
       return 1;
     }
     try {
-      assertFrameworksAllowed([frameworkId], flags);
+      await assertFrameworksAllowed([frameworkId], provider, context);
     } catch (error: any) {
       const message = error?.message ?? String(error);
       this.context.stderr.write(`speckit compliance verify failed: ${message}\n`);

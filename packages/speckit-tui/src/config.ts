@@ -1,7 +1,7 @@
 import envPaths from "env-paths";
 import fs from "fs-extra";
 import path from "node:path";
-import type { SpeckitConfig } from "@speckit/core";
+import type { SpeckitConfig } from "@speckit/engine";
 
 const paths = envPaths("spec-studio");
 const configPath = `${paths.config}/config.json`;

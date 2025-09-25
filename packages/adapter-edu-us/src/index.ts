@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import { parse } from "yaml";
 import { z } from "zod";
-import type { Requirement, SpecModel, Reference } from "@speckit/core";
+import type { Requirement, SpecModel, Reference } from "@speckit/engine";
 
 const ReferenceLinkSchema = z.object({
   title: z.string().min(1),

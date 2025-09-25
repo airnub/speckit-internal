@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "fs-extra";
 import { parse } from "yaml";
 import semver from "semver";
-import type { SpecModel } from "@speckit/core";
+import type { SpecModel } from "@speckit/engine";
 import { loadToModel as loadSpeckitV1 } from "@speckit/adapter-speckit-v1";
 import { loadToModel as loadAsvsV4 } from "@speckit/adapter-owasp-asvs-v4";
 

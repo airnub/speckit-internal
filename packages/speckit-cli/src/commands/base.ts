@@ -1,6 +1,6 @@
 import { Command, Option } from "clipanion";
-import type { FeatureFlags, CliArgs } from "../config/featureFlags.js";
-import { getFlags } from "../config/featureFlags.js";
+import type { FeatureFlags, CliArgs, EntitlementProvider, EvaluationContext } from "../config/featureFlags.js";
+import { getFlags, resolveCliEntitlements } from "../config/featureFlags.js";
 
 export abstract class SpeckitCommand extends Command {
   experimentalFlag = Option.Boolean("--experimental", false);
@@ -10,6 +10,13 @@ export abstract class SpeckitCommand extends Command {
   protected resolveFeatureFlags(extra?: Partial<CliArgs>): FeatureFlags {
     const cliArgs = this.buildCliArgs(extra);
     return getFlags(cliArgs);
+  }
+
+  protected resolveEntitlements(flags: FeatureFlags): {
+    provider: EntitlementProvider;
+    context: EvaluationContext;
+  } {
+    return resolveCliEntitlements(flags);
   }
 
   protected buildCliArgs(extra?: Partial<CliArgs>): CliArgs {

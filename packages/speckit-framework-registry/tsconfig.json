@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "module": "ESNext"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

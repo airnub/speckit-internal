@@ -1,0 +1,74 @@
+{
+  "hipaa": {
+    "id": "hipaa",
+    "title": "HIPAA (US Healthcare)",
+    "availability": {
+      "status": "experimental",
+      "requires": {
+        "experimental": true
+      }
+    },
+    "tags": ["secure", "health"],
+    "bundles": ["compliance/hipaa"]
+  },
+  "gdpr": {
+    "id": "gdpr",
+    "title": "GDPR (EU/EEA)",
+    "availability": {
+      "status": "experimental",
+      "requires": {
+        "experimental": true
+      }
+    },
+    "tags": ["secure", "privacy"],
+    "bundles": ["compliance/gdpr-core"]
+  },
+  "soc2": {
+    "id": "soc2",
+    "title": "SOC 2 (AICPA)",
+    "availability": {
+      "status": "experimental",
+      "requires": {
+        "experimental": true
+      }
+    },
+    "tags": ["secure", "trust"],
+    "bundles": ["compliance/soc2-tsc"]
+  },
+  "iso27001": {
+    "id": "iso27001",
+    "title": "ISO/IEC 27001",
+    "availability": {
+      "status": "experimental",
+      "requires": {
+        "experimental": true
+      }
+    },
+    "tags": ["secure", "ism"],
+    "bundles": ["compliance/iso27001-annex-a"]
+  },
+  "edu-us": {
+    "id": "edu-us",
+    "title": "Education (US: FERPA/COPPA/CIPA/PPRA)",
+    "availability": {
+      "status": "experimental",
+      "requires": {
+        "experimental": true
+      }
+    },
+    "tags": ["secure", "education", "us"],
+    "bundles": ["compliance/edu-us/*"]
+  },
+  "edu-eu-ie": {
+    "id": "edu-eu-ie",
+    "title": "Education (EU/IE: GDPR + IE Fundamentals)",
+    "availability": {
+      "status": "experimental",
+      "requires": {
+        "experimental": true
+      }
+    },
+    "tags": ["secure", "education", "eu"],
+    "bundles": ["compliance/edu-eu/*", "compliance/edu-ie/*"]
+  }
+}

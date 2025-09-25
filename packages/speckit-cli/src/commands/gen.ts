@@ -21,9 +21,10 @@ export class GenerateDocsCommand extends SpeckitCommand {
       }
 
       const flags = this.resolveFeatureFlags();
+      const { provider, context } = this.resolveEntitlements(flags);
       if (parsedMode) {
         try {
-          assertModeAllowed(parsedMode, flags);
+          await assertModeAllowed(parsedMode, provider, context);
         } catch (error: any) {
           const message = error?.message ?? String(error);
           this.context.stderr.write(`speckit gen failed: ${message}\n`);
@@ -36,6 +37,8 @@ export class GenerateDocsCommand extends SpeckitCommand {
         stdout: this.context.stdout,
         mode: parsedMode ?? undefined,
         flags,
+        entitlements: provider,
+        evaluationContext: context,
       });
       const changed = result.outputs.filter(o => o.changed);
 

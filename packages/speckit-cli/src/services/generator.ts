@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "fs-extra";
 import nunjucks from "nunjucks";
 import matter from "gray-matter";
-import type { GenerationMode, SpecModel } from "@speckit/core";
+import type { GenerationMode, SpecModel } from "@speckit/engine";
 import { loadSpecModel, hashSpecYaml } from "./spec.js";
 import {
   loadCatalogLock,
@@ -15,9 +15,9 @@ import {
 import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { appendManifestRun, updateManifestSpeckit } from "./manifest.js";
 import { resolveDefaultGenerationMode } from "./mode.js";
-import type { FeatureFlags } from "../config/featureFlags.js";
-import { assertModeAllowed, getFlags, isExperimentalEnabled } from "../config/featureFlags.js";
-import { FRAMEWORKS, type FrameworkId, type FrameworkStatus } from "../config/frameworkRegistry.js";
+import type { EntitlementProvider, EvaluationContext, FeatureFlags } from "../config/featureFlags.js";
+import { assertModeAllowed, getFlags, isExperimentalEnabled, resolveCliEntitlements } from "../config/featureFlags.js";
+import { FRAMEWORKS, type FrameworkId, type FrameworkMeta } from "../config/frameworkRegistry.js";
 
 type Provenance = {
   tool: "speckit";
@@ -31,6 +31,8 @@ type Provenance = {
   spec: { version: string; digest: string };
   generated_at: string;
 };
+
+type FrameworkStatus = FrameworkMeta["availability"]["status"];
 
 type PreparedOutput = {
   relPath: string;
@@ -47,6 +49,8 @@ export type GenerateOptions = {
   stdout?: NodeJS.WritableStream;
   mode?: GenerationMode;
   flags?: FeatureFlags;
+  entitlements?: EntitlementProvider;
+  evaluationContext?: EvaluationContext;
 };
 
 export type GenerateResult = {
@@ -63,7 +67,17 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
   const specDigest = await hashSpecYaml(repoRoot);
   const resolvedMode = options.mode ?? resolveDefaultGenerationMode(data);
   const flags = options.flags ?? getFlags({ cwd: repoRoot });
-  assertModeAllowed(resolvedMode, flags);
+  let provider = options.entitlements;
+  let context = options.evaluationContext;
+  if (!provider || !context) {
+    const resolved = resolveCliEntitlements(flags);
+    provider = provider ?? resolved.provider;
+    context = context ?? resolved.context;
+  }
+  if (!provider || !context) {
+    throw new Error("Unable to resolve entitlements for generation");
+  }
+  await assertModeAllowed(resolvedMode, provider, context);
   const experimentalEnabled = isExperimentalEnabled(flags);
   const frameworksForProvenance = resolveFrameworksForProvenance(data);
 
@@ -281,8 +295,8 @@ function resolveFrameworksForProvenance(data: any): { id: string; status: Framew
   for (const id of ids) {
     if (seen.has(id)) continue;
     seen.add(id);
-    const meta = FRAMEWORKS[id as FrameworkId];
-    const status: FrameworkStatus = meta?.status ?? "experimental";
+    const meta = FRAMEWORKS[id as FrameworkId] as FrameworkMeta | undefined;
+    const status: FrameworkStatus = meta?.availability.status ?? "experimental";
     result.push({ id, status });
   }
   return result;

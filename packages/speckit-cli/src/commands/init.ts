@@ -1,5 +1,5 @@
 import { Option } from "clipanion";
-import { loadTemplates, templateFromGithubUrl, TemplateEntry } from "@speckit/core";
+import { loadTemplates, templateFromGithubUrl, TemplateEntry } from "@speckit/engine";
 import { useTemplateIntoDir } from "../services/template.js";
 import { assertModeAllowed } from "../config/featureFlags.js";
 import { SpeckitCommand } from "./base.js";
@@ -16,8 +16,9 @@ export class InitFromTemplateCommand extends SpeckitCommand {
       return 1;
     }
     const flags = this.resolveFeatureFlags();
+    const { provider, context } = this.resolveEntitlements(flags);
     try {
-      assertModeAllowed(normalizedMode as "classic" | "secure", flags);
+      await assertModeAllowed(normalizedMode as "classic" | "secure", provider, context);
     } catch (error: any) {
       const message = error?.message ?? String(error);
       this.context.stderr.write(`speckit init failed: ${message}\n`);
