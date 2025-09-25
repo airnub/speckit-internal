@@ -1,5 +1,9 @@
 # SpecKit — turn specs into commits
 
+[![Status: Active development](https://img.shields.io/badge/status-active--development-yellow)](#stability--support)
+[![Stability: Pre-release](https://img.shields.io/badge/stability-pre--release-orange)](#stability--support)
+[![SemVer: 0.x](https://img.shields.io/badge/semver-0.x-lightgrey)](#versioning)
+
 **Spec-Driven Development (SDD) with SpecKit** turns a single specification into actionable outputs—generated docs and a Requirements Traceability Matrix (RTM)—and enforces drift/policy gates for safe, auditable commits. Use built-in, repo-local, or remote GitHub templates; the **CLI & TUI** help you lint (Spectral), preview diffs, build docs/RTM, and propose patches (**AI optional; analytics off by default**).
 
 [![CI: speckit-verify](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml)
@@ -13,8 +17,30 @@
 * **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
 * **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/engine` (all `0.1.0`)
 
-## Features
+## Stability & Support
 
+This is a **public, pre-release (0.x)** project under **active development**. Expect **breaking changes** between minor versions while we iterate.
+
+* **Why public?** We want the community to benefit and to enable optional use of **free AI models** for local experiments.
+* **AI is optional.** It’s **OFF by default**. When enabled, you bring your own keys or free-tier endpoints.
+* **Analytics are OFF by default.** No telemetry unless you opt in.
+* **Pin for reproducibility.** If stability matters, pin to a commit SHA or a release tag (e.g., `v0.3.0`) and avoid `main`.
+
+If you hit regressions, please open an issue with repro steps and your pinned ref.
+
+## Versioning
+
+We use **SemVer 0.x** during pre-release. Any minor (`0.MINOR.PATCH`) **may** include breaking changes. Breaking commits should use Conventional Commits with a `!` (e.g., `feat!: …`).
+
+**Pre-release tags:** mark releases as **Pre-release** in GitHub and include clear migration notes in the changelog.
+
+## Data & AI usage
+
+* **AI OFF by default.** If you enable it, configure your own provider/model in `~/.config/spec-studio/config.json`.
+* **No PII.** Don’t send sensitive data to third-party providers. Treat prompts and specs as source code and review before sharing.
+* **Free models may change.** Availability or rate limits for free tiers can change without notice.
+
+## Features
 
 * **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.
 * **Spec ops**: create from template, edit in `$EDITOR`, validate front-matter, preview Markdown, diff, stage, **commit**.
@@ -29,7 +55,7 @@
 * **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
 * **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
 
-See an opinionated template here: https://github.com/airnub/speckit-template-next-supabase
+See an opinionated template here: [https://github.com/airnub/speckit-template-next-supabase](https://github.com/airnub/speckit-template-next-supabase)
 
 ## Speckit Catalog & Internal Docs
 
