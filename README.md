@@ -1,19 +1,22 @@
 # SpecKit — turn specs into commits
 
-**TUI + optional AI assistant for spec-driven development:** edit specs, preview diffs, and commit. AI and analytics are **disabled by default**.
+**Spec-Driven Development (SDD) CLI/TUI**: create and edit specs, preview diffs, and commit with confidence. Generate docs and RTM, import templates (built-in, repo-local, or GitHub), and enforce drift/policy gates. **AI & analytics are OFF by default.**
 
-[![CI: speckit-verify](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml)
-[![CI: CodeQL](https://github.com/airnub/speckit/actions/workflows/codeql.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/codeql.yml)
-[![CI: SBOM](https://github.com/airnub/speckit/actions/workflows/sbom.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/sbom.yml)
-[![CI: Catalog Protect](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml)
-[![CI: Mode Policy Gate](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml)
-[![CI: Framework Guard](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml)
+[![CI: speckit-verify](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml)
+[![CI: CodeQL](https://github.com/airnub/speckit/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/codeql.yml)
+[![CI: SBOM](https://github.com/airnub/speckit/actions/workflows/sbom.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/sbom.yml)
+[![CI: Catalog Protect](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml)
+[![CI: Mode Policy Gate](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml)
+[![CI: Framework Guard](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml)
 [![Powered by Speckit](https://img.shields.io/badge/powered%20by-speckit-blueviolet)](https://github.com/airnub/speckit)
+
+**Spec Driven Development (SDD)** with SpecKit turns a single specification into actionable outputs: generated docs, a Requirements Traceability Matrix (RTM), and policy-guarded commits. Use **built-in**, **repo-local**, or **remote GitHub templates**; the TUI helps lint (Spectral), build docs/RTM, and propose patches (AI optional).
 
 * **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
 * **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/engine` (all `0.1.0`)
 
 ## Features
+
 
 * **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.
 * **Spec ops**: create from template, edit in `$EDITOR`, validate front-matter, preview Markdown, diff, stage, **commit**.
@@ -22,10 +25,13 @@
 
   * **Built-in** — `blank` (`classic`), `speckit-template` (`classic`), `next-supabase` (`secure`)
   * **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
+  * **Remote GitHub** — pull from any accessible repo (use `#branch` or `?ref=` as needed)
 * **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
 * **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
 * **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
 * **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
+
+See an opinionated template here: https://github.com/airnub/speckit-template-next-supabase
 
 ## Speckit Catalog & Internal Docs
 
@@ -46,6 +52,8 @@ SpecKit now routes every generation through a normalized **SpecModel**. The repo
 * `@speckit/adapter-owasp-asvs-v4` — scaffolds OWASP ASVS v4 sections into the same shape so we can swap in that standard later without rewriting templates.
 
 Generated Markdown and the append-only `generation-manifest.json` record the dialect alongside tool and template provenance. To migrate a repo to ASVS, point `.speckit/spec.yaml` at the `owasp.asvs.v4` dialect (and provide an ASVS-formatted input file), then run `speckit gen --write`. The adapters keep templates untouched while enforcing compatibility through bundle constraints.
+
+> **Preservation:** Templates are copied **as-is** with variable interpolation; adapters normalize dialects without mutating template content. Architecture decisions and platform-specific details stay intact in generated outputs.
 
 ### Why it matters
 
