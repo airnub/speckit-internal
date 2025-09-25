@@ -6,8 +6,13 @@ import fs from "fs-extra";
 import path from "node:path";
 import TextInput from "ink-text-input";
 import { loadTemplates, TemplateEntry, SpeckitConfig } from "@speckit/core";
-import { useTemplateIntoDir } from "@speckit/cli";
-import type { PostInitCommandEvent } from "@speckit/cli";
+import {
+  useTemplateIntoDir,
+  getFlags,
+  isExperimentalEnabled as isExperimentalGateEnabled,
+  DEFAULT_FEATURE_FLAGS,
+} from "@speckit/cli";
+import type { PostInitCommandEvent, FeatureFlags } from "@speckit/cli";
 import { loadConfig, saveConfig } from "../config.js";
 import { gitRoot, gitBranch, gitStatus, gitDiff, openInEditor, gitCommitAll, gitFetch, gitPull, gitPush, runCmd, GitCommandResult, gitEnsureGithubRepo } from "../git.js";
 import { execa } from "execa";
@@ -59,6 +64,7 @@ export default function App() {
   const [branch, setBranch] = useState<string>("main");
   const [specRoot, setSpecRoot] = useState<string>("docs/specs");
   const [repoMode, setRepoMode] = useState<"classic"|"secure">("classic");
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(DEFAULT_FEATURE_FLAGS);
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [idx, setIdx] = useState(0);
   const [content, setContent] = useState<string>("");
@@ -84,6 +90,9 @@ export default function App() {
   const [settingsEditing, setSettingsEditing] = useState(false);
   const [settingsEditValue, setSettingsEditValue] = useState<string>("");
   const [settingsEditField, setSettingsEditField] = useState<SettingsFieldWithValue|null>(null);
+
+  const experimentalGateOn = isExperimentalGateEnabled(featureFlags);
+  const secureModeExperimental = featureFlags.modes.secure.experimental;
 
   async function refreshRepo(rootOverride?: string, options?: RefreshOptions): Promise<RefreshResult> {
     const conf = await loadConfig();
@@ -115,6 +124,7 @@ export default function App() {
       const availableTemplates = await loadTemplates({ repoRoot: resolvedRoot });
       setRepoPath(resolvedRoot);
       setTemplates(availableTemplates);
+      setFeatureFlags(getFlags({ cwd: resolvedRoot }));
       setTplIndex(prev => {
         if (availableTemplates.length === 0) return 0;
         return Math.min(prev, availableTemplates.length - 1);
@@ -681,6 +691,8 @@ export default function App() {
         branch={branch}
         specRoot={specRoot}
         mode={repoMode}
+        experimentalEnabled={experimentalGateOn}
+        secureModeExperimental={secureModeExperimental}
         aiEnabled={aiEnabled}
         provider={provider}
         model={model}
@@ -760,16 +772,24 @@ type HeaderProps = {
   branch: string;
   specRoot: string;
   mode: "classic"|"secure";
+  experimentalEnabled: boolean;
+  secureModeExperimental: boolean;
   aiEnabled: boolean;
   provider: string;
   model: string;
 };
 
-function Header({ repoPath, branch, specRoot, mode, aiEnabled, provider, model }: HeaderProps) {
-  const modeItems = [
-    { label: "Classic", value: "classic" as const },
-    { label: "Secure", value: "secure" as const }
-  ];
+function Header({
+  repoPath,
+  branch,
+  specRoot,
+  mode,
+  experimentalEnabled,
+  secureModeExperimental,
+  aiEnabled,
+  provider,
+  model,
+}: HeaderProps) {
   const metadata = [
     { label: "Version", value: TUI_VERSION, bold: true },
     { label: "Repo", value: repoPath },
@@ -791,16 +811,28 @@ function Header({ repoPath, branch, specRoot, mode, aiEnabled, provider, model }
       <Box marginTop={1} flexDirection="row" alignItems="center">
         <Text color="gray">Mode:</Text>
         <Box marginLeft={1} flexDirection="row">
-          {modeItems.map((item, index) => (
-            <Box key={item.value} flexDirection="row">
-              {index > 0 && <Text color="gray"> | </Text>}
-              <Text color={item.value === mode ? "yellow" : "gray"} bold={item.value === mode}>
-                {item.label}
+          <Box flexDirection="row">
+            <Text color={mode === "classic" ? "yellow" : "gray"} bold={mode === "classic"}>
+              Classic
+            </Text>
+          </Box>
+          <Text color="gray"> | </Text>
+          <Box flexDirection="row">
+            <Text color={mode === "secure" ? "yellow" : "gray"} bold={mode === "secure"}>
+              Secure
+            </Text>
+            {secureModeExperimental && (
+              <Text color={experimentalEnabled ? "magenta" : "gray"}>
+                {experimentalEnabled ? " (Experimental)" : " (locked)"}
               </Text>
-            </Box>
-          ))}
+            )}
+            {!secureModeExperimental && <Text color="green"> (GA)</Text>}
+          </Box>
         </Box>
       </Box>
+      {secureModeExperimental && !experimentalEnabled && (
+        <Text color="gray">Enable Experimental to try Secure mode.</Text>
+      )}
       <Box marginTop={1} flexDirection="row" flexWrap="wrap" columnGap={3} rowGap={0}>
         {metadata.map(item => (
           <Box key={item.label} marginRight={2}>

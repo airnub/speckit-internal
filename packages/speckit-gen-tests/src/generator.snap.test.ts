@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import type { SpecModel } from "../../speckit-core/src/model/SpecModel.js";
 import type { BundleDefinition, CatalogLockEntry } from "../../speckit-cli/src/services/catalog.js";
 import { generateDocs } from "../../speckit-cli/src/services/generator.js";
+import { DEFAULT_FEATURE_FLAGS } from "../../speckit-cli/src/config/featureFlags.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,7 +93,7 @@ describe("generator snapshots", () => {
     try {
       vi.setSystemTime(new Date("2024-01-02T03:04:05Z"));
       const repoRoot = await createRepoRoot();
-      await generateDocs({ repoRoot, write: true });
+      await generateDocs({ repoRoot, write: true, flags: DEFAULT_FEATURE_FLAGS });
       const markdown = await fs.readFile(path.join(repoRoot, "docs", "overview.md"), "utf8");
       expect(markdown).toMatchSnapshot();
     } finally {
@@ -105,7 +106,7 @@ describe("generator snapshots", () => {
     try {
       vi.setSystemTime(new Date("2024-01-02T03:04:05Z"));
       const repoRoot = await createRepoRoot();
-      await generateDocs({ repoRoot, write: true });
+      await generateDocs({ repoRoot, write: true, flags: DEFAULT_FEATURE_FLAGS });
       const yaml = await fs.readFile(path.join(repoRoot, "config", "app.yaml"), "utf8");
       expect(yaml).toMatchSnapshot();
     } finally {
@@ -118,7 +119,7 @@ describe("generator snapshots", () => {
     try {
       vi.setSystemTime(new Date("2024-01-02T03:04:05Z"));
       const repoRoot = await createRepoRoot();
-      await generateDocs({ repoRoot, write: true });
+      await generateDocs({ repoRoot, write: true, flags: DEFAULT_FEATURE_FLAGS });
       const tsContent = await fs.readFile(path.join(repoRoot, "src", "metadata.ts"), "utf8");
       expect(tsContent).toMatchSnapshot();
     } finally {
@@ -131,13 +132,13 @@ describe("generator snapshots", () => {
     try {
       const repoRoot = await createRepoRoot();
       vi.setSystemTime(new Date("2024-01-02T03:04:05Z"));
-      const first = await generateDocs({ repoRoot, write: true });
+      const first = await generateDocs({ repoRoot, write: true, flags: DEFAULT_FEATURE_FLAGS });
       expect(first.outputs.every(output => output.changed)).toBe(true);
       const initial = await fs.readFile(path.join(repoRoot, "docs", "overview.md"), "utf8");
       expect(initial).toContain("generated_at: '2024-01-02T03:04:05.000Z'");
 
       vi.setSystemTime(new Date("2024-05-06T07:08:09Z"));
-      const second = await generateDocs({ repoRoot, write: true });
+      const second = await generateDocs({ repoRoot, write: true, flags: DEFAULT_FEATURE_FLAGS });
       expect(second.outputs.every(output => output.changed === false)).toBe(true);
       const after = await fs.readFile(path.join(repoRoot, "docs", "overview.md"), "utf8");
       expect(after).toBe(initial);
@@ -191,7 +192,7 @@ describe("mode generator snapshots", () => {
     activeCatalogEntry = createCatalogEntry(activeBundle);
 
     vi.setSystemTime(new Date("2024-01-02T03:04:05Z"));
-    await generateDocs({ repoRoot, write: true });
+    await generateDocs({ repoRoot, write: true, flags: DEFAULT_FEATURE_FLAGS });
     const markdown = await fs.readFile(path.join(repoRoot, ...fixture.outputPath), "utf8");
     expect(markdown).toMatchSnapshot();
   });

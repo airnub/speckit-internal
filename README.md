@@ -77,13 +77,21 @@ pnpm --filter @speckit/tui dev
 #   S → Settings (toggle AI/analytics, edit provider, keys, models, repo paths)
 ```
 
-> #### Choose a mode
+> #### Modes & experimental gate
 > ```bash
-> speckit init --mode classic   # default
-> speckit init --mode secure
+> # Classic is default
+> speckit init --mode classic
+>
+> # Try Secure (experimental)
+> speckit init --experimental --mode secure
+> speckit frameworks list
 > ```
 
 Classic keeps things lightweight with no external framework dependencies. Secure enables hardened scaffolds and standards enforcement; pass `--mode secure` whenever you need the guardrails.
+
+### Framework statuses (GA vs Experimental)
+
+Compliance frameworks now flow through a central registry so each standard can graduate independently. Run `speckit frameworks list` to see the current status badges (GA or Experimental) and which ones require the experimental gate. GA frameworks work without `--experimental`; experimental ones stay locked until you opt in with `--experimental`, `SPECKIT_EXPERIMENTAL=1`, or a project/user config toggle.
 
 ### Secure mode: HIPAA compliance pack
 
@@ -96,8 +104,8 @@ Secure initiatives can now opt into a curated HIPAA Security Rule workflow witho
 Then run the compliance helpers:
 
 ```bash
-speckit compliance plan --framework hipaa    # generates the HIPAA checklist, privacy role guide, and breach plan
-speckit compliance verify --framework hipaa  # evaluates safeguards, runs the OPA policy, and writes .speckit/compliance-report.*
+speckit compliance plan --experimental --framework hipaa    # generates the HIPAA checklist, privacy role guide, and breach plan
+speckit compliance verify --experimental --framework hipaa  # evaluates safeguards, runs the OPA policy, and writes .speckit/compliance-report.*
 ```
 
 The HIPAA catalog uses NIST SP 800-66 Rev.2 guidance and the OLIR HIPAA ↔︎ NIST SP 800-53 Rev.5 mapping. Objective technical safeguards (TLS enforcement, encryption at rest, unique user IDs, audit logging) must report `pass` or the verify step fails; all other safeguards surface as manual evidence for reviewers.
@@ -107,8 +115,8 @@ The HIPAA catalog uses NIST SP 800-66 Rev.2 guidance and the OLIR HIPAA ↔︎ N
 K–12 initiatives can opt into a FERPA/COPPA/CIPA/PPRA workflow with optional state overlays for California SOPIPA and New York Education Law 2-d. Generate the bundle, capture evidence, and run policy checks:
 
 ```bash
-speckit compliance plan --framework edu-us --overlays ca-sopipa,ny-2d
-speckit compliance verify --framework edu-us
+speckit compliance plan --experimental --framework edu-us --overlays ca-sopipa,ny-2d
+speckit compliance verify --experimental --framework edu-us
 ```
 
 - `plan` writes `docs/internal/compliance/edu-us/**`, including the FERPA, COPPA, CIPA, PPRA checklists and any overlays you request.
@@ -121,8 +129,8 @@ The generated README links to primary guidance from the U.S. Department of Educa
 Opt into an EU/Ireland bundle when processing student data for Irish schools or EU programmes that follow the Data Protection Commission’s guidance.
 
 ```bash
-speckit compliance plan --framework edu-eu-ie
-speckit compliance verify --framework edu-eu-ie
+speckit compliance plan --experimental --framework edu-eu-ie
+speckit compliance verify --experimental --framework edu-eu-ie
 ```
 
 - `plan` writes GDPR and DPC fundamentals docs to `docs/internal/compliance/edu-eu-ie/**` and seeds an evidence tracker that reflects your configured age of digital consent.

@@ -9,6 +9,8 @@ speckit_provenance:
   tool_version: 0.1.0
   tool_commit: abc1234
   mode: classic
+  experimental: false
+  frameworks: []
   dialect:
     id: speckit.v1
     version: 1.1.0
@@ -69,6 +71,8 @@ speckit_provenance:
   tool_version: 0.1.0
   tool_commit: abc1234
   mode: classic
+  experimental: false
+  frameworks: []
   dialect:
     id: speckit.v1
     version: 1.1.0
@@ -97,6 +101,8 @@ speckit_provenance:
   tool_version: 0.1.0
   tool_commit: abc1234
   mode: classic
+  experimental: false
+  frameworks: []
   dialect:
     id: speckit.v1
     version: 1.1.0

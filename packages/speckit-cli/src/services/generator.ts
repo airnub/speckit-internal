@@ -15,12 +15,17 @@ import {
 import { getSpeckitVersion, isLikelyCommitSha } from "./version.js";
 import { appendManifestRun, updateManifestSpeckit } from "./manifest.js";
 import { resolveDefaultGenerationMode } from "./mode.js";
+import type { FeatureFlags } from "../config/featureFlags.js";
+import { assertModeAllowed, getFlags, isExperimentalEnabled } from "../config/featureFlags.js";
+import { FRAMEWORKS, type FrameworkId, type FrameworkStatus } from "../config/frameworkRegistry.js";
 
 type Provenance = {
   tool: "speckit";
   tool_version: string;
   tool_commit: string;
   mode: GenerationMode;
+  experimental: boolean;
+  frameworks: { id: string; status: FrameworkStatus }[];
   dialect: { id: string; version: string };
   template: { id: string; version: string; sha: string };
   spec: { version: string; digest: string };
@@ -41,6 +46,7 @@ export type GenerateOptions = {
   write: boolean;
   stdout?: NodeJS.WritableStream;
   mode?: GenerationMode;
+  flags?: FeatureFlags;
 };
 
 export type GenerateResult = {
@@ -56,6 +62,10 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
   }
   const specDigest = await hashSpecYaml(repoRoot);
   const resolvedMode = options.mode ?? resolveDefaultGenerationMode(data);
+  const flags = options.flags ?? getFlags({ cwd: repoRoot });
+  assertModeAllowed(resolvedMode, flags);
+  const experimentalEnabled = isExperimentalEnabled(flags);
+  const frameworksForProvenance = resolveFrameworksForProvenance(data);
 
   const speckitInfo = await getSpeckitVersion(repoRoot);
   if (!isLikelyCommitSha(speckitInfo.commit)) {
@@ -105,6 +115,8 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         tool_version: speckitInfo.version,
         tool_commit: speckitInfo.commit,
         mode: resolvedMode,
+        experimental: experimentalEnabled,
+        frameworks: frameworksForProvenance,
         dialect: { ...dialect },
         template: { id: bundle.id, version: bundle.version, sha: entry.sha },
         spec: { version: specVersion, digest: specDigest },
@@ -142,6 +154,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
         await appendManifestRun(repoRoot, speckitInfo, {
           at: first.provenance.generated_at,
           mode: resolvedMode,
+          experimental: experimentalEnabled,
           dialect,
           synced_with: { version: speckitInfo.version, commit: speckitInfo.commit },
           spec: { version: specVersion, digest: specDigest },
@@ -150,6 +163,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
             version: bundle.version,
             sha: entry.sha,
           },
+          frameworks: frameworksForProvenance,
           outputs: preparedOutputs.map(o => ({ path: o.relPath, digest: o.digest })),
         });
       }
@@ -253,6 +267,25 @@ function buildComment(provenance: Provenance, ext: string): string {
     default:
       return `<!-- ${message} -->`;
   }
+}
+
+function resolveFrameworksForProvenance(data: any): { id: string; status: FrameworkStatus }[] {
+  if (!Array.isArray(data?.compliance?.frameworks)) {
+    return [];
+  }
+  const ids = data.compliance.frameworks
+    .map((entry: any) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
+    .filter((id: string): id is string => Boolean(id));
+  const seen = new Set<string>();
+  const result: { id: string; status: FrameworkStatus }[] = [];
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const meta = FRAMEWORKS[id as FrameworkId];
+    const status: FrameworkStatus = meta?.status ?? "experimental";
+    result.push({ id, status });
+  }
+  return result;
 }
 
 function createRenderingContext(model: SpecModel, dialect: { id: string; version: string }): any {

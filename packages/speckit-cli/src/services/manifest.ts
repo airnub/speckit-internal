@@ -8,6 +8,7 @@ const GenerationModeSchema = z.enum(["classic", "secure"]);
 const ManifestRunSchema = z.object({
   at: z.string(),
   mode: GenerationModeSchema.default("classic"),
+  experimental: z.boolean().default(false),
   dialect: z
     .object({ id: z.string(), version: z.string() })
     .optional(),
@@ -16,6 +17,14 @@ const ManifestRunSchema = z.object({
     .optional(),
   spec: z.object({ version: z.string(), digest: z.string() }),
   template: z.object({ id: z.string(), version: z.string(), sha: z.string() }),
+  frameworks: z
+    .array(
+      z.object({
+        id: z.string(),
+        status: z.enum(["experimental", "ga"]),
+      })
+    )
+    .default([]),
   outputs: z.array(z.object({ path: z.string(), digest: z.string() })),
 });
 
@@ -73,8 +82,10 @@ export async function appendManifestRun(
   const enriched: ManifestRun = {
     ...run,
     mode: run.mode ?? "classic",
+    experimental: run.experimental ?? false,
     dialect: run.dialect ?? { id: "unknown", version: "unknown" },
     synced_with: run.synced_with ?? { version: info.version, commit: info.commit },
+    frameworks: Array.isArray(run.frameworks) ? run.frameworks : [],
   };
   manifest.runs = manifest.runs.map(existing => {
     if (existing.dialect && existing.dialect.id && existing.dialect.version) {
