@@ -2,27 +2,34 @@
 
 **TUI + optional AI assistant for spec-driven development:** edit specs, preview diffs, and commit. AI and analytics are **disabled by default**.
 
-- **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
-- **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/engine` (all `0.1.0`)
+[![CI: speckit-verify](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/speckit-verify.yml)
+[![CI: tests](https://github.com/airnub/speckit/actions/workflows/tests.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/tests.yml)
+[![CI: preset policy gate](https://github.com/airnub/speckit/actions/workflows/preset-policy-gate.yml/badge.svg)](https://github.com/airnub/speckit/actions/workflows/preset-policy-gate.yml)
+[![Powered by Speckit](https://img.shields.io/badge/powered%20by-speckit-blueviolet)](https://github.com/airnub/speckit)
+
+* **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`
+* **Packages:** `@speckit/cli`, `@speckit/tui`, `@speckit/agent`, `@speckit/engine` (all `0.1.0`)
 
 ## Features
-- **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.
-- **Spec ops**: create from template, edit in `$EDITOR`, validate front-matter, preview Markdown, diff, stage, **commit**.
-- **Git remote ops (AI-OFF supported)**: **Fetch/Pull/Push** using your local git credentials.
-- **Templates**:
-  - **Built-in** — `blank` (`classic`), `speckit-template` (`classic`), `next-supabase` (`secure`)
-  - **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
-- **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
-- **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
-- **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
-- **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
+
+* **Repo-aware**: bind to current repo & branch; or switch to any local/GitHub repo + branch.
+* **Spec ops**: create from template, edit in `$EDITOR`, validate front-matter, preview Markdown, diff, stage, **commit**.
+* **Git remote ops (AI-OFF supported)**: **Fetch/Pull/Push** using your local git credentials.
+* **Templates**:
+
+  * **Built-in** — `blank` (`classic`), `speckit-template` (`classic`), `next-supabase` (`secure`)
+  * **Repo-local** — any directories under `.speckit/templates/**` are merged into the catalog (CLI + TUI)
+* **Spectral & PostInit (TUI)**: **K** lint SRS; **B** build docs/RTM (auto-detects `docs:gen`, `rtm:build`).
+* **AI loop (optional)**: **A** to propose a patch (only active when `ai.enabled=true`).
+* **Settings (S)**: edit every option in `~/.config/spec-studio/config.json` (AI/analytics toggles, provider/model, API keys & tokens, model lists, repo paths, workspaces).
+* **Enterprise-safe**: **AI OFF** and **Analytics OFF** by default.
 
 ## Speckit Catalog & Internal Docs
 
-- **Working docs** live under `docs/internal/**`. Agents and contributors edit these Markdown files directly when updating the plan, RTM, ADRs, or internal briefs.
-- **Published bundles** live under `.speckit/catalog/**` (specs + prompts). Treat this directory as read-only; regenerate bundles with the Speckit CLI and open catalog PRs only when the `catalog:allowed` label is applied.
-- **Single source of truth** is `.speckit/spec.yaml`. Run `speckit gen --write` to refresh generated docs in `docs/specs/`, then commit the results.
-- **Verification** is enforced by the `speckit-verify` workflow, which fails the build if generated docs drift from the spec.
+* **Working docs** live under `docs/internal/**`. Agents and contributors edit these Markdown files directly when updating the plan, RTM, ADRs, or internal briefs.
+* **Published bundles** live under `.speckit/catalog/**` (specs + prompts). Treat this directory as read-only; regenerate bundles with the Speckit CLI and open catalog PRs only when the `catalog:allowed` label is applied.
+* **Single source of truth** is `.speckit/spec.yaml`. Run `speckit gen --write` to refresh generated docs in `docs/specs/`, then commit the results.
+* **Verification** is enforced by the `speckit-verify` workflow, which fails the build if generated docs drift from the spec.
 
 ## Preset Policy Gate
 
@@ -32,8 +39,8 @@ PRs that change the preset bundle (`packages/speckit-presets/src/index.ts`) or r
 
 SpecKit now routes every generation through a normalized **SpecModel**. The repository declares its input dialect in `.speckit/spec.yaml` (`dialect.id` + `dialect.version`), and the CLI picks the matching adapter at runtime. Today the catalog ships with two adapters:
 
-- `@speckit/adapter-speckit-v1` — maps the classic SpecKit YAML into the normalized SpecModel.
-- `@speckit/adapter-owasp-asvs-v4` — scaffolds OWASP ASVS v4 sections into the same shape so we can swap in that standard later without rewriting templates.
+* `@speckit/adapter-speckit-v1` — maps the classic SpecKit YAML into the normalized SpecModel.
+* `@speckit/adapter-owasp-asvs-v4` — scaffolds OWASP ASVS v4 sections into the same shape so we can swap in that standard later without rewriting templates.
 
 Generated Markdown and the append-only `generation-manifest.json` record the dialect alongside tool and template provenance. To migrate a repo to ASVS, point `.speckit/spec.yaml` at the `owasp.asvs.v4` dialect (and provide an ASVS-formatted input file), then run `speckit gen --write`. The adapters keep templates untouched while enforcing compatibility through bundle constraints.
 
@@ -41,12 +48,13 @@ Generated Markdown and the append-only `generation-manifest.json` record the dia
 
 This rationale lives in the repository README so generated specs stay focused while the full context stays easy to find.
 
-- **One source of truth at any scale** — distributed squads rely on the same living specification bundle, so onboarding, reviews, and compliance checks stay aligned no matter how many repos you operate. Product and platform changes point back to that single narrative instead of scattered docs.
-- **Stack-flexible planning** — when architecture or framework choices shift—say, React today and Next.js tomorrow—you refine the implementation plan while the core requirements remain steady. Specs describe intent, so they survive tool migrations and keep engineers unblocked.
-- **Requirements tracked like code** — every requirement lives alongside the source in git, complete with history, diffs, and review workflows. Traceability stops being a spreadsheet exercise because updates ride through normal pull requests.
-- **Full-context AI assistance** — the agent can reference the entire specification, recent diffs, and surrounding artifacts rather than a single prompt. That richer context produces proposals that respect constraints your team already agreed to.
+* **One source of truth at any scale** — distributed squads rely on the same living specification bundle, so onboarding, reviews, and compliance checks stay aligned no matter how many repos you operate. Product and platform changes point back to that single narrative instead of scattered docs.
+* **Stack-flexible planning** — when architecture or framework choices shift—say, React today and Next.js tomorrow—you refine the implementation plan while the core requirements remain steady. Specs describe intent, so they survive tool migrations and keep engineers unblocked.
+* **Requirements tracked like code** — every requirement lives alongside the source in git, complete with history, diffs, and review workflows. Traceability stops being a spreadsheet exercise because updates ride through normal pull requests.
+* **Full-context AI assistance** — the agent can reference the entire specification, recent diffs, and surrounding artifacts rather than a single prompt. That richer context produces proposals that respect constraints your team already agreed to.
 
 ## Quick start
+
 ```bash
 # Enable Corepack for pnpm (Node 18+ bundles it)
 corepack enable pnpm
@@ -86,13 +94,14 @@ pnpm --filter @speckit/tui dev
 Speckit treats **presets** as shortcuts for framework bundles. Classic remains the default and keeps frameworks empty. Secure now
 expands to a curated list (`iso27001`, `soc2`, `gdpr`). You can always override the preset by passing explicit frameworks:
 
-- `--frameworks iso27001,soc2,gdpr` for a CSV.
-- `--framework iso27001 --framework soc2` for repeated flags.
+* `--frameworks iso27001,soc2,gdpr` for a CSV.
+* `--framework iso27001 --framework soc2` for repeated flags.
 
 When you pass explicit frameworks they win over any preset. The CLI still accepts `--mode secure` for backward compatibility but
 prints a hint reminding you to prefer `--frameworks …` for precise control.
 
 > #### Modes & experimental gate
+>
 > ```bash
 > # Classic is default
 > speckit init --mode classic
@@ -134,8 +143,8 @@ speckit compliance plan --experimental --framework edu-us --overlays ca-sopipa,n
 speckit compliance verify --experimental --framework edu-us
 ```
 
-- `plan` writes `docs/internal/compliance/edu-us/**`, including the FERPA, COPPA, CIPA, PPRA checklists and any overlays you request.
-- `verify` evaluates `docs/internal/compliance/edu-us/edu-us-controls.yaml`, enforces the COPPA/CIPA/NY 2-d guardrails, and produces `.speckit/compliance-report.(json|md)`.
+* `plan` writes `docs/internal/compliance/edu-us/**`, including the FERPA, COPPA, CIPA, PPRA checklists and any overlays you request.
+* `verify` evaluates `docs/internal/compliance/edu-us/edu-us-controls.yaml`, enforces the COPPA/CIPA/NY 2-d guardrails, and produces `.speckit/compliance-report.(json|md)`.
 
 The generated README links to primary guidance from the U.S. Department of Education, FTC, FCC, and state regulators. Policy-as-code checks fail when under-13 processing lacks consent/retention documentation, E-Rate claims lack filtering or monitoring artefacts, or New York overlays miss the required public postings.
 
@@ -148,8 +157,8 @@ speckit compliance plan --experimental --framework edu-eu-ie
 speckit compliance verify --experimental --framework edu-eu-ie
 ```
 
-- `plan` writes GDPR and DPC fundamentals docs to `docs/internal/compliance/edu-eu-ie/**` and seeds an evidence tracker that reflects your configured age of digital consent.
-- `verify` enforces age-of-digital-consent alignment, DPIA coverage, parental consent flows (when consent is the lawful basis), behavioural advertising bans, and retention limits. Results land in `.speckit/compliance-report.(json|md)`.
+* `plan` writes GDPR and DPC fundamentals docs to `docs/internal/compliance/edu-eu-ie/**` and seeds an evidence tracker that reflects your configured age of digital consent.
+* `verify` enforces age-of-digital-consent alignment, DPIA coverage, parental consent flows (when consent is the lawful basis), behavioural advertising bans, and retention limits. Results land in `.speckit/compliance-report.(json|md)`.
 
 Age defaults to 16 for Ireland. To support another EU/EEA Member State, edit `.speckit/spec.yaml` and set `compliance.frameworks[].config` for `edu-eu-ie`, then re-run the plan command to refresh docs with the new age.
 
@@ -217,25 +226,30 @@ Declare an array of shell commands in `postInit` (within the manifest) to run af
 
 ## Governance & contributing
 
-- [Mode Assurance & Anti-Regression Charter](docs/internal/charters/mode-assurance.md)
+* [Mode Assurance & Anti-Regression Charter](docs/internal/charters/mode-assurance.md)
 
 ## Roadmap
 
 ### Near term
-- Expand template coverage (more frontend/backend stacks) and polish the TUI flows for diffing, staging, and committing specs.
-- Add support for repo-local templates under `.speckit/templates` so teams can version custom scaffolds that load seamlessly in the CLI/TUI pickers.
-- Harden the Spectral/PostInit runners with additional integration tests and richer error surfacing, keeping AI and analytics optional by default.
-- Add a draft-spec workflow so requirement edits happen in a draft workspace first, can be reviewed or committed as drafts, and then promoted into a new published version when ready.
-- Expand the CLI/TUI beyond today's spec-generation flows by planning `/plan` to drive tech-stack selection and `/tasks` to break work into actionable steps.
+
+* Expand template coverage (more frontend/backend stacks) and polish the TUI flows for diffing, staging, and committing specs.
+* Add support for repo-local templates under `.speckit/templates` so teams can version custom scaffolds that load seamlessly in the CLI/TUI pickers.
+* Harden the Spectral/PostInit runners with additional integration tests and richer error surfacing, keeping AI and analytics optional by default.
+* Add a draft-spec workflow so requirement edits happen in a draft workspace first, can be reviewed or committed as drafts, and then promoted into a new published version when ready.
+* Expand the CLI/TUI beyond today's spec-generation flows by planning `/plan` to drive tech-stack selection and `/tasks` to break work into actionable steps.
 
 ### Mid term
-- Add **Model Context Protocol (MCP) / Agent-to-Agent (A2A)** support so SpecKit can both consume and expose spec context programmatically. This will let external agents request templates, trigger lint/build runs, and hand back proposed patches without going through the interactive CLI/TUI.
+
+* Add **Model Context Protocol (MCP) / Agent-to-Agent (A2A)** support so SpecKit can both consume and expose spec context programmatically. This will let external agents request templates, trigger lint/build runs, and hand back proposed patches without going through the interactive CLI/TUI.
 
 ### Long term
-- Ship **Speckit TUS as a SaaS platform**: a multi-tenant Next.js + Supabase web app that generates specs, manages template catalogs, and mirrors all SpecKit CLI/TUI functionality (spec editing, diffing, AI proposals, repo orchestration) through secure web workflows and webhooks. The goal is a managed experience where teams collaborate on specs, sync to their repos, and invoke SpecKit automation from the browser or via Supabase Edge Functions.
+
+* Ship **Speckit TUS as a SaaS platform**: a multi-tenant Next.js + Supabase web app that generates specs, manages template catalogs, and mirrors all SpecKit CLI/TUI functionality (spec editing, diffing, AI proposals, repo orchestration) through secure web workflows and webhooks. The goal is a managed experience where teams collaborate on specs, sync to their repos, and invoke SpecKit automation from the browser or via Supabase Edge Functions.
 
 ### Update model lists
+
 Edit `~/.config/spec-studio/config.json`:
+
 ```jsonc
 {
   "ai": { "enabled": true },
