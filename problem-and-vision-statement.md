@@ -49,7 +49,7 @@ A developer‑friendly **SDD + SRDD workstation** that:
 3. **Human‑in‑the‑loop**: no auto‑apply patches by default; review diffs like code.
 4. **Enterprise‑safe**: AI/analytics disabled by default; no network calls unless explicitly enabled.
 5. **Composable**: separate packages for CLI, TUI, core schemas, and agent adapters.
-6. **Portable**: Node 18+, TypeScript strict, no background daemons.
+6. **Portable**: Node 24+, TypeScript strict, no background daemons.
 
 ---
 
