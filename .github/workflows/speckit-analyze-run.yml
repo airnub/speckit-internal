@@ -1,77 +1,49 @@
-name: speckit-analyze-run
-
+name: SpecKit — Analyze Agent Run
 on:
+  workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-
-permissions:
-  contents: write
-  pull-requests: write
-
+    types: [opened, synchronize, reopened]
 jobs:
   analyze:
-    name: Analyze agent run logs
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: corepack enable
+      - run: pnpm --version || npm i -g pnpm
+      - run: pnpm install --frozen-lockfile
 
       - name: Download agent run logs
-        id: download_logs
         uses: actions/download-artifact@v4
         with:
           name: agent-run-logs
-          path: agent-run-logs
-          if-no-files-found: ignore
+          path: ./agent-logs
 
-      - name: Detect log bundle
-        id: check_logs
+      - name: Unpack logs
         run: |
-          if compgen -G "agent-run-logs/**/*" > /dev/null; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          fi
+          mkdir -p runs_from_artifact
+          tar -xzf agent-logs/agent-run-logs.tar.gz -C runs_from_artifact
 
-      - name: Run analyzer
-        if: steps.check_logs.outputs.found == 'true'
-        run: pnpm speckit:analyze -- --raw-log "agent-run-logs/**/*"
+      - name: Analyze run logs
+        run: |
+          pnpm speckit:analyze -- --raw-log "runs_from_artifact/*" \
+            --write-rtm RTM.md --out .speckit
 
-      - name: Commit run artifacts
-        if: steps.check_logs.outputs.found == 'true'
+      - name: Commit RTM + artifacts (if changed)
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: update speckit run artifacts"
-          branch: ${{ github.head_ref }}
+          commit_message: "chore(speckit): update RTM & .speckit artifacts"
           file_pattern: |
-            .speckit/*.json
-            .speckit/*.yaml
-            .speckit/*.md
-            .speckit/requirements.jsonl
             RTM.md
-            docs/internal/agents/coding-agent-brief.md
+            .speckit/**
 
-      - name: Post run summary comment
-        if: steps.check_logs.outputs.found == 'true'
+      - name: PR Comment — Run Forensics
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           recreate: true
           path: .speckit/summary.md
-
-      - name: No artifact notice
-        if: steps.check_logs.outputs.found != 'true'
-        run: echo "No agent-run-logs artifact found. Upload logs to enable run forensics."

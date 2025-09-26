@@ -10,3 +10,7 @@ docs/website/build
 
 # Speckit cache and generated previews
 .speckit/cache/
+
+# Local agent run logs (never commit raw logs)
+runs/
+runs/**/*.log

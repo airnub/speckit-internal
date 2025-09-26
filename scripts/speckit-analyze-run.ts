@@ -9,12 +9,13 @@ import { z } from "zod";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
-const ARTIFACT_DIR = path.join(ROOT, ".speckit");
-const FAILURE_RULES_PATH = path.join(ARTIFACT_DIR, "failure-rules.yaml");
+const DEFAULT_ARTIFACT_DIR = path.join(ROOT, ".speckit");
 
 interface AnalyzerOptions {
   rawLogPatterns: string[];
   runId?: string;
+  outDir?: string;
+  rtmPath?: string;
 }
 
 interface FailureRule {
@@ -104,6 +105,16 @@ function parseArgs(argv: string[]): AnalyzerOptions {
     } else if (arg === "--run-id" && argv[i + 1]) {
       options.runId = argv[i + 1];
       i += 1;
+    } else if (arg === "--out" && argv[i + 1]) {
+      options.outDir = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--out=")) {
+      options.outDir = arg.slice("--out=".length);
+    } else if (arg === "--write-rtm" && argv[i + 1]) {
+      options.rtmPath = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--write-rtm=")) {
+      options.rtmPath = arg.slice("--write-rtm=".length);
     }
   }
   return options;
@@ -244,33 +255,46 @@ function parseTextLog(content: string, fallback: () => Date): ParsedLogResult {
   return { events, promptCandidates: prompts, plainText: content };
 }
 
-async function loadFailureRules(): Promise<FailureRule[]> {
-  try {
-    const raw = await fs.readFile(FAILURE_RULES_PATH, "utf8");
-    const schema = z.object({
-      rules: z
-        .array(
-          z.object({
-            id: z.string(),
-            label: z.string().optional(),
-            description: z.string().optional(),
-            patterns: z.array(z.string()),
-            remediation: z.string().optional(),
-          })
-        )
-        .default([]),
-    });
-    const parsed = schema.parse(YAML.parse(raw));
-    return parsed.rules.map((rule) => ({
-      id: rule.id,
-      label: rule.label ?? rule.id,
-      description: rule.description,
-      patterns: rule.patterns,
-      remediation: rule.remediation,
-    }));
-  } catch (error) {
-    console.warn(`[speckit-analyze-run] Unable to load failure rules: ${(error as Error).message}`);
+async function loadFailureRules(failureRulesPath: string): Promise<FailureRule[]> {
+  const searchPaths = [failureRulesPath];
+  const defaultPath = path.join(DEFAULT_ARTIFACT_DIR, "failure-rules.yaml");
+  const resolvedDefault = path.resolve(defaultPath);
+  if (!searchPaths.some((candidate) => path.resolve(candidate) === resolvedDefault)) {
+    searchPaths.push(defaultPath);
   }
+  for (const candidate of searchPaths) {
+    try {
+      const raw = await fs.readFile(candidate, "utf8");
+      const schema = z.object({
+        rules: z
+          .array(
+            z.object({
+              id: z.string(),
+              label: z.string().optional(),
+              description: z.string().optional(),
+              patterns: z.array(z.string()),
+              remediation: z.string().optional(),
+            })
+          )
+          .default([]),
+      });
+      const parsed = schema.parse(YAML.parse(raw));
+      return parsed.rules.map((rule) => ({
+        id: rule.id,
+        label: rule.label ?? rule.id,
+        description: rule.description,
+        patterns: rule.patterns,
+        remediation: rule.remediation,
+      }));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
+        console.warn(
+          `[speckit-analyze-run] Unable to load failure rules from ${candidate}: ${(error as Error).message}`
+        );
+      }
+    }
+  }
+  console.warn(`[speckit-analyze-run] No failure rules found; proceeding without label enforcement.`);
   return [];
 }
 
@@ -525,7 +549,11 @@ async function main(): Promise<void> {
     throw new Error(`No log files found for patterns: ${options.rawLogPatterns.join(", ")}`);
   }
 
-  const rules = await loadFailureRules();
+  const artifactDir = options.outDir ? path.resolve(ROOT, options.outDir) : DEFAULT_ARTIFACT_DIR;
+  const failureRulesPath = path.join(artifactDir, "failure-rules.yaml");
+  const resolvedRtmPath = options.rtmPath ? path.resolve(ROOT, options.rtmPath) : undefined;
+
+  const rules = await loadFailureRules(failureRulesPath);
   const allEvents: RunEvent[] = [];
   const promptCandidates: string[] = [];
   let plainTextAggregate = "";
@@ -571,12 +599,20 @@ async function main(): Promise<void> {
   const verification = buildVerification(requirements);
   const summary = buildSummary(runArtifact, metrics, memo, requirements);
 
-  await fs.mkdir(ARTIFACT_DIR, { recursive: true });
-  await writeJson(path.join(ARTIFACT_DIR, "Run.json"), runArtifact);
-  await writeJsonl(path.join(ARTIFACT_DIR, "requirements.jsonl"), requirements);
-  await writeJson(path.join(ARTIFACT_DIR, "metrics.json"), {
+  await fs.mkdir(artifactDir, { recursive: true });
+  await writeJson(path.join(artifactDir, "Run.json"), runArtifact);
+  await writeJsonl(path.join(artifactDir, "requirements.jsonl"), requirements);
+  const metricsPayload = {
     run_id: runArtifact.run_id,
     generated_at: new Date().toISOString(),
+    ReqCoverage: metrics.ReqCoverage,
+    BacktrackRatio: metrics.BacktrackRatio,
+    ToolPrecisionAt1: metrics.ToolPrecisionAt1,
+    ToolPrecision1: metrics.ToolPrecisionAt1,
+    EditLocality: metrics.EditLocality,
+    ReflectionDensity: metrics.ReflectionDensity,
+    TTFPSeconds: metrics.TTFPSeconds,
+    FailureLabels: Array.from(labels),
     metrics,
     labels: Array.from(labels),
     requirements: {
@@ -584,15 +620,19 @@ async function main(): Promise<void> {
       satisfied: requirements.filter((req) => req.status === "satisfied").length,
       violated: requirements.filter((req) => req.status === "violated").length,
     },
-  });
-  await writeJson(path.join(ARTIFACT_DIR, "memo.json"), memo);
-  await fs.writeFile(path.join(ARTIFACT_DIR, "verification.yaml"), YAML.stringify(verification), "utf8");
-  await fs.writeFile(path.join(ARTIFACT_DIR, "summary.md"), summary + "\n", "utf8");
+  };
+  await writeJson(path.join(artifactDir, "metrics.json"), metricsPayload);
+  await writeJson(path.join(artifactDir, "memo.json"), memo);
+  await fs.writeFile(path.join(artifactDir, "verification.yaml"), YAML.stringify(verification), "utf8");
+  await fs.writeFile(path.join(artifactDir, "summary.md"), summary + "\n", "utf8");
 
   // @ts-ignore Dynamic import of sibling TypeScript module handled at runtime by tsx
   const updater = await import(pathToFileURL(path.join(__dirname, "speckit-update-rtm.ts")).href);
   if (typeof updater.updateRTM === "function") {
-    await updater.updateRTM();
+    await updater.updateRTM({
+      artifactDir,
+      targetPath: resolvedRtmPath,
+    });
   }
 
   console.log(`[speckit-analyze-run] Run ${runArtifact.run_id} analyzed. ${requirements.length} requirements detected.`);

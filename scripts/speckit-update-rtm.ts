@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
 const DEFAULT_RTM_PATH = "RTM.md";
-const ARTIFACT_DIR = path.join(ROOT, ".speckit");
+const DEFAULT_ARTIFACT_DIR = path.join(ROOT, ".speckit");
 const START_MARKER = "<!-- speckit:rtm:start -->";
 const END_MARKER = "<!-- speckit:rtm:end -->";
 
@@ -50,8 +50,8 @@ async function readConfigRTMPath(): Promise<string> {
   return path.join(ROOT, DEFAULT_RTM_PATH);
 }
 
-async function readRequirements(): Promise<RequirementRecord[]> {
-  const requirementsPath = path.join(ARTIFACT_DIR, "requirements.jsonl");
+async function readRequirements(artifactDir: string): Promise<RequirementRecord[]> {
+  const requirementsPath = path.join(artifactDir, "requirements.jsonl");
   try {
     const raw = await fs.readFile(requirementsPath, "utf8");
     const records: RequirementRecord[] = [];
@@ -74,8 +74,8 @@ async function readRequirements(): Promise<RequirementRecord[]> {
   }
 }
 
-async function readRun(): Promise<RunArtifact | null> {
-  const runPath = path.join(ARTIFACT_DIR, "Run.json");
+async function readRun(artifactDir: string): Promise<RunArtifact | null> {
+  const runPath = path.join(artifactDir, "Run.json");
   try {
     const raw = await fs.readFile(runPath, "utf8");
     const parsed = JSON.parse(raw);
@@ -143,9 +143,20 @@ function ensureBlock(content: string): string {
   return content.trim().length === 0 ? `# Run Traceability Matrix\n\n${block}\n` : `${content.trim()}\n\n${block}\n`;
 }
 
-export async function updateRTM(): Promise<void> {
-  const [requirements, run] = await Promise.all([readRequirements(), readRun()]);
-  const rtmPath = await readConfigRTMPath();
+interface UpdateRtmOptions {
+  artifactDir?: string;
+  targetPath?: string | null;
+}
+
+export async function updateRTM(options: UpdateRtmOptions = {}): Promise<void> {
+  const artifactDir = options.artifactDir
+    ? path.resolve(ROOT, options.artifactDir)
+    : DEFAULT_ARTIFACT_DIR;
+  const [requirements, run] = await Promise.all([readRequirements(artifactDir), readRun(artifactDir)]);
+  const configuredPath = await readConfigRTMPath();
+  const rtmPath = options.targetPath
+    ? path.resolve(ROOT, options.targetPath)
+    : configuredPath;
   let existing = "";
   try {
     existing = await fs.readFile(rtmPath, "utf8");
@@ -173,7 +184,25 @@ export async function updateRTM(): Promise<void> {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  updateRTM().catch((error) => {
+  const cliOptions: UpdateRtmOptions = {};
+  for (let i = 2; i < process.argv.length; i += 1) {
+    const arg = process.argv[i];
+    if (!arg) continue;
+    if (arg === "--out" && process.argv[i + 1]) {
+      cliOptions.artifactDir = process.argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--out=")) {
+      cliOptions.artifactDir = arg.slice("--out=".length);
+    } else if ((arg === "--write-rtm" || arg === "--rtm") && process.argv[i + 1]) {
+      cliOptions.targetPath = process.argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--write-rtm=")) {
+      cliOptions.targetPath = arg.slice("--write-rtm=".length);
+    } else if (arg.startsWith("--rtm=")) {
+      cliOptions.targetPath = arg.slice("--rtm=".length);
+    }
+  }
+  updateRTM(cliOptions).catch((error) => {
     console.error("[speckit-update-rtm] Failed to update RTM:", error);
     process.exitCode = 1;
   });
