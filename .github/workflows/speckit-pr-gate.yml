@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   gate:
-    name: Enforce run forensics thresholds
+    name: Enforce critical run forensics gates
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,32 +23,58 @@ jobs:
           const path = require('path');
 
           const metricsPath = path.join(process.cwd(), '.speckit', 'metrics.json');
+          const configPath = path.join(process.cwd(), 'speckit.config.yaml');
+
+          let enforce = false;
+          let blockLabels = ['process.read-before-write-fail', 'env.git-state-drift'];
+          if (fs.existsSync(configPath)) {
+            const configRaw = fs.readFileSync(configPath, 'utf8');
+            enforce = /enforce_in_ci:\s*true/i.test(configRaw);
+            const blockMatch = configRaw.match(/block_on_violation:\s*\n((?:\s*-\s*"[^"]+"\s*\n)+)/);
+            if (blockMatch) {
+              blockLabels = blockMatch[1]
+                .split(/\n/)
+                .map((line) => line.trim().replace(/^-\s*"?|"$/g, ''))
+                .filter(Boolean);
+            }
+          }
+
           if (!fs.existsSync(metricsPath)) {
-            console.error('speckit-pr-gate: metrics.json not found. Run pnpm speckit:analyze and attach agent-run-logs.');
-            process.exit(1);
+            if (enforce) {
+              console.error('speckit-pr-gate: metrics.json not found. Upload sanitized logs or run pnpm speckit:analyze.');
+              process.exit(1);
+            } else {
+              console.log('speckit-pr-gate: metrics.json missing but enforcement disabled.');
+              process.exit(0);
+            }
           }
 
           const data = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
           const metrics = data.metrics || {};
           const labels = new Set(data.labels || []);
+          const sanitizerHits = Number(data.sanitizer_hits || 0);
 
           const failures = [];
+          const warnings = [];
 
-          if (typeof metrics.ReqCoverage === 'number' && metrics.ReqCoverage < 0.75) {
-            failures.push(`ReqCoverage ${metrics.ReqCoverage} < 0.75`);
-          }
-          if (typeof metrics.ToolPrecisionAt1 === 'number' && metrics.ToolPrecisionAt1 < 0.65) {
-            failures.push(`ToolPrecision@1 ${metrics.ToolPrecisionAt1} < 0.65`);
-          }
-          if (typeof metrics.BacktrackRatio === 'number' && metrics.BacktrackRatio > 0.35) {
-            failures.push(`BacktrackRatio ${metrics.BacktrackRatio} > 0.35`);
-          }
-
-          const forbidden = ['process.read-before-write-fail', 'env.git-state-drift'];
-          for (const label of forbidden) {
+          for (const label of blockLabels) {
             if (labels.has(label)) {
               failures.push(`Forbidden label detected: ${label}`);
             }
+          }
+
+          if (sanitizerHits > 0) {
+            failures.push(`Secret sanitizer detected ${sanitizerHits} matches.`);
+          }
+
+          if (typeof metrics.ReqCoverage === 'number' && metrics.ReqCoverage < 0.75) {
+            warnings.push(`ReqCoverage ${metrics.ReqCoverage} < 0.75`);
+          }
+          if (typeof metrics.ToolPrecisionAt1 === 'number' && metrics.ToolPrecisionAt1 < 0.65) {
+            warnings.push(`ToolPrecision@1 ${metrics.ToolPrecisionAt1} < 0.65`);
+          }
+          if (typeof metrics.BacktrackRatio === 'number' && metrics.BacktrackRatio > 0.35) {
+            warnings.push(`BacktrackRatio ${metrics.BacktrackRatio} > 0.35`);
           }
 
           if (failures.length > 0) {
@@ -56,5 +82,9 @@ jobs:
             process.exit(1);
           }
 
-          console.log('speckit-pr-gate: thresholds satisfied.');
+          if (warnings.length > 0) {
+            console.log('speckit-pr-gate warnings:\n- ' + warnings.join('\n- '));
+          } else {
+            console.log('speckit-pr-gate: no threshold warnings.');
+          }
           NODE

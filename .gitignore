@@ -10,3 +10,5 @@ docs/website/build
 
 # Speckit cache and generated previews
 .speckit/cache/
+runs/
+*.log

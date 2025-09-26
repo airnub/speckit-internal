@@ -1,0 +1,108 @@
+name: speckit-upload-logs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  upload:
+    name: Sanitize and upload run logs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect run logs
+        id: detect
+        run: |
+          if compgen -G "runs/**/*" > /dev/null; then
+            echo "has_logs=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_logs=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sanitize logs
+        if: steps.detect.outputs.has_logs == 'true'
+        id: sanitize
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const patterns = [
+            { regex: /(sk-[a-z0-9]{20,})/gi, replacement: '[redacted-token]' },
+            { regex: /(gh[pous]_[a-z0-9]{20,})/gi, replacement: '[redacted-token]' },
+            { regex: /(eyJ[0-9a-zA-Z_-]{10,}\.[0-9a-zA-Z_-]{10,}\.[0-9a-zA-Z_-]{10,})/g, replacement: '[redacted-jwt]' },
+            { regex: /(sessionid=)[^;\s]+/gi, replacement: '$1[redacted]' },
+            { regex: /(cookie:)[^\n]+/gi, replacement: '$1 [redacted-cookie]' },
+            { regex: /(https?:\/\/[^\s]+:[^@\s]+@)/gi, replacement: '[redacted-url]' },
+          ];
+          const root = process.cwd();
+          const sourceDir = path.join(root, 'runs');
+          const destDir = path.join(root, 'sanitized-logs');
+          let hits = 0;
+
+          function sanitizeText(text) {
+            let next = text;
+            for (const pattern of patterns) {
+              next = next.replace(pattern.regex, (match, ...rest) => {
+                hits += 1;
+                if (pattern.replacement.includes('$1')) {
+                  const groups = rest.slice(0, -2);
+                  return pattern.replacement.replace('$1', groups[0]);
+                }
+                return pattern.replacement;
+              });
+            }
+            return next;
+          }
+
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              const relative = path.relative(sourceDir, full);
+              const target = path.join(destDir, relative);
+              if (entry.isDirectory()) {
+                fs.mkdirSync(target, { recursive: true });
+                walk(full);
+              } else if (entry.isFile()) {
+                const original = fs.readFileSync(full, 'utf8');
+                const sanitized = sanitizeText(original);
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, sanitized, 'utf8');
+              }
+            }
+          }
+
+          if (!fs.existsSync(sourceDir)) {
+            console.error('runs/ directory disappeared before sanitizing.');
+            process.exit(1);
+          }
+
+          fs.mkdirSync(destDir, { recursive: true });
+          walk(sourceDir);
+          fs.writeFileSync(
+            path.join(destDir, 'sanitizer-report.json'),
+            JSON.stringify({ hits }, null, 2)
+          );
+          console.log(`Sanitized logs with ${hits} potential secret hits.`);
+          NODE
+
+      - name: Create archive
+        if: steps.detect.outputs.has_logs == 'true'
+        run: |
+          tar -czf agent-run-logs.tar.gz -C sanitized-logs .
+
+      - name: Upload sanitized logs
+        if: steps.detect.outputs.has_logs == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-run-logs
+          path: agent-run-logs.tar.gz
+
+      - name: No logs warning
+        if: steps.detect.outputs.has_logs != 'true'
+        run: echo "speckit-upload-logs: no runs/ logs found. Upload skipped."
