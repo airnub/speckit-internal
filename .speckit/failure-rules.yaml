@@ -1,0 +1,54 @@
+rules:
+  - id: env.tooling-missing
+    label: env.tooling-missing
+    description: Missing required system tooling or binary during the run.
+    patterns:
+      - "command not found"
+      - "No such file or directory"
+      - "is not installed"
+    remediation: Install the missing tool or ensure PATH includes it before rerunning.
+  - id: env.dependency-missing
+    label: env.dependency-missing
+    description: Package or library dependency was missing at runtime.
+    patterns:
+      - "Cannot find module"
+      - "Module not found"
+      - "dependency is not installed"
+      - "requires installation"
+    remediation: Add or install the dependency and commit lockfile updates.
+  - id: logic.api-mismatch
+    label: logic.api-mismatch
+    description: Code invoked an API with an unexpected signature or contract.
+    patterns:
+      - "TypeError"
+      - "unexpected argument"
+      - "invalid arguments"
+      - "does not match expected"
+    remediation: Verify the API contract and adjust the implementation or types accordingly.
+  - id: test.harness-broken
+    label: test.harness-broken
+    description: Test harness or fixture failed before reaching assertions.
+    patterns:
+      - "beforeAll" 
+      - "setup failed"
+      - "fixture error"
+      - "Test environment failed"
+    remediation: Repair the test harness or update setup scripts before rerunning tests.
+  - id: env.git-state-drift
+    label: env.git-state-drift
+    description: Git working tree diverged from expected baseline during the run.
+    patterns:
+      - "needs merge"
+      - "Merge conflict"
+      - "rebase required"
+      - "working tree is dirty"
+    remediation: Rebase or clean the working tree to the expected branch before retrying.
+  - id: process.read-before-write-fail
+    label: process.read-before-write-fail
+    description: Agent attempted to read files before they were generated or updated.
+    patterns:
+      - "ENOENT"
+      - "file not found"
+      - "read before write"
+      - "missing artifact"
+    remediation: Ensure generation order writes required files before dependent reads.

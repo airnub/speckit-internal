@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpecKit Run Requirement",
+  "description": "Canonical representation of requirements extracted from an agent prompt or spec for run verification.",
+  "type": "object",
+  "required": ["id", "text"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable identifier assigned to the requirement (e.g., REQ-1)."
+    },
+    "text": {
+      "type": "string",
+      "description": "Natural language description of the requirement."
+    },
+    "source": {
+      "type": ["string", "null"],
+      "description": "Optional pointer to the originating prompt, spec section, or log snippet."
+    },
+    "category": {
+      "type": ["string", "null"],
+      "description": "High level grouping such as guardrail, deliverable, or validation."
+    },
+    "constraints": {
+      "type": "array",
+      "description": "Structured sub-constraints parsed from the requirement text.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["unknown", "satisfied", "violated", "in-progress"],
+      "default": "unknown",
+      "description": "Analyzer-determined status for the requirement within the run."
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Identifiers of events that provide evidence for the requirement status.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Additional commentary or context captured during analysis."
+    }
+  },
+  "additionalProperties": false
+}
