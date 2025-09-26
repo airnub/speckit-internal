@@ -1,0 +1,18 @@
+{
+  "run_id": "test-run",
+  "generated_at": "2025-09-26T22:10:48.440Z",
+  "metrics": {
+    "ReqCoverage": 1,
+    "BacktrackRatio": 0,
+    "ToolPrecisionAt1": 1,
+    "EditLocality": 1,
+    "ReflectionDensity": 0,
+    "TTFPSeconds": null
+  },
+  "labels": [],
+  "requirements": {
+    "total": 2,
+    "satisfied": 0,
+    "violated": 0
+  }
+}

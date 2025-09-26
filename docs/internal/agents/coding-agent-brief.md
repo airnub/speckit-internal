@@ -19,6 +19,12 @@ updated: "2025-09-22"
 - **AI optional**; do not call providers unless `ai.enabled=true`.
 - Produce small, reviewable diffs; no background daemons.
 
+
+
+<!-- speckit:memo-guardrails:start -->
+- (Forensics) No guardrails recorded yet.
+<!-- speckit:memo-guardrails:end -->
+
 ## Deliverables per run
 1) Unified diff (patch) only for changed files.
 2) Conventional commit message: `feat(tui): ...`, `fix(cli): ...`, etc.
@@ -35,3 +41,9 @@ updated: "2025-09-22"
 - `pnpm -w build` passes.
 - No unguarded provider imports.
 - Config file created on first run if missing.
+
+
+<!-- speckit:verification:start -->
+> Generated from latest run
+- ⬜ No verification checks available.
+<!-- speckit:verification:end -->

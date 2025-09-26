@@ -43,6 +43,19 @@ speckit gen --write   # refresh docs/specs/**
 
 > Opinionated Next.js+Supabase template: https://github.com/airnub/speckit-template-next-supabase
 
+### Agent run forensics loop
+
+1. **Run your agent locally** and upload the raw log bundle as a PR artifact named `agent-run-logs`.
+2. **Open or update a PR.** The `speckit-analyze-run` workflow ingests the artifact, refreshes `.speckit/` run forensics, updates the RTM, and posts a sticky summary comment.
+3. **Gate locally before pushing:**
+
+   ```bash
+   pnpm speckit:analyze -- --raw-log runs/*.log
+   pnpm speckit:inject
+   ```
+
+   The analyzer emits `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, and updates `RTM.md`. The injector folds the memo guardrails + verification checklist into `docs/internal/agents/coding-agent-brief.md`.
+
 ---
 
 ## Key capabilities

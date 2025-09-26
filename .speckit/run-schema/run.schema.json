@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpecKit Agent Run",
+  "description": "Normalized representation of an agent execution including ordered events and derived metadata.",
+  "type": "object",
+  "required": ["run_id", "events"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "description": "Stable identifier assigned to the analyzed agent run."
+    },
+    "source_logs": {
+      "type": "array",
+      "description": "Paths of the raw log files used to construct this run artifact.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Timestamp of the first observed event."
+    },
+    "finished_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Timestamp of the final observed event."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata captured during ingestion such as agent identity or commit hash.",
+      "additionalProperties": true
+    },
+    "events": {
+      "type": "array",
+      "description": "Chronologically ordered events emitted during the run.",
+      "items": {
+        "type": "object",
+        "required": ["id", "timestamp", "kind"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the event within the run."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 timestamp associated with the event."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Primary category of the event (log, tool, reasoning, edit, test, summary, etc.)."
+          },
+          "subtype": {
+            "type": ["string", "null"],
+            "description": "Optional subtype for finer classification (e.g., tool name, stage)."
+          },
+          "role": {
+            "type": ["string", "null"],
+            "description": "Actor associated with the event (system, user, agent, tool)."
+          },
+          "input": {
+            "description": "Structured or free-form input payload sent to a tool or reasoning step.",
+            "anyOf": [
+              { "type": "null" },
+              { "type": "string" },
+              { "type": "object", "additionalProperties": true },
+              { "type": "array" }
+            ]
+          },
+          "output": {
+            "description": "Structured or free-form output payload returned by the event.",
+            "anyOf": [
+              { "type": "null" },
+              { "type": "string" },
+              { "type": "object", "additionalProperties": true },
+              { "type": "array" }
+            ]
+          },
+          "error": {
+            "description": "Optional error message or stack trace associated with the event.",
+            "anyOf": [
+              { "type": "null" },
+              { "type": "boolean" },
+              { "type": "string" }
+            ]
+          },
+          "files_changed": {
+            "type": "array",
+            "description": "File paths touched by the event, if any.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "description": "Per-event derived metrics such as latency, tokens, or retry counters.",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

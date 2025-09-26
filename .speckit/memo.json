@@ -1,0 +1,20 @@
+{
+  "generated_at": "2025-09-26T22:10:48.437Z",
+  "generated_from": {
+    "run_id": "test-run",
+    "sources": [
+      "/workspace/speckit/sample-logs/run.log"
+    ]
+  },
+  "lessons": [
+    "Review analyzer output and iterate on missing coverage before the next run."
+  ],
+  "guardrails": [
+    "Keep diffs focused and validate artifacts before commit."
+  ],
+  "checklist": [
+    "REQ-01: 🟡 Update README with agent run forensics quick start.",
+    "REQ-02: 🟡 Ensure RTM table includes latest requirement."
+  ],
+  "labels": []
+}
