@@ -1,0 +1,44 @@
+name: SpecKit — Upload Agent Run Logs
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  upload-logs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure run logs exist
+        run: |
+          mkdir -p runs || true
+          if [ -z "$(ls -A runs 2>/dev/null)" ]; then
+            echo "ERROR: No run logs found in ./runs"; exit 1;
+          fi
+
+      - name: Sanitize logs (redact secrets)
+        run: |
+          mkdir -p runs_sanitized
+          for f in runs/*; do
+            [ -f "$f" ] || continue
+            sed -E \
+              -e 's/(api[_-]?key|token|secret|password|authorization|bearer)[=: ]+[A-Za-z0-9._-]+/\1=REDACTED/gi' \
+              -e 's/(app-token|csrf|auth_id|cookie|set-cookie)[=: ]+[^ ,;]+/\1=REDACTED/gi' \
+              -e 's@https?://([^/]+):[^@]+@https://\1:REDACTED@g' \
+              "$f" > "runs_sanitized/$(basename "$f")"
+          done
+
+      - name: Compress logs
+        run: |
+          tar -czf agent-run-logs.tar.gz -C runs_sanitized .
+
+      - name: Upload agent run logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-run-logs
+          path: agent-run-logs.tar.gz
+          if-no-files-found: error
+          retention-days: 14

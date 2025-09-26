@@ -1,60 +1,33 @@
-name: speckit-pr-gate
-
+name: SpecKit — PR Gate
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-
-permissions:
-  contents: read
-  pull-requests: read
-
+    types: [opened, synchronize, reopened]
 jobs:
   gate:
-    name: Enforce run forensics thresholds
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Read metrics
+        id: metrics
+        run: |
+          if [ ! -f .speckit/metrics.json ]; then
+            echo '{}' > .speckit/metrics.json
+          fi
+          echo "METRICS=$(cat .speckit/metrics.json | tr -d '\n')" >> $GITHUB_OUTPUT
 
-      - name: Validate metrics
+      - name: Enforce thresholds
         run: |
           node <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-
-          const metricsPath = path.join(process.cwd(), '.speckit', 'metrics.json');
-          if (!fs.existsSync(metricsPath)) {
-            console.error('speckit-pr-gate: metrics.json not found. Run pnpm speckit:analyze and attach agent-run-logs.');
+          const m = JSON.parse(process.env.METRICS || '{}');
+          const cov = m.ReqCoverage ?? 0;
+          const tp1 = m.ToolPrecision1 ?? 0;
+          const back = m.BacktrackRatio ?? 1;
+          const failures = Array.isArray(m.FailureLabels) ? m.FailureLabels : [];
+          const bad = failures.includes('process.read-before-write-fail') || failures.includes('env.git-state-drift');
+          if (cov < 0.75 || tp1 < 0.65 || back > 0.35 || bad) {
+            console.error('PR gate failed', { cov, tp1, back, bad, failures });
             process.exit(1);
           }
-
-          const data = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-          const metrics = data.metrics || {};
-          const labels = new Set(data.labels || []);
-
-          const failures = [];
-
-          if (typeof metrics.ReqCoverage === 'number' && metrics.ReqCoverage < 0.75) {
-            failures.push(`ReqCoverage ${metrics.ReqCoverage} < 0.75`);
-          }
-          if (typeof metrics.ToolPrecisionAt1 === 'number' && metrics.ToolPrecisionAt1 < 0.65) {
-            failures.push(`ToolPrecision@1 ${metrics.ToolPrecisionAt1} < 0.65`);
-          }
-          if (typeof metrics.BacktrackRatio === 'number' && metrics.BacktrackRatio > 0.35) {
-            failures.push(`BacktrackRatio ${metrics.BacktrackRatio} > 0.35`);
-          }
-
-          const forbidden = ['process.read-before-write-fail', 'env.git-state-drift'];
-          for (const label of forbidden) {
-            if (labels.has(label)) {
-              failures.push(`Forbidden label detected: ${label}`);
-            }
-          }
-
-          if (failures.length > 0) {
-            console.error('speckit-pr-gate failures:\n- ' + failures.join('\n- '));
-            process.exit(1);
-          }
-
-          console.log('speckit-pr-gate: thresholds satisfied.');
           NODE
+        env:
+          METRICS: ${{ steps.metrics.outputs.METRICS }}

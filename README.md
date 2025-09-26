@@ -119,6 +119,14 @@ We use **SemVer 0.x** during pre‑release. Any minor (`0.MINOR.PATCH`) **may** 
 
 ---
 
+## Run Forensics Quick Start
+
+- Place your agent's logs in `runs/` (local) or let the workflow upload them.
+- On PR, CI sanitizes, uploads, analyzes, posts summary, and gates merge.
+- Tune thresholds in `speckit.config.yaml`.
+
+---
+
 ## Contributing
 
 Before opening a PR:
