@@ -1,0 +1,51 @@
+diff --git a/build/dependencies.js b/build/dependencies.js
+index 9a6ade9094ed859e0b9b2c8a98d68a70fa4ad287..4266d2e392ede5d56ad42b3282406b5842abe26e 100644
+--- a/build/dependencies.js
++++ b/build/dependencies.js
+@@ -7,6 +7,19 @@ import { fileURLToPath } from 'node:url';
+ import process$2 from 'node:process';
+ import fs$1 from 'node:fs';
+ import require$$0$2 from 'os';
++
++const hasUrlProtocol = value => {
++    if (typeof value !== 'string') {
++        return false;
++    }
++
++    try {
++        const { protocol } = new URL(value);
++        return Boolean(protocol);
++    } catch {
++        return false;
++    }
++};
+ function camelCase$1(str) {
+     const isCamelCase = str !== str.toLowerCase() && str !== str.toUpperCase();
+     if (!isCamelCase) {
+@@ -10419,7 +10432,7 @@ var fixer$1 = {
+       if (typeof data.bugs === 'string') {
+         if (isEmail(data.bugs)) {
+           data.bugs = { email: data.bugs };
+-        } else if (url.parse(data.bugs).protocol) {
++        } else if (hasUrlProtocol(data.bugs)) {
+           data.bugs = { url: data.bugs };
+         } else {
+           this.warn('nonEmailUrlBugsString');
+@@ -10429,7 +10442,7 @@ var fixer$1 = {
+         var oldBugs = data.bugs;
+         data.bugs = {};
+         if (oldBugs.url) {
+-          if (typeof (oldBugs.url) === 'string' && url.parse(oldBugs.url).protocol) {
++          if (typeof (oldBugs.url) === 'string' && hasUrlProtocol(oldBugs.url)) {
+             data.bugs.url = oldBugs.url;
+           } else {
+             this.warn('nonUrlBugsUrlField');
+@@ -10463,7 +10476,7 @@ var fixer$1 = {
+       this.warn('nonUrlHomepage');
+       return delete data.homepage
+     }
+-    if (!url.parse(data.homepage).protocol) {
++    if (!hasUrlProtocol(data.homepage)) {
+       data.homepage = 'http://' + data.homepage;
+     }
+   },
