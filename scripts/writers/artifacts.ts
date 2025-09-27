@@ -8,6 +8,7 @@ import {
   type RequirementRecord,
   type RunArtifact,
 } from "@speckit/analyzer";
+import { updateMemoHistory } from "./memo-history.js";
 
 const RUN_ARTIFACT_SCHEMA_FALLBACK = 1;
 
@@ -52,9 +53,12 @@ export interface WrittenArtifacts {
   runPath: string;
   requirementsPath: string;
   memoPath: string;
+  memoHistoryPath: string;
   verificationPath: string;
   metricsPath: string;
   summaryPath: string;
+  promotedLessons: string[];
+  promotedGuardrails: string[];
 }
 
 function buildMemo(options: WriteArtifactsOptions): MemoArtifact {
@@ -124,8 +128,13 @@ async function writeJsonl(filePath: string, rows: any[]): Promise<void> {
 export async function writeArtifacts(options: WriteArtifactsOptions): Promise<WrittenArtifacts> {
   const outDir = options.outDir ?? path.join(options.rootDir, ".speckit");
   const memo = buildMemo(options);
+  const memoHistory = await updateMemoHistory({
+    historyPath: path.join(outDir, "memo-history.jsonl"),
+    memo,
+  });
+  const memoWithPromotions = memoHistory.memo;
   const verification = buildVerification(options.requirements);
-  const summary = buildSummary(options, memo);
+  const summary = buildSummary(options, memoWithPromotions);
 
   const runPath = path.join(outDir, "Run.json");
   const requirementsPath = path.join(outDir, "requirements.jsonl");
@@ -143,7 +152,7 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
     events: options.run.events,
   });
   await writeJsonl(requirementsPath, options.requirements);
-  await writeJson(memoPath, memo);
+  await writeJson(memoPath, memoWithPromotions);
   await fs.writeFile(verificationPath, YAML.stringify(verification), "utf8");
   await writeJson(metricsPath, {
     version: METRICS_ARTIFACT_VERSION,
@@ -158,5 +167,15 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
   });
   await fs.writeFile(summaryPath, summary + "\n", "utf8");
 
-  return { runPath, requirementsPath, memoPath, verificationPath, metricsPath, summaryPath };
+  return {
+    runPath,
+    requirementsPath,
+    memoPath,
+    memoHistoryPath: memoHistory.historyPath,
+    verificationPath,
+    metricsPath,
+    summaryPath,
+    promotedLessons: memoHistory.promotedLessons,
+    promotedGuardrails: memoHistory.promotedGuardrails,
+  };
 }
