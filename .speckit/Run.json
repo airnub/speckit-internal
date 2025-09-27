@@ -60,5 +60,19 @@
       "kind": "log",
       "output": ""
     }
-  ]
+  ],
+  "metadata": {
+    "experiments": [
+      {
+        "key": "memo_tone",
+        "description": "Compare memo guardrail tone between baseline and focused variants.",
+        "variant": "focused",
+        "variant_description": "Focused memo copy highlighting urgency for violations.",
+        "bucket": 421,
+        "metadata": {
+          "memo_tone": "focused"
+        }
+      }
+    ]
+  }
 }

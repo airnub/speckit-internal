@@ -25,6 +25,8 @@ import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/analyzer/a
 import { writeArtifacts } from "./writers/artifacts.js";
 import { updateRTM } from "./writers/rtm.js";
 import { redactSecrets } from "./utils/redact.js";
+import { loadExperimentAssignments } from "./config/experiments.js";
+import type { ExperimentAssignment } from "./config/experiments.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,6 +82,7 @@ interface AnalyzeResult {
   labels: Set<string>;
   normalized: NormalizedLog;
   artifacts: Awaited<ReturnType<typeof writeArtifacts>>;
+  experiments: ExperimentAssignment[];
 }
 
 async function runAnalysis(
@@ -96,7 +99,25 @@ async function runAnalysis(
     : path.join(ROOT, ".speckit");
   const sources = await Promise.all(logPaths.map((filePath) => createFileLogSource(filePath)));
   const rules = await loadFailureRulesFromFs(ROOT, resolvedOutDir);
-  const analysis = await analyze({ sources, rules, runId: options.runId });
+  const runId = options.runId ?? `run-${Date.now()}`;
+  const experiments = await loadExperimentAssignments({ rootDir: ROOT, seed: runId });
+  const metadata =
+    experiments.length > 0
+      ? {
+          experiments: experiments.map((experiment) => ({
+            key: experiment.key,
+            description: experiment.description,
+            variant: experiment.variantKey,
+            variant_description: experiment.variantDescription,
+            bucket: experiment.bucket,
+            metadata: experiment.metadata,
+          })),
+        }
+      : undefined;
+  const analysis = await analyze({ sources, rules, runId, metadata });
+  if (metadata && !analysis.run.metadata) {
+    analysis.run.metadata = metadata;
+  }
   const artifacts = await writeArtifacts({
     rootDir: ROOT,
     outDir: resolvedOutDir,
@@ -104,6 +125,7 @@ async function runAnalysis(
     requirements: analysis.requirements,
     metrics: analysis.metrics,
     labels: analysis.labels,
+    experiments,
   });
   await updateRTM({ rootDir: ROOT, outDir: resolvedOutDir, rtmPath: undefined });
   return {
@@ -113,6 +135,7 @@ async function runAnalysis(
     labels: analysis.labels,
     normalized: analysis.normalized,
     artifacts,
+    experiments,
   };
 }
 
@@ -259,6 +282,7 @@ async function runCoachCommand(args: {
           metricsPath: "",
           summaryPath: "",
         },
+        experiments: [],
       };
     };
 

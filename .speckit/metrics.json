@@ -7,5 +7,17 @@
   "ReflectionDensity": 0,
   "TTFPSeconds": null,
   "labels": [],
-  "sanitizer_hits": 0
+  "sanitizer_hits": 0,
+  "experiments": [
+    {
+      "key": "memo_tone",
+      "description": "Compare memo guardrail tone between baseline and focused variants.",
+      "variant": "focused",
+      "variant_description": "Focused memo copy highlighting urgency for violations.",
+      "bucket": 421,
+      "metadata": {
+        "memo_tone": "focused"
+      }
+    }
+  ]
 }

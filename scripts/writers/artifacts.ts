@@ -8,6 +8,7 @@ import {
   type RequirementRecord,
   type RunArtifact,
 } from "@speckit/analyzer";
+import type { ExperimentAssignment } from "../config/experiments.js";
 
 const RUN_ARTIFACT_SCHEMA_FALLBACK = 1;
 
@@ -22,6 +23,16 @@ export interface MemoArtifact {
   guardrails: string[];
   checklist: string[];
   labels: string[];
+  experiments: ExperimentMemoEntry[];
+}
+
+export interface ExperimentMemoEntry {
+  key: string;
+  variant: string;
+  bucket: number;
+  description?: string;
+  variant_description?: string;
+  metadata: Record<string, unknown>;
 }
 
 export interface VerificationRequirementEntry {
@@ -46,6 +57,7 @@ export interface WriteArtifactsOptions {
   metrics: Metrics;
   labels: Set<string>;
   sanitizerHits?: number;
+  experiments?: ExperimentAssignment[];
 }
 
 export interface WrittenArtifacts {
@@ -58,7 +70,7 @@ export interface WrittenArtifacts {
 }
 
 function buildMemo(options: WriteArtifactsOptions): MemoArtifact {
-  const { run, requirements, labels } = options;
+  const { run, requirements, labels, experiments = [] } = options;
   const generatedAt = new Date().toISOString();
   const lessons: string[] = [];
   if (labels.size > 0) {
@@ -81,6 +93,14 @@ function buildMemo(options: WriteArtifactsOptions): MemoArtifact {
     guardrails,
     checklist,
     labels: Array.from(labels),
+    experiments: experiments.map((experiment) => ({
+      key: experiment.key,
+      description: experiment.description,
+      variant: experiment.variantKey,
+      variant_description: experiment.variantDescription,
+      bucket: experiment.bucket,
+      metadata: experiment.metadata,
+    })),
   };
 }
 
@@ -99,15 +119,30 @@ function buildVerification(requirements: RequirementRecord[]): VerificationArtif
 }
 
 function buildSummary(options: WriteArtifactsOptions, memo: MemoArtifact): string {
-  const { run, metrics, requirements, labels } = options;
+  const { run, metrics, requirements, labels, experiments = [] } = options;
   const metricRows = Object.entries(metrics)
     .map(([key, value]) => `| ${key} | ${value ?? "—"} |`)
     .join("\n");
   const labelList = memo.labels.length > 0 ? memo.labels.map((label) => `- ${label}`).join("\n") : "- None";
   const requirementRows = requirements.map((req) => `- ${req.id} (${req.status}): ${req.text}`).join("\n");
+  const experimentLines =
+    experiments.length > 0
+      ? experiments
+          .map((experiment) => {
+            const description = experiment.variantDescription ?? experiment.description;
+            const metadataEntries = Object.entries(experiment.metadata ?? {});
+            const metadataText =
+              metadataEntries.length > 0
+                ? ` — ${metadataEntries.map(([key, value]) => `${key}: ${String(value)}`).join(", ")}`
+                : "";
+            const descriptionText = description ? ` — ${description}` : "";
+            return `- ${experiment.key}: ${experiment.variantKey} (bucket ${experiment.bucket})${descriptionText}${metadataText}`;
+          })
+          .join("\n")
+      : "- None";
   return `# SpecKit Run Forensics\n\n- Run ID: ${run.runId}\n- Source logs: ${run.sourceLogs
     .map((file) => path.relative(options.rootDir, file))
-    .join(", ")}\n- Events analyzed: ${run.events.length}\n\n## Metrics\n| Metric | Value |\n|--------|-------|\n${metricRows}\n\n## Labels\n${labelList}\n\n## Requirements\n${requirementRows}`;
+    .join(", ")}\n- Events analyzed: ${run.events.length}\n\n## Experiments\n${experimentLines}\n\n## Metrics\n| Metric | Value |\n|--------|-------|\n${metricRows}\n\n## Labels\n${labelList}\n\n## Requirements\n${requirementRows}`;
 }
 
 async function writeJson(filePath: string, data: unknown): Promise<void> {
@@ -141,6 +176,7 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
     started_at: options.run.startedAt,
     finished_at: options.run.finishedAt,
     events: options.run.events,
+    metadata: options.run.metadata ?? undefined,
   });
   await writeJsonl(requirementsPath, options.requirements);
   await writeJson(memoPath, memo);
@@ -155,6 +191,14 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
     TTFPSeconds: options.metrics.TTFPSeconds ?? null,
     labels: Array.from(options.labels),
     sanitizer_hits: options.sanitizerHits ?? 0,
+    experiments: (options.experiments ?? []).map((experiment) => ({
+      key: experiment.key,
+      description: experiment.description,
+      variant: experiment.variantKey,
+      variant_description: experiment.variantDescription,
+      bucket: experiment.bucket,
+      metadata: experiment.metadata,
+    })),
   });
   await fs.writeFile(summaryPath, summary + "\n", "utf8");
 

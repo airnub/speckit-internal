@@ -52,6 +52,13 @@ pnpm speckit:inject                                      # Refresh prompt guardr
 | **ReflectionDensity** | Share of reasoning events that include reflection. |
 | **TTFP** | Time-to-first-patch in seconds (when edits begin). |
 
+## Experiment buckets
+
+- Configure deterministic experiments in `speckit.experiments.yaml` (schema version `1`). Each entry defines a `key`, optional `description`, and weighted `variants` with custom metadata (e.g., `{ memo_tone: focused }`).
+- The CLI seeds assignments using the resolved `run_id`, so a replay of the same log sticks to the same variant and bucket. Buckets default to `0–999`; change `bucket_count` per experiment to fan out further.
+- `scripts/config/experiments.ts` loads the manifest, selects a variant via SHA-256 hashing, and threads the assignment through analyzer metadata.
+- Active variants appear in `.speckit/memo.json`, `.speckit/summary.md`, and `.speckit/metrics.json` for downstream dashboards and PR comments. Disable an experiment by flipping `enabled: false`.
+
 ## Self-healing artifacts
 
 Each coached run yields:

@@ -72,6 +72,13 @@ pnpm speckit:coach -- --log runs/sample.ndjson --watch
 
 4. **Open or sync a PR.** CI uploads sanitized logs (`speckit-upload-logs`), analyzes them (`speckit-analyze-run`), commits refreshed artifacts/RTM, posts `.speckit/summary.md` as a sticky comment, and only gates on critical labels (e.g., `process.read-before-write-fail`, `env.git-state-drift`).
 
+### Inner-loop experiments
+
+- Declare weighted variants in `speckit.experiments.yaml` (schema v1). Each experiment needs a unique `key`, optional `description`, and one or more `variants` with `weight` + free-form `metadata` used by downstream tooling.
+- The CLI seeds assignments with the final `run_id`, ensuring a replay of the same run sticks to the same variant/bucket. Buckets default to `0-999`; adjust `bucket_count` to widen/narrow ranges.
+- Active assignments flow through analyzer metadata, `.speckit/memo.json`, `.speckit/summary.md`, and `.speckit/metrics.json` so you can group metrics or PR comments by experiment.
+- Disable an experiment with `enabled: false` or tweak weights to rebalance live traffic. Commit the manifest so CI and local runs stay aligned.
+
 ---
 
 ## Key capabilities
