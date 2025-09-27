@@ -2,15 +2,15 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import {
-  analyze,
+  analyzeLogs,
   summarizeMetrics,
-  type AnalyzerResult,
+  type AnalyzeResult,
   type NormalizedLog,
   type RequirementRecord,
-} from "@speckit/analyzer";
-import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/analyzer/adapters/node";
-
-import { writeArtifacts } from "./writers/artifacts.js";
+  writeArtifacts,
+  type ExperimentSummary,
+} from "@speckit/core";
+import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/core";
 import { updateRTM } from "./writers/rtm.js";
 import { loadExperimentAssignments } from "./config/experiments.js";
 import type { ExperimentAssignment } from "./config/experiments.js";
@@ -112,10 +112,10 @@ async function readSanitizerHits(outDir: string, rootDir: string): Promise<numbe
   }
 }
 
-type AnalyzerArtifactsInput = Pick<AnalyzerResult, "run" | "requirements" | "metrics" | "labels"> & {
+type AnalyzerArtifactsInput = Pick<AnalyzeResult, "run" | "requirements" | "metrics" | "labels"> & {
   rootDir: string;
   outDir: string;
-  experiments: ExperimentAssignment[];
+  experiments: ExperimentSummary[];
 };
 
 export async function emitAnalyzerArtifacts(
@@ -151,10 +151,18 @@ export async function runAnalysis(
   const rules = await loadFailureRulesFromFs(context.rootDir, resolvedOutDir);
   const runId = options.runId ?? `run-${Date.now()}`;
   const experiments = await loadExperimentAssignments({ rootDir: context.rootDir, seed: runId });
+  const experimentSummaries: ExperimentSummary[] = experiments.map((experiment) => ({
+    key: experiment.key,
+    description: experiment.description,
+    variantKey: experiment.variantKey,
+    variantDescription: experiment.variantDescription,
+    bucket: experiment.bucket,
+    metadata: experiment.metadata,
+  }));
   const metadata =
-    experiments.length > 0
+    experimentSummaries.length > 0
       ? {
-          experiments: experiments.map((experiment) => ({
+          experiments: experimentSummaries.map((experiment) => ({
             key: experiment.key,
             description: experiment.description,
             variant: experiment.variantKey,
@@ -164,7 +172,7 @@ export async function runAnalysis(
           })),
         }
       : undefined;
-  const analysis = await analyze({ sources, rules, runId, metadata });
+  const analysis = await analyzeLogs(sources, { rules, runId, metadata });
   if (metadata && !analysis.run.metadata) {
     analysis.run.metadata = metadata;
   }
@@ -175,7 +183,7 @@ export async function runAnalysis(
     requirements: analysis.requirements,
     metrics: analysis.metrics,
     labels: analysis.labels,
-    experiments,
+    experiments: experimentSummaries,
   });
   await updateRTM({ rootDir: context.rootDir, outDir: resolvedOutDir, rtmPath: undefined });
   return {

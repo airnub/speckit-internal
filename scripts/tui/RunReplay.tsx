@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import chalk from "chalk";
 
-import type { RunEvent } from "@speckit/analyzer";
+import type { RunEvent } from "@speckit/core";
 
 import type { CoachMetricsEntry } from "./RunCoach.js";
 

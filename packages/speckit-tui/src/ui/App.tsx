@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { globby } from "globby";
 import matter from "gray-matter";
@@ -59,7 +59,22 @@ type TemplatePromptState = {
   reject: (error: Error) => void;
 };
 
-export default function App() {
+type AppProps = Record<string, never>;
+
+export type AppHandle = {
+  refreshRepo: (rootOverride?: string, options?: RefreshOptions) => Promise<RefreshResult>;
+  selectFile: (index: number) => void;
+  editSelectedFile: () => Promise<void>;
+  getState: () => {
+    files: FileInfo[];
+    index: number;
+    content: string;
+    status: string;
+    repoPath: string;
+  };
+};
+
+const App = React.forwardRef<AppHandle, AppProps>(function App(_props, ref) {
   const [cfg, setCfg] = useState<SpeckitConfig|null>(null);
   const initialRepoPathRef = React.useRef(path.resolve(process.cwd()));
   const [repoPath, setRepoPath] = useState<string>(initialRepoPathRef.current);
@@ -126,7 +141,10 @@ export default function App() {
     );
   }, [experimentalGateOn, frameworkOptions]);
 
-  async function refreshRepo(rootOverride?: string, options?: RefreshOptions): Promise<RefreshResult> {
+  const refreshRepo = useCallback(async (
+    rootOverride?: string,
+    options?: RefreshOptions
+  ): Promise<RefreshResult> => {
     const conf = await loadConfig();
     setCfg(conf);
 
@@ -209,14 +227,27 @@ export default function App() {
       setStatus(`Refresh error: ${message}`);
       return { ok: false, error: message };
     }
-  }
+  }, [
+    repoPath,
+    files,
+    idx
+  ]);
+
+  const editSelectedFile = useCallback(async () => {
+    const selectedPath = files[idx]?.path;
+    if (!selectedPath) {
+      return;
+    }
+    await openInEditor(selectedPath);
+    await refreshRepo(repoPath, { selectedPath });
+  }, [files, idx, repoPath, refreshRepo]);
 
   const settingsFields = React.useMemo(
     () => settingsDraft ? buildSettingsFields(settingsDraft) : [],
     [settingsDraft]
   );
 
-  useEffect(() => { void refreshRepo(); }, []);
+  useEffect(() => { void refreshRepo(); }, [refreshRepo]);
   useEffect(() => { (async () => {
     const file = files[idx];
     if (!file) {
@@ -392,11 +423,8 @@ export default function App() {
     if (input === "s") { openSettings(); return; }
     if (input === "g") setStatus(await gitStatus(repoPath));
     if (input === "e" && files[idx]) {
-      const selectedPath = files[idx]?.path;
-      if (selectedPath) {
-        await openInEditor(selectedPath);
-        await refreshRepo(repoPath, { selectedPath });
-      }
+      await editSelectedFile();
+      return;
     }
     if (input === "n") { setMode("new-template"); }
     if (input === "f") { await handleGitAction("Git fetch", () => gitFetch(repoPath, { token: gitToken })); return; }
@@ -718,6 +746,27 @@ export default function App() {
   const headerRows = SPECKIT_ASCII.length + 5;
   const boxHeight = Math.max(10, terminalRows - headerRows);
 
+  useImperativeHandle(ref, () => ({
+    refreshRepo,
+    editSelectedFile,
+    selectFile(index: number) {
+      if (files.length === 0) {
+        setIdx(0);
+        return;
+      }
+      const max = files.length - 1;
+      const clamped = Math.min(Math.max(index, 0), max);
+      setIdx(clamped);
+    },
+    getState: () => ({
+      files,
+      index: idx,
+      content,
+      status,
+      repoPath
+    })
+  }), [refreshRepo, editSelectedFile, files, idx, content, status, repoPath]);
+
   return (
     <Box flexDirection="column">
       <Header
@@ -806,7 +855,7 @@ export default function App() {
       </Box>
     </Box>
   );
-}
+});
 
 type HeaderProps = {
   repoPath: string;
@@ -1269,6 +1318,7 @@ function TemplatePicker({
   );
 }
 
+export default App;
 export { TemplatePicker };
 
 function formatPostInitCommand(event: PostInitCommandEvent): string {

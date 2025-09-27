@@ -11,7 +11,7 @@ import {
   METRICS_ARTIFACT_VERSION,
   RUN_ARTIFACT_SCHEMA_VERSION,
   generateRequirementCheck,
-} from "@speckit/analyzer";
+} from "@speckit/core";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

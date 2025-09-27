@@ -5,8 +5,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { MEMO_ARTIFACT_VERSION } from "../src/types.js";
-import type { MemoArtifact } from "../../../scripts/writers/artifacts.ts";
-import { updateMemoHistory } from "../../../scripts/writers/memo-history.ts";
+import type { MemoArtifact } from "../../speckit-core/src/metrics.ts";
+import { updateMemoHistory } from "../../speckit-core/src/metrics.ts";
 
 function createMemo(overrides: Partial<MemoArtifact>): MemoArtifact {
   return {

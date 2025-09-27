@@ -22,13 +22,13 @@ import RunCoach, {
 } from "./tui/RunCoach.js";
 import RunReplay from "./tui/RunReplay.js";
 import {
-  analyze,
+  analyzeLogs,
   summarizeMetrics,
-  type AnalyzerResult,
+  type AnalyzeResult,
   type EventsLogSource,
   type RunEvent,
-} from "@speckit/analyzer";
-import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/analyzer/adapters/node";
+} from "@speckit/core";
+import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/core";
 import { updateRTM } from "./writers/rtm.js";
 import { redactSecrets } from "./utils/redact.js";
 import { loadExperimentAssignments } from "./config/experiments.js";
@@ -265,7 +265,7 @@ async function runCoachCommand(args: {
     : path.join(ROOT, configuredOut);
   await new Promise<void>(async (resolve) => {
     let logPaths = await gatherLogPaths(args.log);
-    let lastAnalyzerResult: AnalyzerResult | null = null;
+    let lastAnalyzerResult: AnalyzeResult | null = null;
 
     const emitter = new CoachEmitter({
       repoName: path.basename(ROOT),
@@ -450,7 +450,7 @@ async function runCoachCommand(args: {
       }
       const sources = await Promise.all(logPaths.map((filePath) => createFileLogSource(filePath)));
       const rules = await loadFailureRulesFromFs(ROOT, outDir);
-      const analysis = await analyze({ sources, rules });
+      const analysis = await analyzeLogs(sources, { rules });
       lastAnalyzerResult = analysis;
       const timeline = buildCoachTimeline(analysis.run.events);
       const diffs = buildCoachDiffs(analysis.run.events);
@@ -698,8 +698,7 @@ async function runReplayCommand(args: { run?: string; log?: string[] }): Promise
 
   const rulesBaseDir = hasRunArtifact ? path.dirname(resolvedRunPath) : path.join(ROOT, ".speckit");
   const rules = await loadFailureRulesFromFs(ROOT, rulesBaseDir);
-  const analysis = await analyze({
-    sources,
+  const analysis = await analyzeLogs(sources, {
     rules,
     runId,
     metadata,

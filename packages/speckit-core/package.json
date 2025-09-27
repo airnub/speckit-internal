@@ -1,5 +1,5 @@
 {
-  "name": "@speckit/analyzer",
+  "name": "@speckit/core",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.cjs",
@@ -11,26 +11,29 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
-    "./adapters/node": {
-      "types": "./dist/adapters/node.d.ts",
-      "import": "./dist/adapters/node.mjs",
-      "require": "./dist/adapters/node.cjs"
+    "./metrics": {
+      "types": "./dist/metrics.d.ts",
+      "import": "./dist/metrics.mjs",
+      "require": "./dist/metrics.cjs"
+    },
+    "./sanitize": {
+      "types": "./dist/sanitize.d.ts",
+      "import": "./dist/sanitize.mjs",
+      "require": "./dist/sanitize.cjs"
     },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/adapters/node.ts --format esm,cjs --dts --clean --target es2022",
+    "build": "tsup src/index.ts src/metrics.ts src/sanitize.ts --format esm,cjs --dts --clean --target es2022",
     "test": "vitest run"
   },
   "dependencies": {
-    "@noble/hashes": "^1.4.0",
-    "strip-ansi": "^7.1.0",
-    "yaml": "^2.6.0",
-    "zod": "^3.23.8"
+    "@speckit/analyzer": "workspace:*",
+    "globby": "^14.0.2",
+    "yaml": "^2.6.0"
   },
   "devDependencies": {
-    "@speckit/core": "workspace:*",
     "tsup": "^8.0.1",
     "typescript": "^5.6.2",
     "vitest": "^3.2.4"

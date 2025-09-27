@@ -69,7 +69,7 @@ vi.mock("@speckit/agent", () => ({
   generatePatch: generatePatchMock
 }));
 
-import App from "./App.js";
+import App, { type AppHandle } from "./App.js";
 
 async function waitUntil(predicate: () => boolean, timeout = 4000, interval = 50) {
   const start = Date.now();
@@ -80,6 +80,15 @@ async function waitUntil(predicate: () => boolean, timeout = 4000, interval = 50
     await new Promise(resolve => setTimeout(resolve, interval));
   }
   throw new Error("Timed out waiting for condition");
+}
+
+async function waitForController(ref: React.RefObject<AppHandle>) {
+  await waitUntil(() => ref.current != null);
+  const controller = ref.current;
+  if (!controller) {
+    throw new Error("App controller not available");
+  }
+  return controller;
 }
 
 async function createSpecRepo(prefix: string, fileName: string, title: string, body: string) {
@@ -129,15 +138,27 @@ describe("App refreshRepo selection", () => {
   });
 
   it("keeps the selected file focused after refreshing via editor", async () => {
-    const app = render(<App />);
+    const appRef = React.createRef<AppHandle>();
+    const app = render(<App ref={appRef} />);
+    await waitForController(appRef);
+    const getController = () => {
+      const handle = appRef.current;
+      if (!handle) {
+        throw new Error("App controller not available");
+      }
+      return handle;
+    };
     const secondPath = path.join(specDir, "spec_b.md");
 
     await waitUntil(() => app.lastFrame()?.includes("spec_a.md") ?? false);
-    app.stdin.write("\u001B[B");
+    await waitUntil(() => getController().getState().files.length > 1);
+    getController().selectFile(1);
     await waitUntil(() => app.lastFrame()?.includes("spec_b.md") ?? false);
     await waitUntil(() => app.lastFrame()?.includes("B content") ?? false);
-    app.stdin.write("e");
-    await waitUntil(() => openInEditorMock.mock.calls.length === 1);
+    const stateAfterSelect = getController().getState();
+    expect(stateAfterSelect.index).toBe(1);
+    expect(stateAfterSelect.files[stateAfterSelect.index]?.path).toBe(secondPath);
+    await getController().editSelectedFile();
     expect(openInEditorMock).toHaveBeenCalledWith(secondPath);
     await waitUntil(() => app.lastFrame()?.includes("spec_b.md") ?? false);
     await waitUntil(() => app.lastFrame()?.includes("Edited!") ?? false);
@@ -156,10 +177,21 @@ describe("App refreshRepo selection", () => {
     process.chdir(repoRoot);
     repoState.repoPath = repoRoot;
 
-    const app = render(<App />);
+    const appRef = React.createRef<AppHandle>();
+    const app = render(<App ref={appRef} />);
     try {
-      await waitUntil(() => loadTemplatesMock.mock.calls.length > 0);
-      expect(loadTemplatesMock.mock.calls[0][0]?.repoRoot).toBe(repoRoot);
+      await waitForController(appRef);
+      const getController = () => {
+        const handle = appRef.current;
+        if (!handle) {
+          throw new Error("App controller not available");
+        }
+        return handle;
+      };
+      await waitUntil(() => app.lastFrame() != null);
+      await waitUntil(() => getController().getState().repoPath === repoRoot);
+      const state = getController().getState();
+      expect(state.repoPath).toBe(repoRoot);
       await waitUntil(() => app.lastFrame()?.includes("Spec Alt") ?? false);
       await waitUntil(() => app.lastFrame()?.includes("Alt content") ?? false);
     } finally {
@@ -184,15 +216,26 @@ describe("App refreshRepo selection", () => {
 
     repoState.repoPath = repoPath;
 
-    const app = render(<App />);
+    const appRef = React.createRef<AppHandle>();
+    const app = render(<App ref={appRef} />);
     try {
+      await waitForController(appRef);
+      const getController = () => {
+        const handle = appRef.current;
+        if (!handle) {
+          throw new Error("App controller not available");
+        }
+        return handle;
+      };
       await waitUntil(() => loadTemplatesMock.mock.calls.length > 0);
-      expect(loadTemplatesMock.mock.calls[0][0]?.repoRoot).toBe(overrideRoot);
+      const state = getController().getState();
+      expect(state.repoPath).toBe(overrideRoot);
+      await waitUntil(() => getController().getState().repoPath === overrideRoot);
       await waitUntil(() => app.lastFrame()?.includes("Spec Override") ?? false);
       await waitUntil(() => app.lastFrame()?.includes("Override content") ?? false);
 
-      app.stdin.write("e");
-      await waitUntil(() => openInEditorMock.mock.calls.length === 1);
+      await getController().editSelectedFile();
+      expect(openInEditorMock).toHaveBeenCalledWith(overrideSpec);
       await waitUntil(() => loadTemplatesMock.mock.calls.length > 1);
       expect(loadTemplatesMock.mock.calls[1][0]?.repoRoot).toBe(overrideRoot);
       expect(await fs.readFile(overrideSpec, "utf8")).toContain("Edited!");

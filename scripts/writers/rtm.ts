@@ -5,7 +5,7 @@ import {
   RUN_ARTIFACT_SCHEMA_VERSION,
   type RequirementRecord,
   type RunArtifact,
-} from "@speckit/analyzer";
+} from "@speckit/core";
 
 const START_MARKER = "<!-- speckit:rtm:start -->";
 const END_MARKER = "<!-- speckit:rtm:end -->";

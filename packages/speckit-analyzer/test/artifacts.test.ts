@@ -38,7 +38,7 @@ describe("artifact writer", () => {
       TTFPSeconds: null,
     };
 
-    const { writeArtifacts } = await import("../../../scripts/writers/artifacts.ts");
+    const { writeArtifacts } = await import("../../speckit-core/src/metrics.ts");
 
     await writeArtifacts({
       rootDir: outDir,
@@ -103,7 +103,7 @@ describe("artifact writer", () => {
       TTFPSeconds: null,
     };
 
-    const { writeArtifacts } = await import("../../../scripts/writers/artifacts.ts");
+    const { writeArtifacts } = await import("../../speckit-core/src/metrics.ts");
 
     await writeArtifacts({
       rootDir: outDir,

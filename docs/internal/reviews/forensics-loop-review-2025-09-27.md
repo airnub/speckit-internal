@@ -57,7 +57,7 @@ Prioritize the following improvements to deepen the analyzer's insight and durab
 
 Stabilize the contract for embeddable analyzer packages:
 
-- `@speckit/analyzer` (pure ESM, browser-safe) exposes `analyze` and `analyzeStream` that accept `LogSource` inputs, emit metrics/memos/verification data, and support event callbacks.
+- `@speckit/core` (pure ESM, browser-safe) exposes `analyzeLogs`/`sanitizeLogs` helpers that accept `LogSource` inputs, emit metrics/memos/verification data, and support streaming callbacks.
 - `@speckit/react-analyzer` exports a `useRunAnalysis` hook yielding live state, metrics, hints, and timelines.
 - Node-specific concerns (fs/glob, `child_process`) must sit behind adapters for browser usage.
 - Standardize artifact outputs (`.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, `RTM.md` managed block) with explicit version fields.
@@ -80,6 +80,6 @@ Production readiness hinges on the following seven checks:
 - [ ] Analyzer emits flat metrics including `labels[]`, `EditLocality`, and `sanitizer_hits`.
 - [ ] `speckit.config.yaml` remains present with configurable thresholds and block lists.
 - [ ] TUI provides a non-TTY fallback reporter.
-- [ ] `@speckit/analyzer` entry point (or stabilization plan) exists for embeddable UIs.
+- [ ] `@speckit/core` entry point (or stabilization plan) exists for embeddable UIs.
 
 Maintain this checklist alongside run-forensics planning so each iteration can be audited quickly.

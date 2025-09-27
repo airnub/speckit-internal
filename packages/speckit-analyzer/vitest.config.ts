@@ -17,6 +17,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@speckit/analyzer": path.resolve(__dirname, "src/index.ts"),
+      "@speckit/core": path.resolve(__dirname, "../speckit-core/src/index.ts"),
+      "@speckit/core/metrics": path.resolve(__dirname, "../speckit-core/src/metrics.ts"),
+      "@speckit/core/sanitize": path.resolve(__dirname, "../speckit-core/src/sanitize.ts"),
     },
   },
 });

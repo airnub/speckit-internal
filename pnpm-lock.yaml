@@ -23,6 +23,9 @@ importers:
       '@speckit/analyzer':
         specifier: workspace:*
         version: link:packages/speckit-analyzer
+      '@speckit/core':
+        specifier: workspace:*
+        version: link:packages/speckit-core
       '@types/node':
         specifier: ^24.5.2
         version: 24.5.2
@@ -252,6 +255,9 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
+      '@speckit/core':
+        specifier: workspace:*
+        version: link:../speckit-core
       tsup:
         specifier: ^8.0.1
         version: 8.5.0(jiti@2.6.0)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.2)(yaml@2.8.1)
@@ -340,6 +346,28 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.9.2
+
+  packages/speckit-core:
+    dependencies:
+      '@speckit/analyzer':
+        specifier: workspace:*
+        version: link:../speckit-analyzer
+      globby:
+        specifier: ^14.0.2
+        version: 14.1.0
+      yaml:
+        specifier: ^2.6.0
+        version: 2.8.1
+    devDependencies:
+      tsup:
+        specifier: ^8.0.1
+        version: 8.5.0(jiti@2.6.0)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.2)(yaml@2.8.1)
+      typescript:
+        specifier: ^5.6.2
+        version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(jiti@2.6.0)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
 
   packages/speckit-engine:
     dependencies:

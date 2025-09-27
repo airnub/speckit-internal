@@ -9,7 +9,9 @@
     "baseUrl": ".",
     "paths": {
       "@speckit/analyzer": ["packages/speckit-analyzer/src/index.ts"],
-      "@speckit/analyzer/*": ["packages/speckit-analyzer/src/*"]
+      "@speckit/analyzer/*": ["packages/speckit-analyzer/src/*"],
+      "@speckit/core": ["packages/speckit-core/src/index.ts"],
+      "@speckit/core/*": ["packages/speckit-core/src/*"]
     }
   },
   "include": ["scripts/**/*", "docs/**/*"]
