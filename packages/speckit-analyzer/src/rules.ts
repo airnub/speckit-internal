@@ -1,39 +1,26 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
-import type { RunEvent } from "./normalize.js";
 
-export interface FailureRule {
-  id: string;
-  label: string;
-  description?: string;
-  patterns: string[];
-  remediation?: string;
-  hint?: string;
-}
+import type { FailureRule, RunEvent } from "./types.js";
 
-const FailureRulesSchema = z.object({
-  rules: z
-    .array(
-      z.object({
-        id: z.string(),
-        label: z.string().optional(),
-        description: z.string().optional(),
-        patterns: z.array(z.string()),
-        remediation: z.string().optional(),
-        hint: z.string().optional(),
-      })
-    )
-    .default([]),
+const FailureRuleEntrySchema = z.object({
+  id: z.string(),
+  label: z.string().optional(),
+  description: z.string().optional(),
+  patterns: z.array(z.string()),
+  remediation: z.string().optional(),
+  hint: z.string().optional(),
 });
 
-export async function loadFailureRules(rootDir: string, artifactDir?: string): Promise<FailureRule[]> {
-  const baseDir = artifactDir ?? path.join(rootDir, ".speckit");
-  const rulesPath = path.join(baseDir, "failure-rules.yaml");
+export const FailureRulesSchema = z.object({
+  rules: z.array(FailureRuleEntrySchema).default([]),
+});
+
+export type FailureRulesConfig = z.infer<typeof FailureRulesSchema>;
+
+export function parseFailureRules(content: string): FailureRule[] {
   try {
-    const raw = await fs.readFile(rulesPath, "utf8");
-    const parsed = FailureRulesSchema.parse(YAML.parse(raw));
+    const parsed = FailureRulesSchema.parse(YAML.parse(content) ?? {});
     return parsed.rules.map((rule) => ({
       id: rule.id,
       label: rule.label ?? rule.id,
@@ -43,16 +30,12 @@ export async function loadFailureRules(rootDir: string, artifactDir?: string): P
       hint: rule.hint,
     }));
   } catch (error) {
-    console.warn(`[rules] Unable to load failure rules from ${rulesPath}: ${(error as Error).message}`);
+    console.warn(`[analyzer:rules] Unable to parse failure rules: ${(error as Error).message}`);
     return [];
   }
 }
 
-export function applyFailureLabels(
-  rules: FailureRule[],
-  text: string,
-  events: RunEvent[]
-): Set<string> {
+export function applyFailureLabels(rules: FailureRule[], text: string, events: RunEvent[]): Set<string> {
   const labels = new Set<string>();
   const haystack = `${text}\n${events
     .map((event) => {

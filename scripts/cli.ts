@@ -16,14 +16,12 @@ import YAML from "yaml";
 import RunCoach from "./tui/RunCoach.js";
 import type { CoachState } from "./tui/RunCoach.js";
 import {
-  normalizeLogs,
-  buildRunArtifact,
-  detectPrompt,
+  analyze,
+  summarizeMetrics,
   type NormalizedLog,
-} from "./analyzers/normalize.js";
-import { deriveRequirements, attachEvidence, type RequirementRecord } from "./analyzers/requirements.js";
-import { computeMetrics, summarizeMetrics } from "./analyzers/score.js";
-import { applyFailureLabels, labelsToHints, loadFailureRules } from "./analyzers/rules.js";
+  type RequirementRecord,
+} from "@speckit/analyzer";
+import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/analyzer/adapters/node";
 import { writeArtifacts } from "./writers/artifacts.js";
 import { updateRTM } from "./writers/rtm.js";
 import { redactSecrets } from "./utils/redact.js";
@@ -96,31 +94,24 @@ async function runAnalysis(
       ? options.outDir
       : path.join(ROOT, options.outDir)
     : path.join(ROOT, ".speckit");
-  const normalized = await normalizeLogs(logPaths);
-  const run = buildRunArtifact(logPaths, normalized, options.runId);
-  const prompt = detectPrompt(normalized.promptCandidates, normalized.plainText);
-  const requirements = attachEvidence(deriveRequirements(prompt), run.events);
-  const metrics = computeMetrics(requirements, run.events);
-  const rules = await loadFailureRules(ROOT, resolvedOutDir);
-  const labels = applyFailureLabels(rules, normalized.plainText, run.events);
-  if (requirements.some((req) => req.id === "REQ-000")) {
-    labels.add("prompt.missing");
-  }
+  const sources = await Promise.all(logPaths.map((filePath) => createFileLogSource(filePath)));
+  const rules = await loadFailureRulesFromFs(ROOT, resolvedOutDir);
+  const analysis = await analyze({ sources, rules, runId: options.runId });
   const artifacts = await writeArtifacts({
     rootDir: ROOT,
     outDir: resolvedOutDir,
-    run,
-    requirements,
-    metrics,
-    labels,
+    run: analysis.run,
+    requirements: analysis.requirements,
+    metrics: analysis.metrics,
+    labels: analysis.labels,
   });
   await updateRTM({ rootDir: ROOT, outDir: resolvedOutDir, rtmPath: undefined });
   return {
-    runId: run.runId,
-    requirements,
-    metricsSummary: summarizeMetrics(metrics),
-    labels,
-    normalized,
+    runId: analysis.run.runId,
+    requirements: analysis.requirements,
+    metricsSummary: summarizeMetrics(analysis.metrics),
+    labels: analysis.labels,
+    normalized: analysis.normalized,
     artifacts,
   };
 }
@@ -238,35 +229,28 @@ async function runCoachCommand(args: {
         emitter.update({ logSource: args.stdin ? 'stdin' : 'waiting for logs' });
         return;
       }
-      const nextNormalized = await normalizeLogs(logPaths);
-      normalized = nextNormalized;
-      const run = buildRunArtifact(logPaths, normalized);
-      const prompt = detectPrompt(normalized.promptCandidates, normalized.plainText);
-      const requirements = attachEvidence(deriveRequirements(prompt), run.events);
-      const metrics = computeMetrics(requirements, run.events);
-      const rules = await loadFailureRules(ROOT, outDir);
-      const labels = applyFailureLabels(rules, normalized.plainText, run.events);
-      if (requirements.some((req) => req.id === "REQ-000")) {
-        labels.add("prompt.missing");
-      }
-      const hints = labelsToHints(labels, rules);
-      if (labels.has("prompt.missing")) {
+      const sources = await Promise.all(logPaths.map((filePath) => createFileLogSource(filePath)));
+      const rules = await loadFailureRulesFromFs(ROOT, outDir);
+      const analysis = await analyze({ sources, rules });
+      normalized = analysis.normalized;
+      const hints = [...analysis.hints];
+      if (analysis.labels.has("prompt.missing")) {
         hints.push("Ensure the full system+planner prompt is captured in the log before analyzing.");
       }
-      const latestEvent = run.events[run.events.length - 1];
+      const latestEvent = analysis.run.events[analysis.run.events.length - 1];
       emitter.update({
         logSource: formatLogSource(logPaths),
         currentStep: latestEvent?.kind ?? emitter.state.currentStep,
-        metrics: summarizeMetrics(metrics),
+        metrics: summarizeMetrics(analysis.metrics),
         hints,
-        labels: Array.from(labels),
+        labels: Array.from(analysis.labels),
       });
       lastAnalysis = {
-        runId: run.runId,
-        requirements,
-        metricsSummary: summarizeMetrics(metrics),
-        labels,
-        normalized,
+        runId: analysis.run.runId,
+        requirements: analysis.requirements,
+        metricsSummary: summarizeMetrics(analysis.metrics),
+        labels: analysis.labels,
+        normalized: analysis.normalized,
         artifacts: {
           runPath: "",
           requirementsPath: "",

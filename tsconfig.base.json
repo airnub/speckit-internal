@@ -14,6 +14,8 @@
     ],
     "baseUrl": ".",
     "paths": {
+      "@speckit/analyzer": ["packages/speckit-analyzer/src/index.ts"],
+      "@speckit/analyzer/*": ["packages/speckit-analyzer/src/*"],
       "@speckit/engine": ["packages/speckit-engine/src/index.ts"],
       "@speckit/feature-flags": ["packages/speckit-feature-flags/src/index.ts"],
       "@speckit/framework-registry": ["packages/speckit-framework-registry/src/index.ts"],

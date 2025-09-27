@@ -1,52 +1,13 @@
-import crypto from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import stripAnsi from "strip-ansi";
+import { sha1 } from "@noble/hashes/sha1";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
 
-export type RunEventKind =
-  | "plan"
-  | "search"
-  | "edit"
-  | "run"
-  | "eval"
-  | "reflect"
-  | "tool"
-  | "log"
-  | "summary"
-  | "error";
-
-export interface RunEvent {
-  id: string;
-  timestamp: string;
-  kind: RunEventKind | string;
-  subtype?: string | null;
-  role?: string | null;
-  input?: unknown;
-  output?: unknown;
-  error?: unknown;
-  files_changed?: string[];
-  meta?: Record<string, unknown>;
-}
-
-export interface NormalizedLog {
-  events: RunEvent[];
-  promptCandidates: string[];
-  plainText: string;
-}
-
-export interface RunArtifact {
-  runId: string;
-  sourceLogs: string[];
-  startedAt: string | null;
-  finishedAt: string | null;
-  events: RunEvent[];
-  metadata?: Record<string, unknown>;
-}
-
-export interface NormalizeOptions {
-  fallbackStart?: Date;
-  source?: string;
-}
+import type {
+  NormalizeOptions,
+  NormalizedLog,
+  RunArtifact,
+  RunEvent,
+} from "./types.js";
 
 const HASH_KIND_PREFIX: Record<string, string> = {
   plan: "plan",
@@ -61,18 +22,25 @@ const HASH_KIND_PREFIX: Record<string, string> = {
   error: "err",
 };
 
+function basename(input: string): string {
+  const normalized = input.replace(/\\/g, "/");
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.length === 0) return input;
+  return segments[segments.length - 1] || input;
+}
+
 function computeHashId(value: unknown, kind: string, source?: string): string {
-  const hash = crypto
-    .createHash("sha1")
-    .update(typeof value === "string" ? value : JSON.stringify(value))
-    .digest("hex")
-    .slice(0, 12);
+  const payload = typeof value === "string" ? value : JSON.stringify(value);
+  const hex = bytesToHex(sha1(utf8ToBytes(payload))).slice(0, 12);
   const prefix = HASH_KIND_PREFIX[kind] ?? "evt";
-  const scope = source ? path.basename(source) : "run";
-  return `${prefix}-${scope}-${hash}`;
+  const scope = source ? basename(source) : "run";
+  return `${prefix}-${scope}-${hex}`;
 }
 
 function ensureIsoTimestamp(value: unknown, fallback: Date, offsetSeconds: number): string {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
   if (typeof value === "string" && value.trim().length > 0) {
     const parsed = Date.parse(value);
     if (!Number.isNaN(parsed)) {
@@ -107,9 +75,8 @@ function normalizeEvent(
     ? raw.files_changed.filter((entry: unknown): entry is string => typeof entry === "string")
     : undefined;
 
-  const timestamp = ensureIsoTimestamp(raw.timestamp, fallbackStart, index);
   const materialized = {
-    timestamp,
+    timestamp: ensureIsoTimestamp(raw.timestamp, fallbackStart, index),
     kind,
     subtype: typeof raw.subtype === "string" ? raw.subtype : undefined,
     role: typeof raw.role === "string" ? raw.role : undefined,
@@ -147,9 +114,7 @@ function parseJsonPayload(content: string, fallback: Date, source?: string): Nor
       return { events, promptCandidates: prompt, plainText: content };
     }
   } catch (error) {
-    console.warn(
-      `[normalize] ${source ?? "payload"} is not JSON array/object: ${(error as Error).message}`
-    );
+    console.warn(`[analyzer:normalize] ${source ?? "payload"} is not JSON array/object: ${(error as Error).message}`);
   }
   return null;
 }
@@ -167,7 +132,7 @@ function parseNdjson(content: string, fallback: Date, source?: string): Normaliz
       }
     } catch (error) {
       console.warn(
-        `[normalize] NDJSON parse failure in ${source ?? "payload"} (line ${i + 1}): ${(error as Error).message}`
+        `[analyzer:normalize] NDJSON parse failure in ${source ?? "payload"} (line ${i + 1}): ${(error as Error).message}`
       );
       return null;
     }
@@ -232,46 +197,36 @@ function parseTextLog(content: string, fallback: Date, source?: string): Normali
   return { events, promptCandidates: prompts, plainText: content };
 }
 
-export async function normalizeLogFile(filePath: string, options: NormalizeOptions = {}): Promise<NormalizedLog> {
-  const raw = await fs.readFile(filePath, "utf8");
-  const content = stripAnsi(raw);
+export function normalizeLogContent(content: string, options: NormalizeOptions = {}): NormalizedLog {
+  const sanitized = stripAnsi(content ?? "");
   const fallback = options.fallbackStart ?? new Date();
-  const source = options.source ?? filePath;
+  const source = options.source;
+  const format = options.format ?? "auto";
 
-  const jsonParsed = parseJsonPayload(content, fallback, source);
-  if (jsonParsed) return jsonParsed;
-  const ndjsonParsed = parseNdjson(content, fallback, source);
-  if (ndjsonParsed) return ndjsonParsed;
-  return parseTextLog(content, fallback, source);
-}
-
-export async function normalizeLogs(paths: string[]): Promise<NormalizedLog> {
-  const fallbackStart = new Date();
-  const events: RunEvent[] = [];
-  const promptCandidates: string[] = [];
-  let plainTextAggregate = "";
-  for (const [index, filePath] of paths.entries()) {
-    const normalized = await normalizeLogFile(filePath, {
-      fallbackStart: new Date(fallbackStart.getTime() + index * 60_000),
-      source: filePath,
-    });
-    events.push(...normalized.events);
-    promptCandidates.push(...normalized.promptCandidates);
-    plainTextAggregate += `\n\n# File: ${filePath}\n${normalized.plainText}`;
+  if (format === "json" || format === "auto") {
+    const parsed = parseJsonPayload(sanitized, fallback, source);
+    if (parsed) return parsed;
   }
-  return { events, promptCandidates, plainText: plainTextAggregate.trim() };
+  if (format === "ndjson" || format === "auto") {
+    const ndjsonParsed = parseNdjson(sanitized, fallback, source);
+    if (ndjsonParsed) return ndjsonParsed;
+  }
+  return parseTextLog(sanitized, fallback, source);
 }
 
-export function buildRunArtifact(sourceLogs: string[], normalized: NormalizedLog, runId?: string): RunArtifact {
-  const sortedEvents = [...normalized.events].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
+export function normalizedFromEvents(
+  events: RunEvent[],
+  promptCandidates: string[] = [],
+  plainText?: string
+): NormalizedLog {
   return {
-    runId: runId ?? `run-${Date.now()}`,
-    sourceLogs,
-    startedAt: sortedEvents[0]?.timestamp ?? null,
-    finishedAt: sortedEvents[sortedEvents.length - 1]?.timestamp ?? null,
-    events: sortedEvents,
+    events: events.map((event, index) => ({
+      ...event,
+      id: typeof event.id === "string" && event.id.trim().length > 0 ? event.id : `evt-${index}`,
+      timestamp: ensureIsoTimestamp(event.timestamp, new Date(), index),
+    })),
+    promptCandidates,
+    plainText: plainText ?? events.map((event) => JSON.stringify(event)).join("\n"),
   };
 }
 
@@ -289,9 +244,28 @@ export function mergeNormalized(base: NormalizedLog, incoming: NormalizedLog): N
   return { events: mergedEvents, promptCandidates: prompts, plainText };
 }
 
+export function buildRunArtifact(
+  sourceLogs: string[],
+  normalized: NormalizedLog,
+  runId?: string,
+  metadata?: Record<string, unknown>
+): RunArtifact {
+  const sortedEvents = [...normalized.events].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  return {
+    runId: runId ?? `run-${Date.now()}`,
+    sourceLogs,
+    startedAt: sortedEvents[0]?.timestamp ?? null,
+    finishedAt: sortedEvents[sortedEvents.length - 1]?.timestamp ?? null,
+    events: sortedEvents,
+    metadata,
+  };
+}
+
 export function detectPrompt(candidates: string[], fallbackText: string): string {
   if (candidates.length > 0) {
-    return candidates.sort((a, b) => b.length - a.length)[0];
+    return [...candidates].sort((a, b) => b.length - a.length)[0];
   }
   const lower = fallbackText.toLowerCase();
   const guardrailIndex = lower.indexOf("guard rail");

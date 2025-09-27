@@ -1,9 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { RunArtifact } from "../analyzers/normalize.js";
-import type { RequirementRecord } from "../analyzers/requirements.js";
-import type { Metrics } from "../analyzers/score.js";
+import type { Metrics, RequirementRecord, RunArtifact } from "@speckit/analyzer";
 
 export interface MemoArtifact {
   generated_at: string;
