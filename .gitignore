@@ -2,7 +2,6 @@ node_modules
 dist
 .DS_Store
 .env
-pnpm-lock.yaml
 coverage
 docs/website/node_modules
 docs/website/.docusaurus
