@@ -1,14 +1,4 @@
-import type { RunEvent } from "./normalize.js";
-import type { RequirementRecord } from "./requirements.js";
-
-export interface Metrics {
-  ReqCoverage: number;
-  BacktrackRatio: number;
-  ToolPrecisionAt1: number;
-  EditLocality: number;
-  ReflectionDensity: number;
-  TTFPSeconds: number | null;
-}
+import type { Metrics, RequirementRecord, RunEvent } from "./types.js";
 
 export function computeMetrics(requirements: RequirementRecord[], events: RunEvent[]): Metrics {
   const satisfied = requirements.filter(

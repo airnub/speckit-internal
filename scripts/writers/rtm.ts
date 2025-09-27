@@ -1,8 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { RequirementRecord } from "../analyzers/requirements.js";
-import type { RunArtifact } from "../analyzers/normalize.js";
+import type { RequirementRecord, RunArtifact } from "@speckit/analyzer";
 
 const START_MARKER = "<!-- speckit:rtm:start -->";
 const END_MARKER = "<!-- speckit:rtm:end -->";

@@ -1,15 +1,4 @@
-import type { RunEvent } from "./normalize.js";
-
-export interface RequirementRecord {
-  id: string;
-  text: string;
-  source?: string;
-  category?: string | null;
-  constraints?: string[];
-  status: "unknown" | "satisfied" | "violated" | "in-progress";
-  evidence: string[];
-  notes?: string;
-}
+import type { RequirementRecord, RunEvent } from "./types.js";
 
 const imperativePatterns = [
   /^(must|should|ensure|create|add|update|implement|run|avoid|verify|write|check|document)\b/i,
