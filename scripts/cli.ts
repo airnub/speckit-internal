@@ -15,11 +15,14 @@ import YAML from "yaml";
 
 import RunCoach from "./tui/RunCoach.js";
 import type { CoachState } from "./tui/RunCoach.js";
+import RunReplay from "./tui/RunReplay.js";
 import {
   analyze,
   summarizeMetrics,
+  type EventsLogSource,
   type NormalizedLog,
   type RequirementRecord,
+  type RunEvent,
 } from "@speckit/analyzer";
 import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/analyzer/adapters/node";
 import { writeArtifacts } from "./writers/artifacts.js";
@@ -63,6 +66,15 @@ async function gatherLogPaths(patterns: string[] | undefined): Promise<string[]>
   const globs = patterns && patterns.length > 0 ? patterns : ["runs/**/*.{log,txt,ndjson,json}"];
   const matches = await globby(globs, { cwd: ROOT, absolute: true });
   return matches;
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 async function readStdin(): Promise<string> {
@@ -187,6 +199,14 @@ function formatLogSource(paths: string[]): string {
   if (paths.length === 1) return path.relative(ROOT, paths[0]);
   const first = path.relative(ROOT, paths[0]);
   return `${first} (+${paths.length - 1})`;
+}
+
+function formatSourceList(paths: string[]): string {
+  if (paths.length === 0) {
+    return "unknown";
+  }
+  const absolute = paths.map((entry) => (path.isAbsolute(entry) ? entry : path.join(ROOT, entry)));
+  return formatLogSource(absolute);
 }
 
 async function runCoachCommand(args: {
@@ -388,6 +408,192 @@ async function runAnalyzeCommand(args: { rawLog: string[]; runId?: string; out?:
   logAnalysisSummary(result);
 }
 
+interface SerializedRunArtifact {
+  run_id?: string;
+  source_logs?: string[];
+  events?: RunEvent[];
+  prompt_candidates?: string[];
+  plain_text?: string;
+  metadata?: Record<string, unknown>;
+}
+
+function formatConsolePayload(payload: unknown): string {
+  if (payload === null || payload === undefined) return "—";
+  if (typeof payload === "string") {
+    const trimmed = payload.trim();
+    return trimmed.length > 0 ? trimmed : "—";
+  }
+  try {
+    return JSON.stringify(payload, null, 2) ?? "—";
+  } catch (error) {
+    return String(payload);
+  }
+}
+
+function renderReplayConsole(options: {
+  runId: string;
+  repoName: string;
+  logSource: string;
+  metrics: ReturnType<typeof summarizeMetrics>;
+  hints: string[];
+  labels: string[];
+  events: RunEvent[];
+}): void {
+  console.log(chalk.bold(`[speckit] Replay — ${options.repoName}`));
+  console.log(`Run: ${options.runId}`);
+  console.log(`Source: ${options.logSource}`);
+  console.log("Metrics:");
+  if (options.metrics.length === 0) {
+    console.log("  (none)");
+  } else {
+    for (const entry of options.metrics) {
+      const value = entry.value === null || entry.value === undefined ? "—" : entry.value;
+      const formatted = typeof value === "number" && entry.label !== "TTFP" ? `${Math.round(value * 100)}%` : `${value}`;
+      console.log(`  ${entry.label.padEnd(18)} ${formatted}`);
+    }
+  }
+  console.log("Hints:");
+  if (options.hints.length === 0) {
+    console.log("  (none)");
+  } else {
+    for (const hint of options.hints) {
+      console.log(`  • ${hint}`);
+    }
+  }
+  console.log("Labels:");
+  if (options.labels.length === 0) {
+    console.log("  (none)");
+  } else {
+    for (const label of options.labels) {
+      console.log(`  • ${label}`);
+    }
+  }
+  console.log("Events:");
+  if (options.events.length === 0) {
+    console.log("  (none)");
+  } else {
+    options.events.forEach((event, index) => {
+      const timestamp = new Date(event.timestamp).toISOString();
+      const subtype = event.subtype ? ` (${event.subtype})` : "";
+      console.log(`  ${index + 1}. [${timestamp}] ${event.kind}${subtype}`);
+      if (event.role) {
+        console.log(`     Role: ${event.role}`);
+      }
+      if (Array.isArray(event.files_changed) && event.files_changed.length > 0) {
+        console.log(`     Files: ${event.files_changed.join(", ")}`);
+      }
+      if (event.input) {
+        console.log(`     Input: ${formatConsolePayload(event.input)}`);
+      }
+      if (event.output) {
+        console.log(`     Output: ${formatConsolePayload(event.output)}`);
+      }
+      if (event.error) {
+        console.log(`     Error: ${formatConsolePayload(event.error)}`);
+      }
+      if (event.meta) {
+        console.log(`     Meta: ${formatConsolePayload(event.meta)}`);
+      }
+    });
+  }
+}
+
+async function runReplayCommand(args: { run?: string; log?: string[] }): Promise<void> {
+  const defaultRunPath = path.join(ROOT, ".speckit", "Run.json");
+  const resolvedRunPath = args.run
+    ? path.isAbsolute(args.run)
+      ? args.run
+      : path.join(ROOT, args.run)
+    : defaultRunPath;
+
+  const hasRunArtifact = await fileExists(resolvedRunPath);
+  const logGlobs = args.log as string[] | undefined;
+  const logPaths = logGlobs ? await gatherLogPaths(logGlobs) : [];
+
+  let sources: (EventsLogSource | Awaited<ReturnType<typeof createFileLogSource>>)[] = [];
+  let rawSourcePaths: string[] = [];
+  let runId: string | undefined;
+  let metadata: Record<string, unknown> | undefined;
+
+  if (hasRunArtifact) {
+    const raw = await fs.readFile(resolvedRunPath, "utf8");
+    const parsed = JSON.parse(raw) as SerializedRunArtifact;
+    if (!Array.isArray(parsed.events) || parsed.events.length === 0) {
+      throw new Error(`Run artifact at ${resolvedRunPath} does not include any events.`);
+    }
+    runId = typeof parsed.run_id === "string" ? parsed.run_id : undefined;
+    metadata = parsed.metadata ?? undefined;
+    const promptCandidates = Array.isArray(parsed.prompt_candidates)
+      ? parsed.prompt_candidates.map((entry) => String(entry))
+      : undefined;
+    const plainText = typeof parsed.plain_text === "string" ? parsed.plain_text : undefined;
+    rawSourcePaths = Array.isArray(parsed.source_logs)
+      ? parsed.source_logs.map((entry) => String(entry))
+      : [resolvedRunPath];
+    const sourceId = rawSourcePaths[0] ?? resolvedRunPath;
+    const eventSource = {
+      id: sourceId,
+      events: parsed.events,
+      promptCandidates,
+      plainText,
+    } satisfies EventsLogSource;
+    sources = [eventSource];
+  } else if (logPaths.length > 0) {
+    sources = await Promise.all(logPaths.map((filePath) => createFileLogSource(filePath)));
+    rawSourcePaths = logPaths;
+  } else {
+    throw new Error(
+      `No run artifact found at ${resolvedRunPath} and no raw logs were provided. Pass --run <path> or --log <glob>.`
+    );
+  }
+
+  const rulesBaseDir = hasRunArtifact ? path.dirname(resolvedRunPath) : path.join(ROOT, ".speckit");
+  const rules = await loadFailureRulesFromFs(ROOT, rulesBaseDir);
+  const analysis = await analyze({
+    sources,
+    rules,
+    runId,
+    metadata,
+  });
+
+  if (Array.isArray(rawSourcePaths) && rawSourcePaths.length > 0) {
+    analysis.run.sourceLogs = rawSourcePaths;
+  }
+
+  const metricsSummary = summarizeMetrics(analysis.metrics);
+  const labels = Array.from(analysis.labels);
+  const hints = analysis.hints;
+  const repoName = path.basename(ROOT);
+  const displaySources = analysis.run.sourceLogs.length > 0 ? analysis.run.sourceLogs : rawSourcePaths;
+  const logSource = formatSourceList(displaySources);
+  const useTui = Boolean(process.stdout.isTTY);
+
+  if (useTui) {
+    const ink = render(
+      <RunReplay
+        runId={analysis.run.runId}
+        repoName={repoName}
+        logSource={logSource}
+        events={analysis.run.events}
+        metrics={metricsSummary}
+        hints={hints}
+        labels={labels}
+      />
+    );
+    await ink.waitUntilExit();
+  } else {
+    renderReplayConsole({
+      runId: analysis.run.runId,
+      repoName,
+      logSource,
+      metrics: metricsSummary,
+      hints,
+      labels,
+      events: analysis.run.events,
+    });
+  }
+}
+
 async function runDoctorCommand(): Promise<void> {
   const checks: { name: string; status: "pass" | "warn" | "fail"; detail: string }[] = [];
   const nodeMajor = Number(process.versions.node.split(".")[0]);
@@ -479,6 +685,15 @@ async function main(): Promise<void> {
           .option("out", { type: "string" }),
       async (args) => {
         await runAnalyzeCommand({ rawLog: args["raw-log"] as string[], runId: args["run-id"] as string | undefined, out: args.out as string | undefined });
+      }
+    )
+    .command(
+      "replay",
+      "Replay a normalized run artifact and browse events",
+      (command) =>
+        command.option("run", { type: "string" }).option("log", { type: "array" }),
+      async (args) => {
+        await runReplayCommand({ run: args.run as string | undefined, log: args.log as string[] | undefined });
       }
     )
     .command(

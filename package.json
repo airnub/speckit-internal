@@ -23,6 +23,7 @@
     "speckit:coach": "tsx scripts/cli.ts run --coach --watch",
     "speckit:doctor": "tsx scripts/cli.ts doctor",
     "speckit:analyze": "tsx scripts/cli.ts analyze",
+    "speckit:replay": "tsx scripts/cli.ts replay",
     "speckit:inject": "tsx scripts/cli.ts inject",
     "speckit:trends": "tsx scripts/analytics/trends.ts"
   },

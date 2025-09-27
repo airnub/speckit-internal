@@ -70,7 +70,16 @@ pnpm speckit:coach -- --log runs/sample.ndjson --watch
 
 3. **Finish the run** (Ctrl+C). SpecKit writes `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, `.speckit/summary.md`, updates `RTM.md`, and refreshes `docs/internal/agents/coding-agent-brief.md` via `pnpm speckit:inject`.
 
-4. **Open or sync a PR.** CI uploads sanitized logs (`speckit-upload-logs`), analyzes them (`speckit-analyze-run`), commits refreshed artifacts/RTM, posts `.speckit/summary.md` as a sticky comment, and only gates on critical labels (e.g., `process.read-before-write-fail`, `env.git-state-drift`).
+4. **Replay a saved run** to inspect the timeline, metrics, and hints without re-running the agent:
+
+   ```bash
+   pnpm speckit:replay -- --run .speckit/Run.json           # load analyzer artifacts
+   pnpm speckit:replay -- --log runs/sample.ndjson          # normalize raw logs on demand
+   ```
+
+   Use ←/→ to switch sections and ↑/↓ to scroll events, hints, metrics, and labels.
+
+5. **Open or sync a PR.** CI uploads sanitized logs (`speckit-upload-logs`), analyzes them (`speckit-analyze-run`), commits refreshed artifacts/RTM, posts `.speckit/summary.md` as a sticky comment, and only gates on critical labels (e.g., `process.read-before-write-fail`, `env.git-state-drift`).
 
 ### Inner-loop experiments
 
