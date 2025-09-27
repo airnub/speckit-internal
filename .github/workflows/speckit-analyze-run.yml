@@ -85,6 +85,10 @@ jobs:
           }
           NODE
 
+      - name: Validate artifacts
+        if: steps.check_logs.outputs.found == 'true'
+        run: pnpm speckit:validate-artifacts
+
       - name: Update agent trends dashboard
         if: steps.check_logs.outputs.found == 'true'
         run: pnpm tsx scripts/analytics/trends.ts

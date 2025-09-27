@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckit.dev/schemas/metrics.v1.schema.json",
+  "title": "SpecKit metrics artifact (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "ReqCoverage",
+    "ToolPrecisionAt1",
+    "BacktrackRatio",
+    "EditLocality",
+    "ReflectionDensity",
+    "TTFPSeconds",
+    "labels",
+    "sanitizer_hits",
+    "experiments"
+  ],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "ReqCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+    "ToolPrecisionAt1": { "type": "number", "minimum": 0, "maximum": 1 },
+    "BacktrackRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+    "EditLocality": { "type": "number", "minimum": 0, "maximum": 1 },
+    "ReflectionDensity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "TTFPSeconds": { "type": ["number", "null"], "minimum": 0 },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "sanitizer_hits": { "type": "number", "minimum": 0 },
+    "experiments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "variant", "bucket"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "variant": { "type": "string", "minLength": 1 },
+          "variant_description": { "type": "string", "minLength": 1 },
+          "bucket": { "type": "integer", "minimum": 0 },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

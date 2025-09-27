@@ -25,7 +25,8 @@
     "speckit:analyze": "tsx scripts/cli.ts analyze",
     "speckit:replay": "tsx scripts/cli.ts replay",
     "speckit:inject": "tsx scripts/cli.ts inject",
-    "speckit:trends": "tsx scripts/analytics/trends.ts"
+    "speckit:trends": "tsx scripts/analytics/trends.ts",
+    "speckit:validate-artifacts": "tsx scripts/validate-artifacts.ts"
   },
   "keywords": [
     "spec-driven-development",
@@ -46,6 +47,8 @@
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.3.0",
     "@types/node": "^24.5.2",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "chalk": "^5.3.0",
     "chokidar": "^3.6.0",
     "globby": "^14.0.2",

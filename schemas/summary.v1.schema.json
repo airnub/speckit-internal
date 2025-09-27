@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckit.dev/schemas/summary.v1.schema.json",
+  "title": "SpecKit summary artifact (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "generated_at", "run", "metrics", "labels", "requirements"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sources", "events_analyzed"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "events_analyzed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "experiments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "variant", "bucket"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "variant": { "type": "string", "minLength": 1 },
+          "variant_description": { "type": "string", "minLength": 1 },
+          "bucket": { "type": "integer", "minimum": 0 },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "default": []
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "value"],
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "value": { "type": ["number", "null"] },
+          "threshold": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "value"],
+            "properties": {
+              "type": { "type": "string", "enum": ["min", "max"] },
+              "value": { "type": "number" }
+            }
+          },
+          "status": { "type": "string", "enum": ["ok", "warn", "fail"] }
+        }
+      }
+    },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "description"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["satisfied", "violated", "in-progress", "unknown"] },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "highlights": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lessons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "guardrails": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
