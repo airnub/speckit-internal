@@ -3,6 +3,8 @@ import path from "node:path";
 import YAML from "yaml";
 import type { Metrics, RequirementRecord, RunArtifact } from "@speckit/analyzer";
 
+const RUN_ARTIFACT_SCHEMA_FALLBACK = 1;
+
 export interface MemoArtifact {
   generated_at: string;
   generated_from: {
@@ -125,6 +127,7 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
   const summaryPath = path.join(outDir, "summary.md");
 
   await writeJson(runPath, {
+    schema: typeof options.run.schema === "number" ? options.run.schema : RUN_ARTIFACT_SCHEMA_FALLBACK,
     run_id: options.run.runId,
     source_logs: options.run.sourceLogs,
     started_at: options.run.startedAt,

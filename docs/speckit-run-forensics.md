@@ -5,7 +5,7 @@ The run forensics and self-healing loop connects raw agent logs → normalized r
 ## Pipeline overview
 
 1. **Collect logs.** Record each agent execution (planner, executor, tools) and save them as text, JSON, or NDJSON.
-2. **Analyze.** Run `pnpm speckit:analyze -- --raw-log <glob>` to normalize the logs into `.speckit/Run.json`, extract prompt requirements into `.speckit/requirements.jsonl`, and score run metrics.
+2. **Analyze.** Run `pnpm speckit:analyze -- --raw-log <glob>` to normalize the logs into `.speckit/Run.json`, extract prompt requirements into `.speckit/requirements.jsonl`, and score run metrics. The normalized `Run.json` includes a `schema` version (currently `1`) so downstream tooling can validate compatibility.
 3. **Update artifacts.** The analyzer emits `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, and `.speckit/summary.md`, then refreshes the RTM between `<!-- speckit:rtm:* -->` markers.
 4. **Inject guardrails.** Run `pnpm speckit:inject` to merge the memo guardrails + verification checklist into `docs/internal/agents/coding-agent-brief.md` so the next run inherits lessons learned.
 5. **Gate in CI.** The `speckit-analyze-run` workflow fetches the `agent-run-logs` artifact on each PR, runs the analyzer, commits refreshed artifacts, and posts the summary. `speckit-pr-gate` blocks merges when metrics fall below thresholds or forbidden failure labels appear.

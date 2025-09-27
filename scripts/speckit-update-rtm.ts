@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import YAML from "yaml";
 
+import { RUN_ARTIFACT_SCHEMA_VERSION } from "@speckit/analyzer";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
@@ -31,6 +33,7 @@ interface RunEvent {
 }
 
 interface RunArtifact {
+  schema: number;
   run_id: string;
   events: RunEvent[];
 }
@@ -80,7 +83,15 @@ async function readRun(): Promise<RunArtifact | null> {
     const raw = await fs.readFile(runPath, "utf8");
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && Array.isArray(parsed.events)) {
-      return parsed as RunArtifact;
+      const schemaVersion = typeof (parsed as any).schema === "number"
+        ? (parsed as any).schema
+        : RUN_ARTIFACT_SCHEMA_VERSION;
+      if (schemaVersion !== RUN_ARTIFACT_SCHEMA_VERSION) {
+        console.warn(
+          `[speckit-update-rtm] Run.json schema ${schemaVersion} differs from expected ${RUN_ARTIFACT_SCHEMA_VERSION}. Results may be inaccurate.`
+        );
+      }
+      return { ...parsed, schema: schemaVersion } as RunArtifact;
     }
   } catch (error) {
     console.warn(`[speckit-update-rtm] Unable to parse Run.json: ${(error as Error).message}`);

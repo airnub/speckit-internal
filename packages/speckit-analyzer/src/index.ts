@@ -1,3 +1,5 @@
+export { RUN_ARTIFACT_SCHEMA_VERSION } from "./types.js";
+
 export type {
   AnalyzeOptions,
   AnalyzerEvent,
