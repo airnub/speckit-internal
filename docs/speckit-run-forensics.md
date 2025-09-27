@@ -7,6 +7,7 @@ The run forensics and self-healing loop connects raw agent logs → normalized r
 1. **Collect logs.** Record each agent execution (planner, executor, tools) and save them as text, JSON, or NDJSON.
 2. **Analyze.** Run `pnpm speckit:analyze -- --raw-log <glob>` to normalize the logs into `.speckit/Run.json`, extract prompt requirements into `.speckit/requirements.jsonl`, and score run metrics. The normalized `Run.json` includes a `schema` version (currently `1`) so downstream tooling can validate compatibility.
 3. **Update artifacts.** The analyzer emits versioned `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, and `.speckit/summary.md`, then refreshes the RTM between `<!-- speckit:rtm:* -->` markers.
+   - When `.speckit/sanitizer-report.json` already exists, its hit count is carried into the refreshed metrics so secret redaction alerts persist across local reruns.
 4. **Replay & review.** Run `pnpm speckit:replay -- --run .speckit/Run.json` (or `--log <glob>`) to browse normalized events, hints, metrics, and failure labels from the run timeline.
 5. **Inject guardrails.** Run `pnpm speckit:inject` to merge the memo guardrails + verification checklist into `docs/internal/agents/coding-agent-brief.md` so the next run inherits lessons learned.
 6. **Gate in CI.** The `speckit-analyze-run` workflow fetches the `agent-run-logs` artifact on each PR, runs the analyzer, commits refreshed artifacts, and posts the summary. `speckit-pr-gate` blocks merges when metrics fall below thresholds or forbidden failure labels appear.
@@ -38,3 +39,4 @@ Forbidden labels enforced in CI: `process.read-before-write-fail`, `env.git-stat
 3. Inspect `.speckit/verification.yaml` and rehearse each generated command/grep so the next run can replay the satisfied checks and tackle pending ones.
 4. Run `pnpm speckit:inject` and verify the coding agent brief now contains the latest memo guardrails + verification checklist.
 5. Commit refreshed artifacts before opening a PR so CI gates only enforce deltas from the latest run.
+6. Confirm any positive `sanitizer_hits` in `.speckit/metrics.json` align with the sanitizer report; the analyzer preserves those hits until the report is cleared.

@@ -26,16 +26,13 @@ import {
   summarizeMetrics,
   type AnalyzerResult,
   type EventsLogSource,
-  type NormalizedLog,
-  type RequirementRecord,
   type RunEvent,
 } from "@speckit/analyzer";
 import { createFileLogSource, loadFailureRulesFromFs } from "@speckit/analyzer/adapters/node";
-import { writeArtifacts } from "./writers/artifacts.js";
 import { updateRTM } from "./writers/rtm.js";
 import { redactSecrets } from "./utils/redact.js";
 import { loadExperimentAssignments } from "./config/experiments.js";
-import type { ExperimentAssignment } from "./config/experiments.js";
+import { emitAnalyzerArtifacts, runAnalysis, type RunAnalysisResult } from "./run-analysis.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -188,17 +185,7 @@ async function readStdin(): Promise<string> {
   return chunks.join("\n");
 }
 
-interface AnalyzeResult {
-  runId: string;
-  requirements: RequirementRecord[];
-  metricsSummary: ReturnType<typeof summarizeMetrics>;
-  labels: Set<string>;
-  normalized: NormalizedLog;
-  artifacts: Awaited<ReturnType<typeof writeArtifacts>>;
-  experiments: ExperimentAssignment[];
-}
-
-function logAnalysisSummary(result: AnalyzeResult): void {
+function logAnalysisSummary(result: RunAnalysisResult): void {
   console.log(chalk.green(`[speckit] Run ${result.runId} analyzed.`));
   console.log(`Metrics:`);
   for (const entry of result.metricsSummary) {
@@ -219,60 +206,6 @@ function logAnalysisSummary(result: AnalyzeResult): void {
       console.log(`  - ${guardrail}`);
     }
   }
-}
-
-async function runAnalysis(
-  logPaths: string[],
-  options: { runId?: string; outDir?: string }
-): Promise<AnalyzeResult> {
-  if (logPaths.length === 0) {
-    throw new Error("No log files found. Provide --log <glob> or ensure runs/ contains logs.");
-  }
-  const resolvedOutDir = options.outDir
-    ? path.isAbsolute(options.outDir)
-      ? options.outDir
-      : path.join(ROOT, options.outDir)
-    : path.join(ROOT, ".speckit");
-  const sources = await Promise.all(logPaths.map((filePath) => createFileLogSource(filePath)));
-  const rules = await loadFailureRulesFromFs(ROOT, resolvedOutDir);
-  const runId = options.runId ?? `run-${Date.now()}`;
-  const experiments = await loadExperimentAssignments({ rootDir: ROOT, seed: runId });
-  const metadata =
-    experiments.length > 0
-      ? {
-          experiments: experiments.map((experiment) => ({
-            key: experiment.key,
-            description: experiment.description,
-            variant: experiment.variantKey,
-            variant_description: experiment.variantDescription,
-            bucket: experiment.bucket,
-            metadata: experiment.metadata,
-          })),
-        }
-      : undefined;
-  const analysis = await analyze({ sources, rules, runId, metadata });
-  if (metadata && !analysis.run.metadata) {
-    analysis.run.metadata = metadata;
-  }
-  const artifacts = await writeArtifacts({
-    rootDir: ROOT,
-    outDir: resolvedOutDir,
-    run: analysis.run,
-    requirements: analysis.requirements,
-    metrics: analysis.metrics,
-    labels: analysis.labels,
-    experiments,
-  });
-  await updateRTM({ rootDir: ROOT, outDir: resolvedOutDir, rtmPath: undefined });
-  return {
-    runId: analysis.run.runId,
-    requirements: analysis.requirements,
-    metricsSummary: summarizeMetrics(analysis.metrics),
-    labels: analysis.labels,
-    normalized: analysis.normalized,
-    artifacts,
-    experiments,
-  };
 }
 
 class CoachEmitter extends EventEmitter {
@@ -381,7 +314,7 @@ async function runCoachCommand(args: {
             rootDir: ROOT,
             seed: lastAnalyzerResult.run.runId ?? `run-${Date.now()}`,
           });
-          const artifacts = await writeArtifacts({
+          const artifacts = await emitAnalyzerArtifacts({
             rootDir: ROOT,
             outDir,
             run: lastAnalyzerResult.run,
@@ -574,7 +507,7 @@ async function runCoachCommand(args: {
         resolve();
         return;
       }
-      const analysis = await runAnalysis(logPaths, { outDir });
+      const analysis = await runAnalysis(logPaths, { outDir }, { rootDir: ROOT });
       const artifacts = analysis.artifacts;
       const artifactPaths = [
         artifacts.runPath,
@@ -620,7 +553,7 @@ async function runCoachCommand(args: {
 
 async function runAnalyzeCommand(args: { rawLog: string[]; runId?: string; out?: string }): Promise<void> {
   const logPaths = await gatherLogPaths(args.rawLog);
-  const result = await runAnalysis(logPaths, { runId: args.runId, outDir: args.out });
+  const result = await runAnalysis(logPaths, { runId: args.runId, outDir: args.out }, { rootDir: ROOT });
   logAnalysisSummary(result);
 }
 
@@ -878,7 +811,7 @@ async function main(): Promise<void> {
           await runCoachCommand({ log: args.log as string[] | undefined, watch: args.watch as boolean, stdin: args.stdin as boolean, out: args.out as string | undefined });
         } else {
           const logPaths = await gatherLogPaths(args.log as string[] | undefined);
-          const result = await runAnalysis(logPaths, { outDir: args.out as string | undefined });
+          const result = await runAnalysis(logPaths, { outDir: args.out as string | undefined }, { rootDir: ROOT });
           logAnalysisSummary(result);
         }
       }
@@ -926,8 +859,14 @@ async function main(): Promise<void> {
     .parse();
 }
 
-main().catch((error) => {
-  const { redacted } = redactSecrets(error.stack ?? String(error));
-  console.error("[speckit] Failed:", redacted);
-  process.exitCode = 1;
-});
+const isDirectInvocation =
+  typeof process.argv[1] === "string" &&
+  pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+
+if (isDirectInvocation) {
+  main().catch((error) => {
+    const { redacted } = redactSecrets(error.stack ?? String(error));
+    console.error("[speckit] Failed:", redacted);
+    process.exitCode = 1;
+  });
+}
