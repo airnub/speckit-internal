@@ -36,6 +36,8 @@ export interface NormalizeOptions {
 }
 
 export const RUN_ARTIFACT_SCHEMA_VERSION = 1 as const;
+export const MEMO_ARTIFACT_VERSION = 1 as const;
+export const METRICS_ARTIFACT_VERSION = 1 as const;
 
 export interface RunArtifact {
   schema: number;

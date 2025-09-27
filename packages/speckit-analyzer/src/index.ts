@@ -1,4 +1,4 @@
-export { RUN_ARTIFACT_SCHEMA_VERSION } from "./types.js";
+export { RUN_ARTIFACT_SCHEMA_VERSION, MEMO_ARTIFACT_VERSION, METRICS_ARTIFACT_VERSION } from "./types.js";
 
 export type {
   AnalyzeOptions,

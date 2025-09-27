@@ -56,9 +56,9 @@ pnpm speckit:inject                                      # Refresh prompt guardr
 
 Each coached run yields:
 
-- `.speckit/memo.json` — lessons, guardrails, and checklist items keyed to the run ID.
+- `.speckit/memo.json` — versioned lessons, guardrails, and checklist items keyed to the run ID.
 - `.speckit/verification.yaml` — CoVe verification stubs per requirement.
-- `.speckit/metrics.json` — metric snapshot and failure labels.
+- `.speckit/metrics.json` — versioned metric snapshot and failure labels.
 - `.speckit/summary.md` — summary used for PR comments.
 - `RTM.md` — updated Run Traceability Matrix between managed markers.
 

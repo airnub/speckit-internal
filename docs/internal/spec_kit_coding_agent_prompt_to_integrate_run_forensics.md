@@ -72,9 +72,9 @@ speckit.config.yaml                  # new config (repo root)
 - **Score:** compute metrics (ReqCoverage, BacktrackRatio, ToolPrecision@1, EditLocality, ReflectionDensity, TTFP).
 - **Label Failures:** apply regex rules → labels per episode.
 - **Artifacts:**
-  - Write `.speckit/memo.json` (lessons, guardrails, checklist, generated_from.run_id).
+  - Write `.speckit/memo.json` (version, lessons, guardrails, checklist, generated_from.run_id).
   - Write `.speckit/verification.yaml` (per‑requirement checks, at least stubs if unknown).
-  - Write `.speckit/metrics.json` and `.speckit/summary.md` (short PR‑comment report).
+  - Write `.speckit/metrics.json` (versioned snapshot) and `.speckit/summary.md` (short PR‑comment report).
 - **RTM update:** call `scripts/speckit-update-rtm.ts` to refresh the managed table.
 
 ### T3 — RTM updater (`scripts/speckit-update-rtm.ts`)
