@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   gate:
-    name: Enforce run forensics thresholds
+    name: Enforce critical run forensics gates
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,31 +23,115 @@ jobs:
           const path = require('path');
 
           const metricsPath = path.join(process.cwd(), '.speckit', 'metrics.json');
+          const configPath = path.join(process.cwd(), 'speckit.config.yaml');
+
+          const defaults = {
+            enforce: false,
+            blockLabels: ['process.read-before-write-fail', 'env.git-state-drift'],
+            coverage: 0.75,
+            toolPrecision: 0.65,
+            backtrackRatio: 0.35,
+          };
+
+          let enforce = defaults.enforce;
+          let blockLabels = [...defaults.blockLabels];
+          let coverageThreshold = defaults.coverage;
+          let toolPrecisionThreshold = defaults.toolPrecision;
+          let backtrackThreshold = defaults.backtrackRatio;
+
+          if (fs.existsSync(configPath)) {
+            const configRaw = fs.readFileSync(configPath, 'utf8');
+            const enforceMatch = configRaw.match(/enforce_in_ci:\s*(true|false)/i);
+            if (enforceMatch) {
+              enforce = enforceMatch[1].toLowerCase() === 'true';
+            }
+
+            const lines = configRaw.split(/\r?\n/);
+            let collectingBlocks = false;
+            const parsedBlocks = [];
+            for (const line of lines) {
+              if (/^\s*block_on_violation\s*:/i.test(line)) {
+                collectingBlocks = true;
+                continue;
+              }
+              if (collectingBlocks) {
+                if (/^\s*-\s*/.test(line)) {
+                  const cleaned = line.replace(/^\s*-\s*/, '').replace(/^"|"$/g, '').trim();
+                  if (cleaned) parsedBlocks.push(cleaned);
+                  continue;
+                }
+                if (line.trim().length === 0) {
+                  continue;
+                }
+                collectingBlocks = false;
+              }
+            }
+            if (parsedBlocks.length > 0) {
+              blockLabels = parsedBlocks;
+            }
+
+            const coverageMatch = configRaw.match(/coverage:\s*([0-9]*\.?[0-9]+)/i);
+            if (coverageMatch) coverageThreshold = Number(coverageMatch[1]);
+            const toolMatch = configRaw.match(/tool_precision:\s*([0-9]*\.?[0-9]+)/i);
+            if (toolMatch) toolPrecisionThreshold = Number(toolMatch[1]);
+            const backtrackMatch = configRaw.match(/backtrack_ratio_max:\s*([0-9]*\.?[0-9]+)/i);
+            if (backtrackMatch) backtrackThreshold = Number(backtrackMatch[1]);
+          }
+
           if (!fs.existsSync(metricsPath)) {
-            console.error('speckit-pr-gate: metrics.json not found. Run pnpm speckit:analyze and attach agent-run-logs.');
-            process.exit(1);
+            if (enforce) {
+              console.error('speckit-pr-gate: metrics.json not found. Upload sanitized logs or run pnpm speckit:analyze.');
+              process.exit(1);
+            } else {
+              console.log('speckit-pr-gate: metrics.json missing but enforcement disabled.');
+              process.exit(0);
+            }
           }
 
           const data = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-          const metrics = data.metrics || {};
-          const labels = new Set(data.labels || []);
+          const labels = new Set(Array.isArray(data.labels) ? data.labels : []);
+          const sanitizerHits = Number.isFinite(Number(data.sanitizer_hits)) ? Number(data.sanitizer_hits) : 0;
+          const reqCoverage = typeof data.ReqCoverage === 'number' ? data.ReqCoverage : null;
+          const toolPrecision = typeof data.ToolPrecisionAt1 === 'number' ? data.ToolPrecisionAt1 : null;
+          const backtrackRatio = typeof data.BacktrackRatio === 'number' ? data.BacktrackRatio : null;
 
           const failures = [];
+          const warnings = [];
 
-          if (typeof metrics.ReqCoverage === 'number' && metrics.ReqCoverage < 0.75) {
-            failures.push(`ReqCoverage ${metrics.ReqCoverage} < 0.75`);
-          }
-          if (typeof metrics.ToolPrecisionAt1 === 'number' && metrics.ToolPrecisionAt1 < 0.65) {
-            failures.push(`ToolPrecision@1 ${metrics.ToolPrecisionAt1} < 0.65`);
-          }
-          if (typeof metrics.BacktrackRatio === 'number' && metrics.BacktrackRatio > 0.35) {
-            failures.push(`BacktrackRatio ${metrics.BacktrackRatio} > 0.35`);
-          }
-
-          const forbidden = ['process.read-before-write-fail', 'env.git-state-drift'];
-          for (const label of forbidden) {
+          for (const label of blockLabels) {
             if (labels.has(label)) {
               failures.push(`Forbidden label detected: ${label}`);
+            }
+          }
+
+          if (sanitizerHits > 0) {
+            failures.push(`Secret sanitizer detected ${sanitizerHits} matches.`);
+          }
+
+          if (reqCoverage !== null && reqCoverage < coverageThreshold) {
+            const message = `ReqCoverage ${reqCoverage} < ${coverageThreshold}`;
+            if (enforce) {
+              failures.push(message);
+            } else {
+              warnings.push(message);
+            }
+          }
+
+          if (toolPrecision !== null && toolPrecision < toolPrecisionThreshold) {
+            const message = `ToolPrecision@1 ${toolPrecision} < ${toolPrecisionThreshold}`;
+            if (enforce) {
+              failures.push(message);
+            } else {
+              warnings.push(message);
+            }
+          }
+
+          if (backtrackRatio !== null && backtrackRatio > backtrackThreshold) {
+            const message = `BacktrackRatio ${backtrackRatio} > ${backtrackThreshold}`;
+            if (enforce) {
+              failures.push(message);
+            } else {
+              warnings.push(message);
             }
           }
 
@@ -56,5 +140,9 @@ jobs:
             process.exit(1);
           }
 
-          console.log('speckit-pr-gate: thresholds satisfied.');
+          if (warnings.length > 0) {
+            console.log('speckit-pr-gate warnings:\n- ' + warnings.join('\n- '));
+          } else {
+            console.log('speckit-pr-gate: no threshold warnings.');
+          }
           NODE

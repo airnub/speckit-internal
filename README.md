@@ -41,20 +41,36 @@ speckit init --mode secure --template next-supabase      # preset expands to cur
 speckit gen --write   # refresh docs/specs/**
 ```
 
+### Inner-loop coach
+
+```bash
+pnpm speckit:doctor
+pnpm speckit:coach -- --log runs/sample.ndjson --watch
+```
+
+`speckit.config.yaml` controls thin CI behaviour; flip `verify.enforce_in_ci` to `true` once you want coverage and tool-precision warnings to become blocking failures.
+
 > Opinionated Next.js+Supabase template: https://github.com/airnub/speckit-template-next-supabase
 
-### Agent run forensics loop
+### Run coach & thin CI loop
 
-1. **Run your agent locally** and upload the raw log bundle as a PR artifact named `agent-run-logs`.
-2. **Open or update a PR.** The `speckit-analyze-run` workflow ingests the artifact, refreshes `.speckit/` run forensics, updates the RTM, and posts a sticky summary comment.
-3. **Gate locally before pushing:**
+1. **Preflight** with the doctor to verify Node/pnpm/test presence:
 
    ```bash
-   pnpm speckit:analyze -- --raw-log runs/*.log
-   pnpm speckit:inject
+   pnpm speckit:doctor
    ```
 
-   The analyzer emits `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, and updates `RTM.md`. The injector folds the memo guardrails + verification checklist into `docs/internal/agents/coding-agent-brief.md`.
+2. **Tail a run log with the live coach** (use `--stdin` if piping output):
+
+   ```bash
+   pnpm speckit:coach -- --log runs/sample.ndjson --watch
+   ```
+
+   The Ink TUI renders repo + log source, live metrics (ReqCoverage, BacktrackRatio, ToolPrecision@1, EditLocality), and hints derived from failure labels.
+
+3. **Finish the run** (Ctrl+C). SpecKit writes `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, `.speckit/summary.md`, updates `RTM.md`, and refreshes `docs/internal/agents/coding-agent-brief.md` via `pnpm speckit:inject`.
+
+4. **Open or sync a PR.** CI uploads sanitized logs (`speckit-upload-logs`), analyzes them (`speckit-analyze-run`), commits refreshed artifacts/RTM, posts `.speckit/summary.md` as a sticky comment, and only gates on critical labels (e.g., `process.read-before-write-fail`, `env.git-state-drift`).
 
 ---
 
