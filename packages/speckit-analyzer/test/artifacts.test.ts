@@ -2,7 +2,7 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Metrics, RequirementRecord, RunArtifact } from "../src/types.js";
 import {
@@ -10,6 +10,11 @@ import {
   METRICS_ARTIFACT_VERSION,
   RUN_ARTIFACT_SCHEMA_VERSION,
 } from "../src/types.js";
+
+vi.mock("@speckit/analyzer", async () => {
+  const actual = await vi.importActual<typeof import("../src/types.js")>("../src/types.js");
+  return actual;
+});
 
 describe("artifact writer", () => {
   it("writes Run.json with the schema version", async () => {

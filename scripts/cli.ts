@@ -85,6 +85,29 @@ interface AnalyzeResult {
   experiments: ExperimentAssignment[];
 }
 
+function logAnalysisSummary(result: AnalyzeResult): void {
+  console.log(chalk.green(`[speckit] Run ${result.runId} analyzed.`));
+  console.log(`Metrics:`);
+  for (const entry of result.metricsSummary) {
+    console.log(`  ${entry.label}: ${entry.value}`);
+  }
+  if (result.labels.size > 0) {
+    console.log(`Labels: ${Array.from(result.labels).join(", ")}`);
+  }
+  if (result.artifacts.promotedLessons.length > 0) {
+    console.log(`Lessons reinforced from history:`);
+    for (const lesson of result.artifacts.promotedLessons) {
+      console.log(`  - ${lesson}`);
+    }
+  }
+  if (result.artifacts.promotedGuardrails.length > 0) {
+    console.log(`Guardrails promoted from history:`);
+    for (const guardrail of result.artifacts.promotedGuardrails) {
+      console.log(`  - ${guardrail}`);
+    }
+  }
+}
+
 async function runAnalysis(
   logPaths: string[],
   options: { runId?: string; outDir?: string }
@@ -278,9 +301,12 @@ async function runCoachCommand(args: {
           runPath: "",
           requirementsPath: "",
           memoPath: "",
+          memoHistoryPath: "",
           verificationPath: "",
           metricsPath: "",
           summaryPath: "",
+          promotedLessons: [],
+          promotedGuardrails: [],
         },
         experiments: [],
       };
@@ -314,11 +340,28 @@ async function runCoachCommand(args: {
       }
       const analysis = await runAnalysis(logPaths, { outDir });
       const artifacts = analysis.artifacts;
+      const artifactPaths = [
+        artifacts.runPath,
+        artifacts.requirementsPath,
+        artifacts.memoPath,
+        artifacts.memoHistoryPath,
+        artifacts.verificationPath,
+        artifacts.metricsPath,
+        artifacts.summaryPath,
+      ].map((file) => path.relative(ROOT, file));
+      const promotionHints = [
+        ...artifacts.promotedLessons.map((lesson) => `Lesson reinforced: ${lesson}`),
+        ...artifacts.promotedGuardrails.map((guardrail) => `Guardrail promoted: ${guardrail}`),
+      ];
+      const mergedHints = promotionHints.length > 0
+        ? Array.from(new Set([...(emitter.state.hints ?? []), ...promotionHints]))
+        : emitter.state.hints;
       emitter.update({
         completed: true,
-        artifacts: Object.values(artifacts).map((file) => path.relative(ROOT, file)),
+        artifacts: artifactPaths,
         metrics: analysis.metricsSummary,
         labels: Array.from(analysis.labels),
+        hints: mergedHints,
       });
       cleanupRenderer();
       resolve();
@@ -342,14 +385,7 @@ async function runCoachCommand(args: {
 async function runAnalyzeCommand(args: { rawLog: string[]; runId?: string; out?: string }): Promise<void> {
   const logPaths = await gatherLogPaths(args.rawLog);
   const result = await runAnalysis(logPaths, { runId: args.runId, outDir: args.out });
-  console.log(chalk.green(`[speckit] Run ${result.runId} analyzed.`));
-  console.log(`Metrics:`);
-  for (const entry of result.metricsSummary) {
-    console.log(`  ${entry.label}: ${entry.value}`);
-  }
-  if (result.labels.size > 0) {
-    console.log(`Labels: ${Array.from(result.labels).join(", ")}`);
-  }
+  logAnalysisSummary(result);
 }
 
 async function runDoctorCommand(): Promise<void> {
@@ -421,7 +457,7 @@ async function main(): Promise<void> {
         } else {
           const logPaths = await gatherLogPaths(args.log as string[] | undefined);
           const result = await runAnalysis(logPaths, { outDir: args.out as string | undefined });
-          console.log(chalk.green(`[speckit] Run ${result.runId} analyzed.`));
+          logAnalysisSummary(result);
         }
       }
     )
