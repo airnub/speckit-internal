@@ -46,3 +46,12 @@ export {
   FailureRulesSchema,
   type FailureRulesConfig,
 } from "./rules.js";
+
+export {
+  buildLabelTrendSeries,
+  rollingAverageSeries,
+  sparkline,
+  type LabelDailyRecord,
+  type LabelTrendPoint,
+  type LabelTrendSeries,
+} from "./trends.js";
