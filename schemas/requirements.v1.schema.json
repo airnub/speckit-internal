@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SpecKit requirements record v1",
+  "type": "object",
+  "required": ["id", "text", "status", "evidence"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "text": { "type": "string", "minLength": 1 },
+    "source": { "type": ["string", "null"], "minLength": 1 },
+    "category": { "type": ["string", "null"], "minLength": 1 },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["unknown", "satisfied", "violated", "in-progress"]
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "notes": { "type": ["string", "null"], "minLength": 1 }
+  },
+  "additionalProperties": false
+}

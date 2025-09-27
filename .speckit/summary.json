@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "generated_at": "2025-09-27T18:41:33.094Z",
+  "run": {
+    "id": "test-run",
+    "sources": [
+      "sample-logs/run.log"
+    ],
+    "events": 9
+  },
+  "metrics": {
+    "ReqCoverage": 0,
+    "ToolPrecisionAt1": 0,
+    "BacktrackRatio": 0,
+    "EditLocality": 0,
+    "ReflectionDensity": 0,
+    "TTFPSeconds": null,
+    "sanitizer_hits": 0
+  },
+  "labels": [],
+  "requirements": [
+    {
+      "id": "REQ-01",
+      "status": "in-progress",
+      "text": "Update README with agent run forensics quick start.",
+      "evidence": [
+        "line-6"
+      ]
+    },
+    {
+      "id": "REQ-02",
+      "status": "in-progress",
+      "text": "Ensure RTM table includes latest requirement.",
+      "evidence": [
+        "line-7"
+      ]
+    }
+  ],
+  "hints": [
+    "Upload sanitized logs so schema validation stays green."
+  ],
+  "artifacts": {
+    "run": ".speckit/Run.json",
+    "requirements": ".speckit/requirements.jsonl",
+    "metrics": ".speckit/metrics.json",
+    "summary": ".speckit/summary.md",
+    "summary_json": ".speckit/summary.json",
+    "memo": ".speckit/memo.json",
+    "verification": ".speckit/verification.yaml"
+  }
+}

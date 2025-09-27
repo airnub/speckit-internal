@@ -1,0 +1,39 @@
+{
+  "name": "@speckit/core",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./sanitizer": {
+      "types": "./dist/sanitizer.d.ts",
+      "import": "./dist/sanitizer.mjs",
+      "require": "./dist/sanitizer.cjs"
+    },
+    "./metrics": {
+      "types": "./dist/metrics.d.ts",
+      "import": "./dist/metrics.mjs",
+      "require": "./dist/metrics.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts src/sanitizer.ts src/metrics.ts --format esm,cjs --dts --clean --target es2022",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@speckit/analyzer": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.6.2",
+    "vitest": "^3.2.4"
+  }
+}

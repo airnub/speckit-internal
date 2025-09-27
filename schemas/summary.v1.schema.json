@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SpecKit summary artifact v1",
+  "type": "object",
+  "required": [
+    "version",
+    "generated_at",
+    "run",
+    "metrics",
+    "labels",
+    "requirements",
+    "hints",
+    "artifacts"
+  ],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "run": {
+      "type": "object",
+      "required": ["id", "sources", "events"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "events": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "ReqCoverage",
+        "ToolPrecisionAt1",
+        "BacktrackRatio",
+        "EditLocality",
+        "ReflectionDensity",
+        "TTFPSeconds",
+        "sanitizer_hits"
+      ],
+      "properties": {
+        "ReqCoverage": { "type": "number" },
+        "ToolPrecisionAt1": { "type": "number" },
+        "BacktrackRatio": { "type": "number" },
+        "EditLocality": { "type": "number" },
+        "ReflectionDensity": { "type": "number" },
+        "TTFPSeconds": { "type": ["number", "null"] },
+        "sanitizer_hits": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "text", "evidence"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "minLength": 1 },
+          "text": { "type": "string", "minLength": 1 },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "hints": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "artifacts": {
+      "type": "object",
+      "required": [
+        "run",
+        "requirements",
+        "metrics",
+        "summary",
+        "summary_json",
+        "memo",
+        "verification"
+      ],
+      "properties": {
+        "run": { "type": "string", "minLength": 1 },
+        "requirements": { "type": "string", "minLength": 1 },
+        "metrics": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "summary_json": { "type": "string", "minLength": 1 },
+        "memo": { "type": "string", "minLength": 1 },
+        "verification": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
