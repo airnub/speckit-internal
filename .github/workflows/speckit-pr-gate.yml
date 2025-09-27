@@ -25,18 +25,57 @@ jobs:
           const metricsPath = path.join(process.cwd(), '.speckit', 'metrics.json');
           const configPath = path.join(process.cwd(), 'speckit.config.yaml');
 
-          let enforce = false;
-          let blockLabels = ['process.read-before-write-fail', 'env.git-state-drift'];
+          const defaults = {
+            enforce: false,
+            blockLabels: ['process.read-before-write-fail', 'env.git-state-drift'],
+            coverage: 0.75,
+            toolPrecision: 0.65,
+            backtrackRatio: 0.35,
+          };
+
+          let enforce = defaults.enforce;
+          let blockLabels = [...defaults.blockLabels];
+          let coverageThreshold = defaults.coverage;
+          let toolPrecisionThreshold = defaults.toolPrecision;
+          let backtrackThreshold = defaults.backtrackRatio;
+
           if (fs.existsSync(configPath)) {
             const configRaw = fs.readFileSync(configPath, 'utf8');
-            enforce = /enforce_in_ci:\s*true/i.test(configRaw);
-            const blockMatch = configRaw.match(/block_on_violation:\s*\n((?:\s*-\s*"[^"]+"\s*\n)+)/);
-            if (blockMatch) {
-              blockLabels = blockMatch[1]
-                .split(/\n/)
-                .map((line) => line.trim().replace(/^-\s*"?|"$/g, ''))
-                .filter(Boolean);
+            const enforceMatch = configRaw.match(/enforce_in_ci:\s*(true|false)/i);
+            if (enforceMatch) {
+              enforce = enforceMatch[1].toLowerCase() === 'true';
             }
+
+            const lines = configRaw.split(/\r?\n/);
+            let collectingBlocks = false;
+            const parsedBlocks = [];
+            for (const line of lines) {
+              if (/^\s*block_on_violation\s*:/i.test(line)) {
+                collectingBlocks = true;
+                continue;
+              }
+              if (collectingBlocks) {
+                if (/^\s*-\s*/.test(line)) {
+                  const cleaned = line.replace(/^\s*-\s*/, '').replace(/^"|"$/g, '').trim();
+                  if (cleaned) parsedBlocks.push(cleaned);
+                  continue;
+                }
+                if (line.trim().length === 0) {
+                  continue;
+                }
+                collectingBlocks = false;
+              }
+            }
+            if (parsedBlocks.length > 0) {
+              blockLabels = parsedBlocks;
+            }
+
+            const coverageMatch = configRaw.match(/coverage:\s*([0-9]*\.?[0-9]+)/i);
+            if (coverageMatch) coverageThreshold = Number(coverageMatch[1]);
+            const toolMatch = configRaw.match(/tool_precision:\s*([0-9]*\.?[0-9]+)/i);
+            if (toolMatch) toolPrecisionThreshold = Number(toolMatch[1]);
+            const backtrackMatch = configRaw.match(/backtrack_ratio_max:\s*([0-9]*\.?[0-9]+)/i);
+            if (backtrackMatch) backtrackThreshold = Number(backtrackMatch[1]);
           }
 
           if (!fs.existsSync(metricsPath)) {
@@ -50,9 +89,11 @@ jobs:
           }
 
           const data = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-          const metrics = data.metrics || {};
-          const labels = new Set(data.labels || []);
-          const sanitizerHits = Number(data.sanitizer_hits || 0);
+          const labels = new Set(Array.isArray(data.FailureLabels) ? data.FailureLabels : []);
+          const sanitizerHits = Number.isFinite(Number(data.sanitizer_hits)) ? Number(data.sanitizer_hits) : 0;
+          const reqCoverage = typeof data.ReqCoverage === 'number' ? data.ReqCoverage : null;
+          const toolPrecision = typeof data.ToolPrecisionAt1 === 'number' ? data.ToolPrecisionAt1 : null;
+          const backtrackRatio = typeof data.BacktrackRatio === 'number' ? data.BacktrackRatio : null;
 
           const failures = [];
           const warnings = [];
@@ -67,14 +108,26 @@ jobs:
             failures.push(`Secret sanitizer detected ${sanitizerHits} matches.`);
           }
 
-          if (typeof metrics.ReqCoverage === 'number' && metrics.ReqCoverage < 0.75) {
-            warnings.push(`ReqCoverage ${metrics.ReqCoverage} < 0.75`);
+          if (reqCoverage !== null && reqCoverage < coverageThreshold) {
+            const message = `ReqCoverage ${reqCoverage} < ${coverageThreshold}`;
+            if (enforce) {
+              failures.push(message);
+            } else {
+              warnings.push(message);
+            }
           }
-          if (typeof metrics.ToolPrecisionAt1 === 'number' && metrics.ToolPrecisionAt1 < 0.65) {
-            warnings.push(`ToolPrecision@1 ${metrics.ToolPrecisionAt1} < 0.65`);
+
+          if (toolPrecision !== null && toolPrecision < toolPrecisionThreshold) {
+            const message = `ToolPrecision@1 ${toolPrecision} < ${toolPrecisionThreshold}`;
+            if (enforce) {
+              failures.push(message);
+            } else {
+              warnings.push(message);
+            }
           }
-          if (typeof metrics.BacktrackRatio === 'number' && metrics.BacktrackRatio > 0.35) {
-            warnings.push(`BacktrackRatio ${metrics.BacktrackRatio} > 0.35`);
+
+          if (backtrackRatio !== null && backtrackRatio > backtrackThreshold) {
+            warnings.push(`BacktrackRatio ${backtrackRatio} > ${backtrackThreshold}`);
           }
 
           if (failures.length > 0) {

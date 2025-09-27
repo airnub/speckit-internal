@@ -41,6 +41,15 @@ speckit init --mode secure --template next-supabase      # preset expands to cur
 speckit gen --write   # refresh docs/specs/**
 ```
 
+### Inner-loop coach
+
+```bash
+pnpm speckit:doctor
+pnpm speckit:coach -- --log runs/<your-log>.ndjson --watch
+```
+
+`speckit.config.yaml` controls thin CI behaviour; flip `verify.enforce_in_ci` to `true` once you want coverage and tool-precision warnings to become blocking failures.
+
 > Opinionated Next.js+Supabase template: https://github.com/airnub/speckit-template-next-supabase
 
 ### Run coach & thin CI loop

@@ -36,7 +36,7 @@
     "ink"
   ],
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.9",
@@ -48,6 +48,7 @@
     "globby": "^14.0.2",
     "husky": "^9.1.6",
     "ink": "^4.4.1",
+    "react": "^18.3.1",
     "strip-ansi": "^7.1.0",
     "tsx": "^4.19.1",
     "yaml": "^2.6.0",

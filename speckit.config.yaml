@@ -6,11 +6,8 @@ thresholds:
 artifacts:
   rtm_path: "RTM.md"
   out_dir: ".speckit"
-parser:
-  log_format: "auto"
-  grep_command: "rg"
 verify:
-  enforce_in_ci: true
+  enforce_in_ci: false
   block_on_violation:
     - "process.read-before-write-fail"
     - "env.git-state-drift"

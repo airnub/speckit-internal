@@ -56,7 +56,7 @@ jobs:
             echo "Sanitizer report detected." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Run analyzer
+      - name: Stage sanitizer report
         if: steps.check_logs.outputs.found == 'true'
         run: |
           if [ -f runs_from_artifact/sanitizer-report.json ]; then
@@ -64,7 +64,10 @@ jobs:
             cp runs_from_artifact/sanitizer-report.json .speckit/sanitizer-report.json
             rm runs_from_artifact/sanitizer-report.json
           fi
-          pnpm speckit:analyze -- --raw-log "runs_from_artifact/**/*.log" --raw-log "runs_from_artifact/**/*.json" --raw-log "runs_from_artifact/**/*.ndjson"
+
+      - name: Run analyzer
+        if: steps.check_logs.outputs.found == 'true'
+        run: pnpm speckit:analyze -- --raw-log "runs_from_artifact/**/*.log" --raw-log "runs_from_artifact/**/*.json" --raw-log "runs_from_artifact/**/*.ndjson"
 
       - name: Merge sanitizer report
         if: steps.check_logs.outputs.found == 'true'
@@ -96,13 +99,18 @@ jobs:
             RTM.md
             docs/internal/agents/coding-agent-brief.md
 
+      - name: Write no-logs summary
+        if: steps.check_logs.outputs.found != 'true'
+        run: |
+          mkdir -p .speckit
+          cat <<'EOF' > .speckit/summary.md
+# SpecKit Run Forensics
+
+No sanitized run logs were found for this pull request. Upload a runs/ bundle to enable automated analysis.
+EOF
+
       - name: Post run summary comment
-        if: steps.check_logs.outputs.found == 'true'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           recreate: true
           path: .speckit/summary.md
-
-      - name: No artifact notice
-        if: steps.check_logs.outputs.found != 'true'
-        run: echo "No agent-run-logs artifact found. Upload logs to enable run forensics."

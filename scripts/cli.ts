@@ -9,7 +9,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { globby } from "globby";
 import chokidar from "chokidar";
-import { render } from "ink";
+import { render, type Instance } from "ink";
 import chalk from "chalk";
 import YAML from "yaml";
 
@@ -181,9 +181,56 @@ async function runCoachCommand(args: {
       startTime: Date.now(),
     });
 
-    const ink = render(
-      <RunCoach initialState={emitter.state} subscribe={(listener) => emitter.subscribe(listener)} />
-    );
+    const useTui = Boolean(process.stdout.isTTY);
+    let ink: Instance | null = null;
+    let logUnsubscribe: (() => void) | null = null;
+
+    if (useTui) {
+      ink = render(
+        <RunCoach initialState={emitter.state} subscribe={(listener) => emitter.subscribe(listener)} />
+      );
+    } else {
+      let lastPrinted = "";
+      logUnsubscribe = emitter.subscribe((state) => {
+        const metricsText =
+          state.metrics.length > 0
+            ? state.metrics.map((entry) => `${entry.label}: ${entry.value ?? "—"}`).join(", ")
+            : "None";
+        const hintsText = state.hints.length > 0 ? state.hints.join(" | ") : "None";
+        const labelsText = state.labels.length > 0 ? state.labels.join(", ") : "None";
+        const artifactText =
+          state.completed && state.artifacts.length > 0
+            ? `Artifacts: ${state.artifacts.join(", ")}`
+            : null;
+        const lines = [
+          `[speckit] Coach — ${state.repoName}`,
+          `Source: ${state.logSource}`,
+          `Step: ${state.currentStep ?? "—"}`,
+          `Metrics: ${metricsText}`,
+          `Hints: ${hintsText}`,
+          `Labels: ${labelsText}`,
+        ];
+        if (artifactText) {
+          lines.push(artifactText);
+        }
+        const output = lines.join("\n");
+        if (output !== lastPrinted) {
+          console.log(`${output}\n`);
+          lastPrinted = output;
+        }
+      });
+    }
+
+    const cleanupRenderer = () => {
+      if (ink) {
+        ink.unmount();
+        ink = null;
+      }
+      if (logUnsubscribe) {
+        logUnsubscribe();
+        logUnsubscribe = null;
+      }
+    };
 
     const refreshFromFiles = async () => {
       logPaths = await gatherLogPaths(args.log);
@@ -253,7 +300,7 @@ async function runCoachCommand(args: {
 
     const finalize = async () => {
       if (!lastAnalysis || logPaths.length === 0) {
-        ink.unmount();
+        cleanupRenderer();
         resolve();
         return;
       }
@@ -265,7 +312,7 @@ async function runCoachCommand(args: {
         metrics: analysis.metricsSummary,
         labels: Array.from(analysis.labels),
       });
-      ink.unmount();
+      cleanupRenderer();
       resolve();
     };
 
@@ -276,6 +323,7 @@ async function runCoachCommand(args: {
 
     process.once("exit", async () => {
       if (watcher) await watcher.close();
+      cleanupRenderer();
       if (!emitter.state.completed) {
         resolve();
       }

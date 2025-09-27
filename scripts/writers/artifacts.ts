@@ -38,6 +38,7 @@ export interface WriteArtifactsOptions {
   requirements: RequirementRecord[];
   metrics: Metrics;
   labels: Set<string>;
+  sanitizerHits?: number;
 }
 
 export interface WrittenArtifacts {
@@ -136,15 +137,12 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
   await writeJson(memoPath, memo);
   await fs.writeFile(verificationPath, YAML.stringify(verification), "utf8");
   await writeJson(metricsPath, {
-    run_id: options.run.runId,
-    generated_at: new Date().toISOString(),
-    metrics: options.metrics,
-    labels: Array.from(options.labels),
-    requirements: {
-      total: options.requirements.length,
-      satisfied: options.requirements.filter((req) => req.status === "satisfied").length,
-      violated: options.requirements.filter((req) => req.status === "violated").length,
-    },
+    ReqCoverage: options.metrics.ReqCoverage ?? 0,
+    ToolPrecisionAt1: options.metrics.ToolPrecisionAt1 ?? 0,
+    BacktrackRatio: options.metrics.BacktrackRatio ?? 0,
+    EditLocality: options.metrics.EditLocality ?? 0,
+    FailureLabels: Array.from(options.labels),
+    sanitizer_hits: options.sanitizerHits ?? 0,
   });
   await fs.writeFile(summaryPath, summary + "\n", "utf8");
 
