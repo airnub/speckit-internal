@@ -1,6 +1,36 @@
 # SpecKit Run Coach
 
-The Run Coach gives instant feedback while you execute an inner-loop spec or agent run. Tail a log (JSON, NDJSON, or plain text) and watch metrics, hints, and requirement coverage update in real time.
+The Run Coach gives instant feedback while you execute an inner-loop spec or agent run. Tail a log (JSON, NDJSON, or plain text) and watch the timeline, metrics, hints, diffs, and a live file heatmap update in real time.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────┐
+│ speckit — runs/sample.ndjson                                              00:42             │
+│ Step: edit                                                                                 │
+│  Timeline  Metrics  Hints  Diffs                                                           │
+│ Timeline                                                                                   │
+│ ➤ 00:41 edit — src/logger.ts — Normalize trace IDs before logging                          │
+│   00:37 plan — plan.system — Prioritize observability fixes                                │
+│   00:31 run — pnpm test --filter log-suite                                                 │
+│                                                                                            │
+│ File heatmap                                                                               │
+│ ████████ src/logger.ts (3)                                                                 │
+│ ██       README.md (1)                                                                     │
+│                                                                                            │
+│ Labels                                                                                     │
+│ • env.tooling-missing                                                                      │
+│                                                                                            │
+│ Artifacts written:                                                                         │
+│ .speckit/memo.json                                                                         │
+│ .speckit/verification.yaml                                                                 │
+│ .speckit/metrics.json                                                                      │
+│ .speckit/summary.md                                                                        │
+│                                                                                            │
+│ ←/→ tabs • ↑/↓ scroll • v verification • o open file • m regen memo • Ctrl+C exit         │
+└────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Switch to the **Metrics** tab to see the familiar table of key health indicators alongside
+quick actions:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -40,6 +70,12 @@ pnpm speckit:inject                                      # Refresh prompt guardr
 - `--log` accepts glob patterns (JSON, NDJSON, or text logs). Use `--stdin` to pipe logs.
 - `--watch` keeps tailing the file; press <kbd>Ctrl</kbd>+<kbd>C</kbd> when the run ends.
 - When you exit, SpecKit writes `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, `.speckit/summary.md`, refreshes `RTM.md`, and injects guardrails into `docs/internal/agents/coding-agent-brief.md`.
+
+### Navigation & quick actions
+
+- Use <kbd>←</kbd>/<kbd>→</kbd> to switch between Timeline, Metrics, Hints, and Diffs tabs. <kbd>↑</kbd>/<kbd>↓</kbd> scroll within the active panel.
+- Press <kbd>v</kbd> to regenerate the verification checklist, <kbd>m</kbd> to refresh the memo, and <kbd>o</kbd> to spotlight the hottest file from the heatmap.
+- The non-TTY fallback mirrors the same data by printing the latest timeline slice, diff summaries, and file-touch histogram so headless CI logs still capture the signal.
 
 ## Metrics glossary
 

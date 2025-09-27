@@ -13,12 +13,18 @@ import { render, type Instance } from "ink";
 import chalk from "chalk";
 import YAML from "yaml";
 
-import RunCoach from "./tui/RunCoach.js";
-import type { CoachState } from "./tui/RunCoach.js";
+import RunCoach, {
+  type CoachState,
+  type CoachQuickAction,
+  type CoachDiffEntry,
+  type CoachHeatmapEntry,
+  type CoachTimelineEntry,
+} from "./tui/RunCoach.js";
 import RunReplay from "./tui/RunReplay.js";
 import {
   analyze,
   summarizeMetrics,
+  type AnalyzerResult,
   type EventsLogSource,
   type NormalizedLog,
   type RequirementRecord,
@@ -34,6 +40,101 @@ import type { ExperimentAssignment } from "./config/experiments.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
+
+function coerceSummary(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function extractMetaText(
+  meta: Record<string, unknown> | undefined,
+  keys: string[]
+): string | undefined {
+  if (!meta) return undefined;
+  for (const key of keys) {
+    const candidate = meta[key];
+    if (typeof candidate === "string") {
+      const summary = coerceSummary(candidate);
+      if (summary) return summary;
+    }
+  }
+  return undefined;
+}
+
+function normalizeFiles(files: unknown): string[] {
+  if (!Array.isArray(files)) return [];
+  return files
+    .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    .map((file) => (path.isAbsolute(file) ? path.relative(ROOT, file) : file));
+}
+
+function buildCoachTimeline(events: RunEvent[]): CoachTimelineEntry[] {
+  return events.map((event, index) => {
+    const meta = event.meta && typeof event.meta === "object" && !Array.isArray(event.meta)
+      ? (event.meta as Record<string, unknown>)
+      : undefined;
+    const summary =
+      extractMetaText(meta, ["summary", "message", "note"]) ??
+      coerceSummary(event.output) ??
+      coerceSummary(event.input);
+    return {
+      index,
+      timestamp: event.timestamp ?? new Date().toISOString(),
+      kind: typeof event.kind === "string" ? event.kind : "unknown",
+      subtype: typeof event.subtype === "string" ? event.subtype : null,
+      files: normalizeFiles(event.files_changed),
+      summary,
+    };
+  });
+}
+
+function buildCoachDiffs(events: RunEvent[]): CoachDiffEntry[] {
+  return events
+    .map((event, index) => {
+      const meta = event.meta && typeof event.meta === "object" && !Array.isArray(event.meta)
+        ? (event.meta as Record<string, unknown>)
+        : undefined;
+      const diffText =
+        extractMetaText(meta, ["diff", "patch", "details"]) ??
+        coerceSummary(event.output) ??
+        coerceSummary(event.input);
+      const kind = typeof event.kind === "string" ? event.kind.toLowerCase() : "";
+      const files = normalizeFiles(event.files_changed);
+      if (!diffText && !(kind === "edit" || kind === "run")) {
+        return null;
+      }
+      return {
+        index,
+        timestamp: event.timestamp ?? new Date().toISOString(),
+        files,
+        summary: diffText ?? undefined,
+      } satisfies CoachDiffEntry;
+    })
+    .filter((entry): entry is CoachDiffEntry => entry !== null);
+}
+
+function buildCoachHeatmap(timeline: CoachTimelineEntry[]): CoachHeatmapEntry[] {
+  const counts = new Map<string, { touches: number; lastTouchedAt: string }>();
+  for (const entry of timeline) {
+    for (const file of entry.files) {
+      const record = counts.get(file);
+      if (record) {
+        record.touches += 1;
+        record.lastTouchedAt = entry.timestamp;
+      } else {
+        counts.set(file, { touches: 1, lastTouchedAt: entry.timestamp });
+      }
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([file, value]) => ({ file, touches: value.touches, lastTouchedAt: value.lastTouchedAt }))
+    .sort((a, b) => {
+      if (b.touches === a.touches) return a.file.localeCompare(b.file);
+      return b.touches - a.touches;
+    })
+    .slice(0, 12);
+}
 
 interface SpeckitConfig {
   artifacts?: {
@@ -192,6 +293,15 @@ class CoachEmitter extends EventEmitter {
     this.on("update", listener);
     return () => this.off("update", listener);
   }
+
+  dispatch(action: CoachQuickAction): void {
+    this.emit("action", action);
+  }
+
+  onAction(listener: (action: CoachQuickAction) => void): () => void {
+    this.on("action", listener);
+    return () => this.off("action", listener);
+  }
 }
 
 function formatLogSource(paths: string[]): string {
@@ -222,9 +332,7 @@ async function runCoachCommand(args: {
     : path.join(ROOT, configuredOut);
   await new Promise<void>(async (resolve) => {
     let logPaths = await gatherLogPaths(args.log);
-    const normalizedEmpty: NormalizedLog = { events: [], promptCandidates: [], plainText: "" };
-    let normalized = normalizedEmpty;
-    let lastAnalysis: AnalyzeResult | null = null;
+    let lastAnalyzerResult: AnalyzerResult | null = null;
 
     const emitter = new CoachEmitter({
       repoName: path.basename(ROOT),
@@ -236,15 +344,87 @@ async function runCoachCommand(args: {
       completed: false,
       artifacts: [],
       startTime: Date.now(),
+      timeline: [],
+      diffs: [],
+      heatmap: [],
     });
 
     const useTui = Boolean(process.stdout.isTTY);
     let ink: Instance | null = null;
     let logUnsubscribe: (() => void) | null = null;
+    let actionUnsubscribe: (() => void) | null = null;
+
+    const handleQuickAction = (action: CoachQuickAction) => {
+      void (async () => {
+        if (action.type === "openFile") {
+          const fallback = emitter.state.heatmap[0]?.file ?? emitter.state.timeline[0]?.files?.[0];
+          const target = action.file ?? fallback;
+          if (!target) {
+            console.log("[speckit] No file edits detected yet.");
+            return;
+          }
+          const relative = path.relative(ROOT, path.isAbsolute(target) ? target : path.join(ROOT, target));
+          const message = `Inspect ${relative} for the most recent edits.`;
+          const hints = Array.from(new Set([...(emitter.state.hints ?? []), message]));
+          emitter.update({ hints });
+          console.log(`[speckit] ${message}`);
+          return;
+        }
+
+        if (!lastAnalyzerResult) {
+          console.log("[speckit] Analyzer context not ready — wait for the next event batch.");
+          return;
+        }
+
+        try {
+          const experiments = await loadExperimentAssignments({
+            rootDir: ROOT,
+            seed: lastAnalyzerResult.run.runId ?? `run-${Date.now()}`,
+          });
+          const artifacts = await writeArtifacts({
+            rootDir: ROOT,
+            outDir,
+            run: lastAnalyzerResult.run,
+            requirements: lastAnalyzerResult.requirements,
+            metrics: lastAnalyzerResult.metrics,
+            labels: lastAnalyzerResult.labels,
+            experiments,
+          });
+          await updateRTM({ rootDir: ROOT, outDir, rtmPath: undefined });
+          const artifactPathsAbsolute = [
+            artifacts.runPath,
+            artifacts.requirementsPath,
+            artifacts.memoPath,
+            artifacts.memoHistoryPath,
+            artifacts.verificationPath,
+            artifacts.metricsPath,
+            artifacts.summaryPath,
+          ];
+          const artifactPaths = artifactPathsAbsolute.map((file) => path.relative(ROOT, file));
+          const verificationRelative = path.relative(ROOT, artifacts.verificationPath);
+          const memoRelative = path.relative(ROOT, artifacts.memoPath);
+          const message =
+            action.type === "insertVerification"
+              ? `Verification checklist refreshed (${verificationRelative}).`
+              : `Memo regenerated (${memoRelative}).`;
+          const hints = Array.from(new Set([...(emitter.state.hints ?? []), message]));
+          emitter.update({ artifacts: artifactPaths, hints });
+          console.log(`[speckit] ${message}`);
+        } catch (error) {
+          console.error(`[speckit] Quick action failed: ${(error as Error).message}`);
+        }
+      })();
+    };
+
+    actionUnsubscribe = emitter.onAction(handleQuickAction);
 
     if (useTui) {
       ink = render(
-        <RunCoach initialState={emitter.state} subscribe={(listener) => emitter.subscribe(listener)} />
+        <RunCoach
+          initialState={emitter.state}
+          subscribe={(listener) => emitter.subscribe(listener)}
+          dispatch={(action) => emitter.dispatch(action)}
+        />
       );
     } else {
       let lastPrinted = "";
@@ -255,6 +435,39 @@ async function runCoachCommand(args: {
             : "None";
         const hintsText = state.hints.length > 0 ? state.hints.join(" | ") : "None";
         const labelsText = state.labels.length > 0 ? state.labels.join(", ") : "None";
+        const timelineText =
+          state.timeline.length > 0
+            ? state.timeline
+                .slice(-5)
+                .map((entry) => {
+                  const time = new Date(entry.timestamp).toISOString();
+                  const files = entry.files.length > 0 ? ` — ${entry.files.join(", ")}` : "";
+                  const summaryValue = entry.summary ?? "";
+                  const summarySnippet = summaryValue.length > 0
+                    ? ` — ${summaryValue.length > 80 ? `${summaryValue.slice(0, 77)}…` : summaryValue}`
+                    : "";
+                  return `  • [${time}] ${entry.kind}${files}${summarySnippet}`;
+                })
+                .join("\n")
+            : "  (none)";
+        const heatmapText =
+          state.heatmap.length > 0
+            ? state.heatmap
+                .slice(0, 6)
+                .map((entry) => `  • ${entry.file} (${entry.touches})`)
+                .join("\n")
+            : "  (none)";
+        const diffsPreview =
+          state.diffs.length > 0
+            ? state.diffs
+                .slice(-3)
+                .map((entry) => {
+                  const summary = entry.summary ?? "(no diff captured)";
+                  const snippet = summary.length > 80 ? `${summary.slice(0, 77)}…` : summary;
+                  return `  • ${entry.files.join(", ") || "(no files)"}: ${snippet}`;
+                })
+                .join("\n")
+            : "  (none)";
         const artifactText =
           state.completed && state.artifacts.length > 0
             ? `Artifacts: ${state.artifacts.join(", ")}`
@@ -266,6 +479,9 @@ async function runCoachCommand(args: {
           `Metrics: ${metricsText}`,
           `Hints: ${hintsText}`,
           `Labels: ${labelsText}`,
+          `Timeline:\n${timelineText}`,
+          `Diffs:\n${diffsPreview}`,
+          `Heatmap:\n${heatmapText}`,
         ];
         if (artifactText) {
           lines.push(artifactText);
@@ -287,6 +503,10 @@ async function runCoachCommand(args: {
         logUnsubscribe();
         logUnsubscribe = null;
       }
+      if (actionUnsubscribe) {
+        actionUnsubscribe();
+        actionUnsubscribe = null;
+      }
     };
 
     const refreshFromFiles = async () => {
@@ -298,11 +518,23 @@ async function runCoachCommand(args: {
       const sources = await Promise.all(logPaths.map((filePath) => createFileLogSource(filePath)));
       const rules = await loadFailureRulesFromFs(ROOT, outDir);
       const analysis = await analyze({ sources, rules });
-      normalized = analysis.normalized;
-      const hints = [...analysis.hints];
+      lastAnalyzerResult = analysis;
+      const timeline = buildCoachTimeline(analysis.run.events);
+      const diffs = buildCoachDiffs(analysis.run.events);
+      const heatmap = buildCoachHeatmap(timeline);
+      const quickActionPrefixes = [
+        "Inspect ",
+        "Verification checklist refreshed",
+        "Memo regenerated",
+      ];
+      const persistedHints = (emitter.state.hints ?? []).filter((hint) =>
+        quickActionPrefixes.some((prefix) => hint.startsWith(prefix))
+      );
+      const hintsSet = new Set<string>([...persistedHints, ...analysis.hints]);
       if (analysis.labels.has("prompt.missing")) {
-        hints.push("Ensure the full system+planner prompt is captured in the log before analyzing.");
+        hintsSet.add("Ensure the full system+planner prompt is captured in the log before analyzing.");
       }
+      const hints = Array.from(hintsSet);
       const latestEvent = analysis.run.events[analysis.run.events.length - 1];
       emitter.update({
         logSource: formatLogSource(logPaths),
@@ -310,26 +542,10 @@ async function runCoachCommand(args: {
         metrics: summarizeMetrics(analysis.metrics),
         hints,
         labels: Array.from(analysis.labels),
+        timeline,
+        diffs,
+        heatmap,
       });
-      lastAnalysis = {
-        runId: analysis.run.runId,
-        requirements: analysis.requirements,
-        metricsSummary: summarizeMetrics(analysis.metrics),
-        labels: analysis.labels,
-        normalized: analysis.normalized,
-        artifacts: {
-          runPath: "",
-          requirementsPath: "",
-          memoPath: "",
-          memoHistoryPath: "",
-          verificationPath: "",
-          metricsPath: "",
-          summaryPath: "",
-          promotedLessons: [],
-          promotedGuardrails: [],
-        },
-        experiments: [],
-      };
     };
 
     if (args.stdin) {
@@ -353,7 +569,7 @@ async function runCoachCommand(args: {
     }
 
     const finalize = async () => {
-      if (!lastAnalysis || logPaths.length === 0) {
+      if (!lastAnalyzerResult || logPaths.length === 0) {
         cleanupRenderer();
         resolve();
         return;
