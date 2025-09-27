@@ -14,6 +14,7 @@
 [![CI: Catalog Protect](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/catalog-protect.yml)
 [![CI: Mode Policy Gate](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/opa-guard.yml)
 [![CI: Framework Guard](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml/badge.svg?branch=main)](https://github.com/airnub/speckit/actions/workflows/experimental-and-graduation-guard.yml)
+[![Policy Gates](badges/policy-gates.svg)](.github/workflows/policy-gates.yml)
 [![Powered by Speckit](https://img.shields.io/badge/powered%20by-speckit-blueviolet)](https://github.com/airnub/speckit)
 
 * **Repo:** `speckit`  ·  **Binary:** `speckit` (alias: `spec`)  ·  **Version:** `0.1.0`

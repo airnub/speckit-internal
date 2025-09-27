@@ -1,0 +1,123 @@
+name: policy-gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.12.0
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Build workspace packages
+        run: pnpm -w -r build
+      - name: Build Speckit CLI
+        run: pnpm --filter @speckit/cli run build
+      - name: Generate policy gate report
+        id: doctor
+        shell: bash
+        continue-on-error: true
+        run: node packages/speckit-cli/dist/cli.js doctor --json > policy-gates.json
+      - name: Render badge and summary
+        run: pnpm tsx scripts/badge.ts --input policy-gates.json --output badges/policy-gates.svg --summary policy-gates-summary.json
+      - name: Enforce policy gates
+        if: always()
+        env:
+          DOCTOR_OUTCOME: ${{ steps.doctor.outcome }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const failures = [];
+          const summaryPath = 'policy-gates-summary.json';
+          const outcome = process.env.DOCTOR_OUTCOME;
+          if (!fs.existsSync(summaryPath)) {
+            failures.push('policy-gates-summary.json missing.');
+          } else {
+            try {
+              const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+              if (!summary?.overall?.ok) {
+                failures.push('One or more policy gates failed. Review policy-gates-summary.json.');
+              }
+            } catch (error) {
+              failures.push(`Unable to parse policy-gates-summary.json: ${error.message}`);
+            }
+          }
+          if (outcome && outcome !== 'success') {
+            failures.push('speckit doctor command reported failures.');
+          }
+          if (failures.length > 0) {
+            console.error('Policy gate enforcement errors:\n - ' + failures.join('\n - '));
+            process.exit(1);
+          }
+          NODE
+      - name: Upload policy gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-gates
+          path: |
+            policy-gates.json
+            policy-gates-summary.json
+            badges/policy-gates.svg
+      - name: Comment policy gate status
+        if: ${{ github.event_name == 'pull_request' && always() }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const badgePath = 'badges/policy-gates.svg';
+            const summaryPath = 'policy-gates-summary.json';
+            if (!fs.existsSync(badgePath) || !fs.existsSync(summaryPath)) {
+              core.warning('Badge or summary missing; skipping policy gates comment.');
+              return;
+            }
+            const badgeSvg = fs.readFileSync(badgePath, 'utf8');
+            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+            const encoded = Buffer.from(badgeSvg).toString('base64');
+            const rows = Object.values(summary.gates).map((gate) => {
+              const status = gate.ok ? '✅' : '❌';
+              const notes = [];
+              if (Array.isArray(gate.failing) && gate.failing.length > 0) {
+                notes.push(...gate.failing);
+              }
+              if (Array.isArray(gate.notes) && gate.notes.length > 0) {
+                notes.push(...gate.notes);
+              }
+              return `| ${gate.key} | ${status} | ${notes.length ? notes.join('<br/>') : 'Pass'} |`;
+            });
+            const marker = '<!-- policy-gates-status -->';
+            const body = [
+              marker,
+              '## Policy Gates',
+              '',
+              `<img alt="Policy gates badge" src="data:image/svg+xml;base64,${encoded}" />`,
+              '',
+              `Generated: ${summary.generatedAt}`,
+              '',
+              '| Gate | Status | Notes |',
+              '| --- | --- | --- |',
+              ...rows,
+              marker,
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number, per_page: 100 });
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+

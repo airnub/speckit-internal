@@ -48,29 +48,88 @@ jobs:
           fi
       - name: Guard framework status flips
         if: contains(steps.diff.outputs.files, 'packages/speckit-framework-registry/src/data/frameworks.json')
+        env:
+          CHANGED_FILES: ${{ steps.diff.outputs.files }}
         run: |
           base=origin/${{ github.base_ref }}
           git show $base:packages/speckit-framework-registry/src/data/frameworks.json > before.json
           cp packages/speckit-framework-registry/src/data/frameworks.json after.json
           node <<'NODE'
           const fs = require('fs');
+          const changedFilesRaw = process.env.CHANGED_FILES ?? '';
+          const changedFiles = changedFilesRaw
+            .split(/\r?\n/)
+            .map((file) => file.trim())
+            .filter((file) => file.length > 0);
+          const adrCandidates = changedFiles.filter((file) =>
+            file.startsWith('docs/decisions/ADR-') && file.endsWith('.md')
+          );
           const before = JSON.parse(fs.readFileSync('before.json', 'utf8'));
           const after = JSON.parse(fs.readFileSync('after.json', 'utf8'));
           const hasGraduationLabel = process.env.HAS_GRADUATION_LABEL === 'true';
           let failure = false;
+          const graduations = [];
+          const regressions = [];
           for (const id of Object.keys(after)) {
             if (!before[id]) continue;
             const beforeStatus = before[id]?.availability?.status;
             const afterStatus = after[id]?.availability?.status;
             if (!beforeStatus || !afterStatus || beforeStatus === afterStatus) continue;
             if (beforeStatus === 'experimental' && afterStatus === 'ga') {
+              graduations.push(id);
               if (!hasGraduationLabel) {
                 console.log(`Framework ${id} graduated to GA. Require label 'graduation:approved'.`);
                 failure = true;
               }
             } else if (beforeStatus === 'ga' && afterStatus === 'experimental') {
+              regressions.push(id);
               if (!hasGraduationLabel) {
                 console.log(`Regression detected for ${id} (ga -> experimental). Require label 'graduation:approved'.`);
+                failure = true;
+              }
+            }
+          }
+          const requireAdr = graduations.length > 0 || regressions.length > 0;
+          if (requireAdr && !hasGraduationLabel) {
+            console.log('Graduation/regression detected but graduation:approved label missing.');
+            failure = true;
+          }
+          if (requireAdr) {
+            if (adrCandidates.length === 0) {
+              console.log('Add docs/decisions/ADR-<id>-<feature>.md documenting the graduation.');
+              failure = true;
+            } else {
+              const missingCoverage = [];
+              const invalidDocs = [];
+              for (const file of adrCandidates) {
+                if (!fs.existsSync(file)) continue;
+                const content = fs.readFileSync(file, 'utf8');
+                const hasRationale = /##\s+Rationale/i.test(content);
+                const hasPolicyChecks = /##\s+Policy\s+Checks/i.test(content);
+                if (!hasRationale || !hasPolicyChecks) {
+                  invalidDocs.push(file);
+                }
+              }
+              for (const id of [...graduations, ...regressions]) {
+                const covered = adrCandidates.some((file) => {
+                  if (!fs.existsSync(file)) return false;
+                  const content = fs.readFileSync(file, 'utf8');
+                  return content.includes(id);
+                });
+                if (!covered) {
+                  missingCoverage.push(id);
+                }
+              }
+              if (invalidDocs.length > 0) {
+                console.log(
+                  `ADR files must include "## Rationale" and "## Policy Checks" sections: ${invalidDocs.join(', ')}`
+                );
+                failure = true;
+              }
+              if (missingCoverage.length > 0) {
+                console.log(
+                  `ADR files must mention graduating features: ${missingCoverage.join(', ')}`
+                );
                 failure = true;
               }
             }
