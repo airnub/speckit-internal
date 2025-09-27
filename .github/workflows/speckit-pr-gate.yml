@@ -21,6 +21,7 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const path = require('path');
+          const YAML = require('yaml');
 
           const metricsPath = path.join(process.cwd(), '.speckit', 'metrics.json');
           const configPath = path.join(process.cwd(), 'speckit.config.yaml');
@@ -40,42 +41,33 @@ jobs:
           let backtrackThreshold = defaults.backtrackRatio;
 
           if (fs.existsSync(configPath)) {
-            const configRaw = fs.readFileSync(configPath, 'utf8');
-            const enforceMatch = configRaw.match(/enforce_in_ci:\s*(true|false)/i);
-            if (enforceMatch) {
-              enforce = enforceMatch[1].toLowerCase() === 'true';
-            }
+            try {
+              const config = YAML.parse(fs.readFileSync(configPath, 'utf8')) || {};
+              const verify = typeof config.verify === 'object' && config.verify !== null ? config.verify : {};
+              const thresholds = typeof config.thresholds === 'object' && config.thresholds !== null ? config.thresholds : {};
 
-            const lines = configRaw.split(/\r?\n/);
-            let collectingBlocks = false;
-            const parsedBlocks = [];
-            for (const line of lines) {
-              if (/^\s*block_on_violation\s*:/i.test(line)) {
-                collectingBlocks = true;
-                continue;
+              if (typeof verify.enforce_in_ci === 'boolean') {
+                enforce = verify.enforce_in_ci;
               }
-              if (collectingBlocks) {
-                if (/^\s*-\s*/.test(line)) {
-                  const cleaned = line.replace(/^\s*-\s*/, '').replace(/^"|"$/g, '').trim();
-                  if (cleaned) parsedBlocks.push(cleaned);
-                  continue;
-                }
-                if (line.trim().length === 0) {
-                  continue;
-                }
-                collectingBlocks = false;
+              if (Array.isArray(verify.block_on_violation)) {
+                blockLabels = verify.block_on_violation
+                  .filter((label) => typeof label === 'string')
+                  .map((label) => label.trim())
+                  .filter((label) => label.length > 0);
               }
-            }
-            if (parsedBlocks.length > 0) {
-              blockLabels = parsedBlocks;
-            }
 
-            const coverageMatch = configRaw.match(/coverage:\s*([0-9]*\.?[0-9]+)/i);
-            if (coverageMatch) coverageThreshold = Number(coverageMatch[1]);
-            const toolMatch = configRaw.match(/tool_precision:\s*([0-9]*\.?[0-9]+)/i);
-            if (toolMatch) toolPrecisionThreshold = Number(toolMatch[1]);
-            const backtrackMatch = configRaw.match(/backtrack_ratio_max:\s*([0-9]*\.?[0-9]+)/i);
-            if (backtrackMatch) backtrackThreshold = Number(backtrackMatch[1]);
+              if (typeof thresholds.coverage === 'number') {
+                coverageThreshold = thresholds.coverage;
+              }
+              if (typeof thresholds.tool_precision === 'number') {
+                toolPrecisionThreshold = thresholds.tool_precision;
+              }
+              if (typeof thresholds.backtrack_ratio_max === 'number') {
+                backtrackThreshold = thresholds.backtrack_ratio_max;
+              }
+            } catch (error) {
+              console.warn(`speckit-pr-gate: Failed to parse speckit.config.yaml: ${(error)?.message ?? error}`);
+            }
           }
 
           if (!fs.existsSync(metricsPath)) {
