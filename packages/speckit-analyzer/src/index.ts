@@ -35,6 +35,7 @@ export {
   attachEvidence,
   combineRequirements,
   extractImperative,
+  generateRequirementCheck,
 } from "./requirements.js";
 
 export { computeMetrics, summarizeMetrics } from "./metrics.js";
