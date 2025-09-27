@@ -25,7 +25,8 @@
     "speckit:analyze": "tsx scripts/cli.ts analyze",
     "speckit:replay": "tsx scripts/cli.ts replay",
     "speckit:inject": "tsx scripts/cli.ts inject",
-    "speckit:trends": "tsx scripts/analytics/trends.ts"
+    "speckit:trends": "tsx scripts/analytics/trends.ts",
+    "speckit:validate-artifacts": "tsx scripts/validators/validate-artifacts.ts"
   },
   "keywords": [
     "spec-driven-development",
@@ -56,7 +57,9 @@
     "tsx": "^4.19.1",
     "yaml": "^2.6.0",
     "yargs": "^17.7.2",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
   },
   "pnpm": {
     "overrides": {
