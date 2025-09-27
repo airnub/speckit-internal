@@ -85,6 +85,10 @@ jobs:
           }
           NODE
 
+      - name: Update agent trends dashboard
+        if: steps.check_logs.outputs.found == 'true'
+        run: pnpm tsx scripts/analytics/trends.ts
+
       - name: Commit run artifacts
         if: steps.check_logs.outputs.found == 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -96,6 +100,7 @@ jobs:
             .speckit/*.yaml
             .speckit/*.md
             .speckit/requirements.jsonl
+            docs/agent-trends.md
             RTM.md
             docs/internal/agents/coding-agent-brief.md
 
