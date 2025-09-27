@@ -24,7 +24,9 @@
       "@speckit/tui": ["packages/speckit-tui/src/index.tsx"],
       "@speckit/cli": ["packages/speckit-cli/src/index.ts"],
       "@speckit/adapter-speckit-v1": ["packages/adapter-speckit-v1/src/index.ts"],
-      "@speckit/adapter-owasp-asvs-v4": ["packages/adapter-owasp-asvs-v4/src/index.ts"]
+      "@speckit/adapter-owasp-asvs-v4": ["packages/adapter-owasp-asvs-v4/src/index.ts"],
+      "@speckit/core": ["packages/speckit-core/src/index.ts"],
+      "@speckit/core/*": ["packages/speckit-core/src/*"]
     }
   }
 }

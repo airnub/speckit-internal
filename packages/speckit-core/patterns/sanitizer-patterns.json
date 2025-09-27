@@ -1,0 +1,13 @@
+[
+  { "pattern": "sk-[a-zA-Z0-9]{20,}", "flags": "gi", "replacement": "[redacted-token]" },
+  { "pattern": "gh[pous]_[a-zA-Z0-9]{20,}", "flags": "gi", "replacement": "[redacted-token]" },
+  { "pattern": "eyJ[0-9a-zA-Z_-]{10,}\\.[0-9a-zA-Z_-]{10,}\\.[0-9a-zA-Z_-]{10,}", "flags": "g", "replacement": "[redacted-jwt]" },
+  { "pattern": "xox[baprs]-[0-9A-Za-z-]{10,}", "flags": "g", "replacement": "[redacted-slack-token]" },
+  { "pattern": "AKIA[0-9A-Z]{16}", "flags": "g", "replacement": "[redacted-aws-key]" },
+  { "pattern": "AIza[0-9A-Za-z_-]{35}", "flags": "g", "replacement": "[redacted-google-key]" },
+  { "pattern": "(sessionid=)[^;\\s]+", "flags": "gi", "replacement": "$1[redacted]" },
+  { "pattern": "(cookie:)\\s*[^\\n]+", "flags": "gi", "replacement": "$1 [redacted-cookie]" },
+  { "pattern": "https?:\\/\\/[^\\s:@]+:[^@\\s]+@", "flags": "g", "replacement": "[redacted-url]" },
+  { "pattern": "-----BEGIN [^-]+-----[\\s\\S]+?-----END [^-]+-----", "flags": "g", "replacement": "[redacted-key-block]" },
+  { "pattern": "ssh-(rsa|ed25519) [A-Za-z0-9+/=]{100,}", "flags": "g", "replacement": "[redacted-ssh-key]" }
+]

@@ -19,11 +19,20 @@ jobs:
       - name: Detect run logs
         id: detect
         run: |
-          if compgen -G "runs/**/*" > /dev/null; then
-            echo "has_logs=true" >> "$GITHUB_OUTPUT"
+          if [ -d runs ]; then
+            count=$(find runs -type f | wc -l | tr -d ' ')
           else
-            echo "has_logs=false" >> "$GITHUB_OUTPUT"
+            count=0
           fi
+
+          if [ "$count" -gt 0 ]; then
+            printf 'has_logs=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'has_logs=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
+          printf 'log_count=%s\n' "$count" >> "$GITHUB_OUTPUT"
+          echo "speckit-upload-logs: detected ${count} run file(s)."
 
       - name: Sanitize logs
         if: steps.detect.outputs.has_logs == 'true'
@@ -32,30 +41,35 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const path = require('path');
-          const patterns = [
-            { regex: /(sk-[a-z0-9]{20,})/gi, replacement: '[redacted-token]' },
-            { regex: /(gh[pous]_[a-z0-9]{20,})/gi, replacement: '[redacted-token]' },
-            { regex: /(eyJ[0-9a-zA-Z_-]{10,}\.[0-9a-zA-Z_-]{10,}\.[0-9a-zA-Z_-]{10,})/g, replacement: '[redacted-jwt]' },
-            { regex: /(sessionid=)[^;\s]+/gi, replacement: '$1[redacted]' },
-            { regex: /(cookie:)[^\n]+/gi, replacement: '$1 [redacted-cookie]' },
-            { regex: /(https?:\/\/[^\s]+:[^@\s]+@)/gi, replacement: '[redacted-url]' },
-          ];
+          const patternsPath = path.join(process.cwd(), 'packages', 'speckit-core', 'patterns', 'sanitizer-patterns.json');
+          const definitions = JSON.parse(fs.readFileSync(patternsPath, 'utf8'));
+          const patterns = definitions.map(def => {
+            const flags = def.flags ? (def.flags.includes('g') ? def.flags : `${def.flags}g`) : 'g';
+            return {
+              pattern: def.pattern,
+              regex: new RegExp(def.pattern, flags),
+              replacement: def.replacement,
+            };
+          });
           const root = process.cwd();
           const sourceDir = path.join(root, 'runs');
           const destDir = path.join(root, 'sanitized-logs');
           let hits = 0;
+          const patternHits = new Map();
 
           function sanitizeText(text) {
             let next = text;
             for (const pattern of patterns) {
-              next = next.replace(pattern.regex, (match, ...rest) => {
-                hits += 1;
-                if (pattern.replacement.includes('$1')) {
-                  const groups = rest.slice(0, -2);
-                  return pattern.replacement.replace('$1', groups[0]);
-                }
-                return pattern.replacement;
-              });
+              pattern.regex.lastIndex = 0;
+              const matches = next.match(pattern.regex);
+              if (!matches || matches.length === 0) {
+                continue;
+              }
+              hits += matches.length;
+              patternHits.set(pattern.pattern, (patternHits.get(pattern.pattern) ?? 0) + matches.length);
+              pattern.regex.lastIndex = 0;
+              next = next.replace(pattern.regex, pattern.replacement);
+              pattern.regex.lastIndex = 0;
             }
             return next;
           }
@@ -86,7 +100,14 @@ jobs:
           walk(sourceDir);
           fs.writeFileSync(
             path.join(destDir, 'sanitizer-report.json'),
-            JSON.stringify({ hits }, null, 2)
+            JSON.stringify(
+              {
+                hits,
+                pattern_hits: Object.fromEntries(patternHits.entries()),
+              },
+              null,
+              2
+            )
           );
           console.log(`Sanitized logs with ${hits} potential secret hits.`);
           NODE
@@ -105,4 +126,8 @@ jobs:
 
       - name: No logs warning
         if: steps.detect.outputs.has_logs != 'true'
-        run: echo "speckit-upload-logs: no runs/ logs found. Upload skipped."
+        env:
+          LOG_COUNT: ${{ steps.detect.outputs.log_count }}
+        run: |
+          count="${LOG_COUNT:-0}"
+          echo "speckit-upload-logs: no runs/ logs found (detected ${count} file(s)). Upload skipped."

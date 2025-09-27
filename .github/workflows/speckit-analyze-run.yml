@@ -42,9 +42,14 @@ jobs:
         id: check_logs
         run: |
           if [ -f agent-run-logs/agent-run-logs.tar.gz ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
+            printf 'found=true\n' >> "$GITHUB_OUTPUT"
+            echo "speckit-analyze-run: agent-run-logs.tar.gz detected."
           else
-            echo "found=false" >> "$GITHUB_OUTPUT"
+            {
+              printf 'found=false\n'
+              printf 'log_count=0\n'
+            } >> "$GITHUB_OUTPUT"
+            echo "speckit-analyze-run: no log bundle found in artifacts."
           fi
 
       - name: Extract logs
@@ -56,8 +61,22 @@ jobs:
             echo "Sanitizer report detected." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Run analyzer
+      - name: Inventory extracted logs
         if: steps.check_logs.outputs.found == 'true'
+        id: log_inventory
+        run: |
+          if [ ! -d runs_from_artifact ]; then
+            printf 'log_count=0\n' >> "$GITHUB_OUTPUT"
+            echo "speckit-analyze-run: runs_from_artifact directory missing after extraction."
+            exit 0
+          fi
+
+          count=$(find runs_from_artifact -type f | wc -l | tr -d ' ')
+          printf 'log_count=%s\n' "$count" >> "$GITHUB_OUTPUT"
+          echo "speckit-analyze-run: detected ${count} extracted file(s)."
+
+      - name: Run analyzer
+        if: steps.check_logs.outputs.found == 'true' && steps.log_inventory.outputs.log_count != '0'
         run: |
           if [ -f runs_from_artifact/sanitizer-report.json ]; then
             mkdir -p .speckit
@@ -70,7 +89,7 @@ jobs:
             --raw-log "runs_from_artifact/**/*.ndjson"
 
       - name: Merge sanitizer report
-        if: steps.check_logs.outputs.found == 'true'
+        if: steps.check_logs.outputs.found == 'true' && steps.log_inventory.outputs.log_count != '0'
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -86,11 +105,11 @@ jobs:
           NODE
 
       - name: Update agent trends dashboard
-        if: steps.check_logs.outputs.found == 'true'
+        if: steps.check_logs.outputs.found == 'true' && steps.log_inventory.outputs.log_count != '0'
         run: pnpm tsx scripts/analytics/trends.ts
 
       - name: Commit run artifacts
-        if: steps.check_logs.outputs.found == 'true'
+        if: steps.check_logs.outputs.found == 'true' && steps.log_inventory.outputs.log_count != '0'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update speckit run artifacts"
@@ -100,19 +119,26 @@ jobs:
             .speckit/*.yaml
             .speckit/*.md
             .speckit/requirements.jsonl
+            .speckit/memo-history.jsonl
             docs/agent-trends.md
             RTM.md
             docs/internal/agents/coding-agent-brief.md
 
       - name: Write no-logs summary
-        if: steps.check_logs.outputs.found != 'true'
+        if: steps.check_logs.outputs.found != 'true' || steps.log_inventory.outputs.log_count == '0'
+        env:
+          LOG_COUNT: ${{ steps.log_inventory.outputs.log_count }}
+          FALLBACK_COUNT: ${{ steps.check_logs.outputs.log_count }}
         run: |
           mkdir -p .speckit
-          cat <<'EOF' > .speckit/summary.md
-# SpecKit Run Forensics
-
-No sanitized run logs were found for this pull request. Upload a runs/ bundle to enable automated analysis.
-EOF
+          count="${LOG_COUNT:-${FALLBACK_COUNT:-0}}"
+          printf '%s\n' \
+            '# SpecKit Run Forensics' \
+            '' \
+            'No sanitized run logs were found for this pull request.' \
+            "Detected log files: ${count}." \
+            'Upload a runs/ bundle to enable automated analysis.' \
+            > .speckit/summary.md
 
       - name: Post run summary comment
         uses: marocchino/sticky-pull-request-comment@v2

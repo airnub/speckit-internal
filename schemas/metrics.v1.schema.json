@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SpecKit metrics artifact v1",
+  "type": "object",
+  "required": [
+    "version",
+    "ReqCoverage",
+    "ToolPrecisionAt1",
+    "BacktrackRatio",
+    "EditLocality",
+    "ReflectionDensity",
+    "TTFPSeconds",
+    "labels",
+    "sanitizer_hits",
+    "experiments"
+  ],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "ReqCoverage": { "type": "number", "minimum": 0 },
+    "ToolPrecisionAt1": { "type": "number", "minimum": 0 },
+    "BacktrackRatio": { "type": "number", "minimum": 0 },
+    "EditLocality": { "type": "number", "minimum": 0 },
+    "ReflectionDensity": { "type": "number", "minimum": 0 },
+    "TTFPSeconds": { "type": ["number", "null"], "minimum": 0 },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "sanitizer_hits": { "type": "integer", "minimum": 0 },
+    "experiments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "variant", "bucket", "metadata"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "description": { "type": ["string", "null"], "minLength": 1 },
+          "variant": { "type": "string", "minLength": 1 },
+          "variant_description": { "type": ["string", "null"], "minLength": 1 },
+          "bucket": { "type": "number" },
+          "metadata": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

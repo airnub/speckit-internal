@@ -25,6 +25,8 @@ jobs:
         run: node packages/speckit-cli/dist/cli.js gen --write
       - name: Audit generated docs
         run: node packages/speckit-cli/dist/cli.js audit
+      - name: Validate analyzer artifacts
+        run: pnpm speckit:validate-artifacts
       - name: Fail if generated docs drift
         run: git diff --exit-code || (echo "Generated docs drift detected. Run 'speckit gen --write' and commit." && exit 1)
       - name: Run Speckit Doctor

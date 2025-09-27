@@ -62,6 +62,11 @@ describe("artifact writer", () => {
     const metricsRaw = await readFile(path.join(outDir, "metrics.json"), "utf8");
     const metricsArtifact = JSON.parse(metricsRaw);
     expect(metricsArtifact.version).toBe(METRICS_ARTIFACT_VERSION);
+
+    const summaryRaw = await readFile(path.join(outDir, "summary.json"), "utf8");
+    const summary = JSON.parse(summaryRaw);
+    expect(summary.version).toBe(1);
+    expect(summary.metrics.sanitizer_hits).toBe(0);
   });
 
   it("records deterministic verification commands for each requirement", async () => {

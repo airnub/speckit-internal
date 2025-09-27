@@ -23,6 +23,7 @@ export interface RunAnalysisResult {
   normalized: NormalizedLog;
   artifacts: Awaited<ReturnType<typeof writeArtifacts>>;
   experiments: ExperimentAssignment[];
+  hints: string[];
 }
 
 export interface RunAnalysisOptions {
@@ -112,7 +113,7 @@ async function readSanitizerHits(outDir: string, rootDir: string): Promise<numbe
   }
 }
 
-type AnalyzerArtifactsInput = Pick<AnalyzerResult, "run" | "requirements" | "metrics" | "labels"> & {
+type AnalyzerArtifactsInput = Pick<AnalyzerResult, "run" | "requirements" | "metrics" | "labels" | "hints"> & {
   rootDir: string;
   outDir: string;
   experiments: ExperimentAssignment[];
@@ -131,6 +132,7 @@ export async function emitAnalyzerArtifacts(
     labels: options.labels,
     sanitizerHits,
     experiments: options.experiments,
+    hints: options.hints,
   });
 }
 
@@ -175,6 +177,7 @@ export async function runAnalysis(
     requirements: analysis.requirements,
     metrics: analysis.metrics,
     labels: analysis.labels,
+    hints: analysis.hints,
     experiments,
   });
   await updateRTM({ rootDir: context.rootDir, outDir: resolvedOutDir, rtmPath: undefined });
@@ -186,5 +189,6 @@ export async function runAnalysis(
     normalized: analysis.normalized,
     artifacts,
     experiments,
+    hints: analysis.hints,
   };
 }
