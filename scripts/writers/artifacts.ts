@@ -141,7 +141,7 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
     ToolPrecisionAt1: options.metrics.ToolPrecisionAt1 ?? 0,
     BacktrackRatio: options.metrics.BacktrackRatio ?? 0,
     EditLocality: options.metrics.EditLocality ?? 0,
-    FailureLabels: Array.from(options.labels),
+    labels: Array.from(options.labels),
     sanitizer_hits: options.sanitizerHits ?? 0,
   });
   await fs.writeFile(summaryPath, summary + "\n", "utf8");

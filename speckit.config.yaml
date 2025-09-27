@@ -3,11 +3,11 @@ thresholds:
   coverage: 0.75
   tool_precision: 0.65
   backtrack_ratio_max: 0.35
-artifacts:
-  rtm_path: "RTM.md"
-  out_dir: ".speckit"
 verify:
   enforce_in_ci: false
   block_on_violation:
     - "process.read-before-write-fail"
     - "env.git-state-drift"
+artifacts:
+  rtm_path: "RTM.md"
+  out_dir: ".speckit"

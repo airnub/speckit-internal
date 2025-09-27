@@ -56,7 +56,7 @@ jobs:
             echo "Sanitizer report detected." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Stage sanitizer report
+      - name: Run analyzer
         if: steps.check_logs.outputs.found == 'true'
         run: |
           if [ -f runs_from_artifact/sanitizer-report.json ]; then
@@ -64,10 +64,10 @@ jobs:
             cp runs_from_artifact/sanitizer-report.json .speckit/sanitizer-report.json
             rm runs_from_artifact/sanitizer-report.json
           fi
-
-      - name: Run analyzer
-        if: steps.check_logs.outputs.found == 'true'
-        run: pnpm speckit:analyze -- --raw-log "runs_from_artifact/**/*.log" --raw-log "runs_from_artifact/**/*.json" --raw-log "runs_from_artifact/**/*.ndjson"
+          pnpm speckit:analyze -- \
+            --raw-log "runs_from_artifact/**/*.log" \
+            --raw-log "runs_from_artifact/**/*.json" \
+            --raw-log "runs_from_artifact/**/*.ndjson"
 
       - name: Merge sanitizer report
         if: steps.check_logs.outputs.found == 'true'

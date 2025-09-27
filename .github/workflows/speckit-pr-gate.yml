@@ -89,7 +89,7 @@ jobs:
           }
 
           const data = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
-          const labels = new Set(Array.isArray(data.FailureLabels) ? data.FailureLabels : []);
+          const labels = new Set(Array.isArray(data.labels) ? data.labels : []);
           const sanitizerHits = Number.isFinite(Number(data.sanitizer_hits)) ? Number(data.sanitizer_hits) : 0;
           const reqCoverage = typeof data.ReqCoverage === 'number' ? data.ReqCoverage : null;
           const toolPrecision = typeof data.ToolPrecisionAt1 === 'number' ? data.ToolPrecisionAt1 : null;
@@ -127,7 +127,12 @@ jobs:
           }
 
           if (backtrackRatio !== null && backtrackRatio > backtrackThreshold) {
-            warnings.push(`BacktrackRatio ${backtrackRatio} > ${backtrackThreshold}`);
+            const message = `BacktrackRatio ${backtrackRatio} > ${backtrackThreshold}`;
+            if (enforce) {
+              failures.push(message);
+            } else {
+              warnings.push(message);
+            }
           }
 
           if (failures.length > 0) {

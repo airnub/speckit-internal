@@ -6,5 +6,6 @@
     "jsx": "react-jsx",
     "strict": true,
     "types": ["node"]
-  }
+  },
+  "include": ["scripts/**/*", "docs/**/*"]
 }

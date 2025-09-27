@@ -45,7 +45,7 @@ speckit gen --write   # refresh docs/specs/**
 
 ```bash
 pnpm speckit:doctor
-pnpm speckit:coach -- --log runs/<your-log>.ndjson --watch
+pnpm speckit:coach -- --log runs/sample.ndjson --watch
 ```
 
 `speckit.config.yaml` controls thin CI behaviour; flip `verify.enforce_in_ci` to `true` once you want coverage and tool-precision warnings to become blocking failures.
