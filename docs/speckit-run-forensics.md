@@ -35,5 +35,6 @@ Forbidden labels enforced in CI: `process.read-before-write-fail`, `env.git-stat
 
 1. Run `pnpm speckit:analyze -- --raw-log sample-logs/*.log` and confirm `.speckit/memo.json` includes `version` and `generated_from.run_id`.
 2. Ensure `RTM.md` shows the managed table between `<!-- speckit:rtm:start -->` and `<!-- speckit:rtm:end -->`.
-3. Run `pnpm speckit:inject` and verify the coding agent brief now contains the latest memo guardrails + verification checklist.
-4. Commit refreshed artifacts before opening a PR so CI gates only enforce deltas from the latest run.
+3. Inspect `.speckit/verification.yaml` and rehearse each generated command/grep so the next run can replay the satisfied checks and tackle pending ones.
+4. Run `pnpm speckit:inject` and verify the coding agent brief now contains the latest memo guardrails + verification checklist.
+5. Commit refreshed artifacts before opening a PR so CI gates only enforce deltas from the latest run.

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
+import YAML from "yaml";
 
 import type { Metrics, RequirementRecord, RunArtifact } from "../src/types.js";
 import {
@@ -12,7 +13,7 @@ import {
 } from "../src/types.js";
 
 vi.mock("@speckit/analyzer", async () => {
-  const actual = await vi.importActual<typeof import("../src/types.js")>("../src/types.js");
+  const actual = await vi.importActual<typeof import("../src/index.js")>("../src/index.js");
   return actual;
 });
 
@@ -61,5 +62,83 @@ describe("artifact writer", () => {
     const metricsRaw = await readFile(path.join(outDir, "metrics.json"), "utf8");
     const metricsArtifact = JSON.parse(metricsRaw);
     expect(metricsArtifact.version).toBe(METRICS_ARTIFACT_VERSION);
+  });
+
+  it("records deterministic verification commands for each requirement", async () => {
+    const outDir = await mkdtemp(path.join(tmpdir(), "speckit-artifacts-"));
+    const run: RunArtifact = {
+      schema: RUN_ARTIFACT_SCHEMA_VERSION,
+      runId: "run-test",
+      sourceLogs: [],
+      startedAt: null,
+      finishedAt: null,
+      events: [],
+    };
+    const requirements: RequirementRecord[] = [
+      {
+        id: "REQ-001",
+        text: "Run `pnpm test --filter api` to confirm handler behavior.",
+        status: "satisfied",
+        evidence: ["event-a"],
+      },
+      {
+        id: "REQ-002",
+        text: "Ensure lint passes before merging.",
+        status: "violated",
+        evidence: [],
+      },
+      {
+        id: "REQ-003",
+        text: "Update the README.md usage notes.",
+        status: "unknown",
+        evidence: [],
+      },
+    ];
+    const metrics: Metrics = {
+      ReqCoverage: 0,
+      BacktrackRatio: 0,
+      ToolPrecisionAt1: 0,
+      EditLocality: 0,
+      ReflectionDensity: 0,
+      TTFPSeconds: null,
+    };
+
+    const { writeArtifacts } = await import("../../../scripts/writers/artifacts.ts");
+
+    await writeArtifacts({
+      rootDir: outDir,
+      outDir,
+      run,
+      requirements,
+      metrics,
+      labels: new Set(),
+    });
+
+    const raw = await readFile(path.join(outDir, "verification.yaml"), "utf8");
+    const parsed = YAML.parse(raw);
+
+    expect(parsed.requirements).toEqual([
+      {
+        id: "REQ-001",
+        description: "Run `pnpm test --filter api` to confirm handler behavior.",
+        status: "satisfied",
+        evidence: ["event-a"],
+        check: "Regression guard: run `pnpm test --filter api` to reconfirm. Evidence: event-a.",
+      },
+      {
+        id: "REQ-002",
+        description: "Ensure lint passes before merging.",
+        status: "violated",
+        evidence: [],
+        check: "Remediate failure and re-run `pnpm lint`. No run evidence captured yet.",
+      },
+      {
+        id: "REQ-003",
+        description: "Update the README.md usage notes.",
+        status: "unknown",
+        evidence: [],
+        check: "Plan check: run `git diff --stat README.md` to establish coverage. No run evidence captured yet.",
+      },
+    ]);
   });
 });

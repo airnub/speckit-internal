@@ -10,6 +10,7 @@ import {
   MEMO_ARTIFACT_VERSION,
   METRICS_ARTIFACT_VERSION,
   RUN_ARTIFACT_SCHEMA_VERSION,
+  generateRequirementCheck,
 } from "@speckit/analyzer";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -497,7 +498,7 @@ function buildVerification(requirements: RequirementRecord[]): VerificationArtif
       description: req.text,
       status: req.status,
       evidence: req.evidence,
-      check: req.status === "satisfied" ? "Confirmed via run evidence" : "Pending manual verification",
+      check: generateRequirementCheck(req),
     })),
   };
 }

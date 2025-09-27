@@ -7,6 +7,7 @@ import {
   type Metrics,
   type RequirementRecord,
   type RunArtifact,
+  generateRequirementCheck,
 } from "@speckit/analyzer";
 import type { ExperimentAssignment } from "../config/experiments.js";
 import { updateMemoHistory } from "./memo-history.js";
@@ -117,7 +118,7 @@ function buildVerification(requirements: RequirementRecord[]): VerificationArtif
       description: req.text,
       status: req.status,
       evidence: req.evidence,
-      check: req.status === "satisfied" ? "Confirmed via run evidence" : "Pending manual verification",
+      check: generateRequirementCheck(req),
     })),
   };
 }
