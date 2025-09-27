@@ -1,11 +1,18 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { Metrics, RequirementRecord, RunArtifact } from "@speckit/analyzer";
+import {
+  MEMO_ARTIFACT_VERSION,
+  METRICS_ARTIFACT_VERSION,
+  type Metrics,
+  type RequirementRecord,
+  type RunArtifact,
+} from "@speckit/analyzer";
 
 const RUN_ARTIFACT_SCHEMA_FALLBACK = 1;
 
 export interface MemoArtifact {
+  version: number;
   generated_at: string;
   generated_from: {
     run_id: string;
@@ -64,6 +71,7 @@ function buildMemo(options: WriteArtifactsOptions): MemoArtifact {
     .map((req) => `Prevent regression on ${req.id}: ${req.text}`);
   const checklist = requirements.map((req) => `${req.id}: ${req.text}`);
   return {
+    version: MEMO_ARTIFACT_VERSION,
     generated_at: generatedAt,
     generated_from: {
       run_id: run.runId,
@@ -138,10 +146,13 @@ export async function writeArtifacts(options: WriteArtifactsOptions): Promise<Wr
   await writeJson(memoPath, memo);
   await fs.writeFile(verificationPath, YAML.stringify(verification), "utf8");
   await writeJson(metricsPath, {
+    version: METRICS_ARTIFACT_VERSION,
     ReqCoverage: options.metrics.ReqCoverage ?? 0,
     ToolPrecisionAt1: options.metrics.ToolPrecisionAt1 ?? 0,
     BacktrackRatio: options.metrics.BacktrackRatio ?? 0,
     EditLocality: options.metrics.EditLocality ?? 0,
+    ReflectionDensity: options.metrics.ReflectionDensity ?? 0,
+    TTFPSeconds: options.metrics.TTFPSeconds ?? null,
     labels: Array.from(options.labels),
     sanitizer_hits: options.sanitizerHits ?? 0,
   });

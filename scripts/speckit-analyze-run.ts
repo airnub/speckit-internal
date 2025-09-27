@@ -6,7 +6,11 @@ import stripAnsi from "strip-ansi";
 import YAML from "yaml";
 import { z } from "zod";
 
-import { RUN_ARTIFACT_SCHEMA_VERSION } from "@speckit/analyzer";
+import {
+  MEMO_ARTIFACT_VERSION,
+  METRICS_ARTIFACT_VERSION,
+  RUN_ARTIFACT_SCHEMA_VERSION,
+} from "@speckit/analyzer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,6 +74,7 @@ interface Metrics {
 }
 
 interface MemoArtifact {
+  version: number;
   generated_at: string;
   generated_from: {
     run_id: string;
@@ -470,6 +475,7 @@ function buildMemo(runId: string, sources: string[], requirements: RequirementRe
   });
 
   return {
+    version: MEMO_ARTIFACT_VERSION,
     generated_at: generatedAt,
     generated_from: {
       run_id: runId,
@@ -579,6 +585,7 @@ async function main(): Promise<void> {
   await writeJson(path.join(ARTIFACT_DIR, "Run.json"), runArtifact);
   await writeJsonl(path.join(ARTIFACT_DIR, "requirements.jsonl"), requirements);
   await writeJson(path.join(ARTIFACT_DIR, "metrics.json"), {
+    version: METRICS_ARTIFACT_VERSION,
     run_id: runArtifact.run_id,
     generated_at: new Date().toISOString(),
     metrics,

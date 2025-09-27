@@ -1,1 +1,11 @@
-{}
+{
+  "version": 1,
+  "ReqCoverage": 0,
+  "ToolPrecisionAt1": 0,
+  "BacktrackRatio": 0,
+  "EditLocality": 0,
+  "ReflectionDensity": 0,
+  "TTFPSeconds": null,
+  "labels": [],
+  "sanitizer_hits": 0
+}

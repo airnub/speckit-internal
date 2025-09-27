@@ -132,6 +132,7 @@ Generated after analysis; consumed on the **next run**. Save as `.speckit/memo.j
 
 ```json
 {
+  "version": 1,
   "lessons": [
     {"if": "workspace=pnpm", "then": "use pnpm not npm for install/test"},
     {"if": "jest not found", "then": "install deps, then run pnpm test -w"},
@@ -205,7 +206,7 @@ checks:
 1) **Ingest & Normalize:** parse raw logs → `Run.json`.
 2) **Extract Requirements:** from prompt → `requirements.jsonl`.
 3) **Align & Score:** coverage, metrics, failure labels → `.speckit/metrics.json`.
-4) **Artifacts:** write `memo.json`, `verification.yaml`, update `RTM.md` block.
+4) **Artifacts:** write versioned `memo.json`, `verification.yaml`, update `RTM.md` block.
 5) **Publish:** attach artifacts to PR comment & persist in repo/CI artifact.
 
 ---
@@ -254,7 +255,7 @@ Track:
   failure-rules.yaml
   memo.json                 # generated per run
   verification.yaml         # generated per run
-  metrics.json              # generated per run
+  metrics.json              # generated per run (versioned)
   run-schema/
     run.schema.json
     requirement.schema.json
@@ -374,7 +375,7 @@ jobs:
       - name: Read metrics
         id: metrics
         run: |
-          cat .speckit/metrics.json || echo '{"ReqCoverage":0}' > .speckit/metrics.json
+          cat .speckit/metrics.json || echo '{"version":1,"ReqCoverage":0}' > .speckit/metrics.json
           echo "METRICS=$(cat .speckit/metrics.json | tr -d '\n')" >> $GITHUB_OUTPUT
 
       - name: Enforce thresholds

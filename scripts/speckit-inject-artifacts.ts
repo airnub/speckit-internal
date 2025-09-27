@@ -16,6 +16,7 @@ const VERIFICATION_START = "<!-- speckit:verification:start -->";
 const VERIFICATION_END = "<!-- speckit:verification:end -->";
 
 interface MemoArtifact {
+  version?: number;
   generated_at?: string;
   generated_from?: {
     run_id?: string;

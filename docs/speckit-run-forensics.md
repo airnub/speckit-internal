@@ -6,7 +6,7 @@ The run forensics and self-healing loop connects raw agent logs → normalized r
 
 1. **Collect logs.** Record each agent execution (planner, executor, tools) and save them as text, JSON, or NDJSON.
 2. **Analyze.** Run `pnpm speckit:analyze -- --raw-log <glob>` to normalize the logs into `.speckit/Run.json`, extract prompt requirements into `.speckit/requirements.jsonl`, and score run metrics. The normalized `Run.json` includes a `schema` version (currently `1`) so downstream tooling can validate compatibility.
-3. **Update artifacts.** The analyzer emits `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, and `.speckit/summary.md`, then refreshes the RTM between `<!-- speckit:rtm:* -->` markers.
+3. **Update artifacts.** The analyzer emits versioned `.speckit/memo.json`, `.speckit/verification.yaml`, `.speckit/metrics.json`, and `.speckit/summary.md`, then refreshes the RTM between `<!-- speckit:rtm:* -->` markers.
 4. **Inject guardrails.** Run `pnpm speckit:inject` to merge the memo guardrails + verification checklist into `docs/internal/agents/coding-agent-brief.md` so the next run inherits lessons learned.
 5. **Gate in CI.** The `speckit-analyze-run` workflow fetches the `agent-run-logs` artifact on each PR, runs the analyzer, commits refreshed artifacts, and posts the summary. `speckit-pr-gate` blocks merges when metrics fall below thresholds or forbidden failure labels appear.
 
@@ -32,7 +32,7 @@ Forbidden labels enforced in CI: `process.read-before-write-fail`, `env.git-stat
 
 ## Local verification checklist
 
-1. Run `pnpm speckit:analyze -- --raw-log sample-logs/*.log` and confirm `.speckit/memo.json` includes `generated_from.run_id`.
+1. Run `pnpm speckit:analyze -- --raw-log sample-logs/*.log` and confirm `.speckit/memo.json` includes `version` and `generated_from.run_id`.
 2. Ensure `RTM.md` shows the managed table between `<!-- speckit:rtm:start -->` and `<!-- speckit:rtm:end -->`.
 3. Run `pnpm speckit:inject` and verify the coding agent brief now contains the latest memo guardrails + verification checklist.
 4. Commit refreshed artifacts before opening a PR so CI gates only enforce deltas from the latest run.

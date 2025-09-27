@@ -1,1 +1,12 @@
-{}
+{
+  "version": 1,
+  "generated_at": "",
+  "generated_from": {
+    "run_id": "",
+    "sources": []
+  },
+  "lessons": [],
+  "guardrails": [],
+  "checklist": [],
+  "labels": []
+}
