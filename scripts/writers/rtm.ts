@@ -1,7 +1,11 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { RequirementRecord, RunArtifact } from "@speckit/analyzer";
+import {
+  RUN_ARTIFACT_SCHEMA_VERSION,
+  type RequirementRecord,
+  type RunArtifact,
+} from "@speckit/analyzer";
 
 const START_MARKER = "<!-- speckit:rtm:start -->";
 const END_MARKER = "<!-- speckit:rtm:end -->";
@@ -57,7 +61,16 @@ async function readRun(outDir: string): Promise<RunArtifact | null> {
     const raw = await fs.readFile(runPath, "utf8");
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).events)) {
+      const schemaVersion = typeof (parsed as any).schema === "number"
+        ? (parsed as any).schema
+        : RUN_ARTIFACT_SCHEMA_VERSION;
+      if (schemaVersion !== RUN_ARTIFACT_SCHEMA_VERSION) {
+        console.warn(
+          `[rtm] Run.json schema ${schemaVersion} differs from expected ${RUN_ARTIFACT_SCHEMA_VERSION}. Results may be inaccurate.`
+        );
+      }
       return {
+        schema: schemaVersion,
         runId: parsed.run_id,
         sourceLogs: parsed.source_logs ?? [],
         startedAt: parsed.started_at ?? null,

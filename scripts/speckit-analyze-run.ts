@@ -6,6 +6,8 @@ import stripAnsi from "strip-ansi";
 import YAML from "yaml";
 import { z } from "zod";
 
+import { RUN_ARTIFACT_SCHEMA_VERSION } from "@speckit/analyzer";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
@@ -38,6 +40,7 @@ interface RunEvent {
 }
 
 interface RunArtifact {
+  schema: number;
   run_id: string;
   source_logs: string[];
   started_at: string | null;
@@ -556,6 +559,7 @@ async function main(): Promise<void> {
   const sortedEvents = allEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   const runId = options.runId ?? `run-${Date.now()}`;
   const runArtifact: RunArtifact = {
+    schema: RUN_ARTIFACT_SCHEMA_VERSION,
     run_id: runId,
     source_logs: logPaths,
     started_at: sortedEvents[0]?.timestamp ?? null,

@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  RUN_ARTIFACT_SCHEMA_VERSION,
   analyze,
   analyzeStream,
   parseFailureRules,
@@ -27,6 +28,7 @@ describe("analyzer integration", () => {
     });
 
     expect(result.run.runId).toBe("run-fixture");
+    expect(result.run.schema).toBe(RUN_ARTIFACT_SCHEMA_VERSION);
     expect(result.run.events).toHaveLength(6);
     expect(result.run.sourceLogs).toEqual([fixturePath]);
     expect(result.prompt).toContain("Ensure API logging is structured");

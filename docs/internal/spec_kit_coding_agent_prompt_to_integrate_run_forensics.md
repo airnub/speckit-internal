@@ -67,7 +67,7 @@ speckit.config.yaml                  # new config (repo root)
 
 ### T2 — Analyzer (`scripts/speckit-analyze-run.ts`)
 - **Input:** raw logs (glob), autodetect JSON/NDJSON/text; extract the embedded prompt.
-- **Normalize:** emit `Run.json` (events with timestamps, tools, inputs, outputs, errors, files_changed).
+- **Normalize:** emit `Run.json` (events with timestamps, tools, inputs, outputs, errors, files_changed) and include `schema: 1` so downstream readers can detect breaking changes.
 - **Extract Requirements:** parse prompt for imperatives + constraints → `requirements.jsonl` with stable IDs.
 - **Score:** compute metrics (ReqCoverage, BacktrackRatio, ToolPrecision@1, EditLocality, ReflectionDensity, TTFP).
 - **Label Failures:** apply regex rules → labels per episode.

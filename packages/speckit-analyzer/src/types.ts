@@ -35,7 +35,10 @@ export interface NormalizeOptions {
   format?: "auto" | "json" | "ndjson" | "text";
 }
 
+export const RUN_ARTIFACT_SCHEMA_VERSION = 1 as const;
+
 export interface RunArtifact {
+  schema: number;
   runId: string;
   sourceLogs: string[];
   startedAt: string | null;

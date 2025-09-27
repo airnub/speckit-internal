@@ -28,8 +28,11 @@
 Use these JSON schemas to normalize logs. Store under `.speckit/run-schema/`.
 
 ### 2.1 `Run.json` (normalized)
+
+Every normalized run payload is versioned. The analyzer currently writes `schema: 1` and readers must validate or gracefully downgrade when the version changes.
 ```json
 {
+  "schema": 1,
   "run_id": "2025-09-26T12:34:56Z-abc123",
   "agent_version": "speckit-agent@0.8.0",
   "prompt": "...full system+user prompt...",

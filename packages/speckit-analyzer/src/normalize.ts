@@ -2,11 +2,12 @@ import stripAnsi from "strip-ansi";
 import { sha1 } from "@noble/hashes/sha1";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
 
-import type {
-  NormalizeOptions,
-  NormalizedLog,
-  RunArtifact,
-  RunEvent,
+import {
+  RUN_ARTIFACT_SCHEMA_VERSION,
+  type NormalizeOptions,
+  type NormalizedLog,
+  type RunArtifact,
+  type RunEvent,
 } from "./types.js";
 
 const HASH_KIND_PREFIX: Record<string, string> = {
@@ -254,6 +255,7 @@ export function buildRunArtifact(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
   return {
+    schema: RUN_ARTIFACT_SCHEMA_VERSION,
     runId: runId ?? `run-${Date.now()}`,
     sourceLogs,
     startedAt: sortedEvents[0]?.timestamp ?? null,
