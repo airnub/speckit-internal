@@ -1,0 +1,22 @@
+# SpecKit experiment manifest (v1)
+#
+# Each experiment declares a stable key, optional description, and weighted variants.
+# Variants are assigned deterministically per run using the run ID as a seed so
+# that the same log replay always resolves to the same bucket.
+version: 1
+experiments:
+  - key: memo_tone
+    description: Compare memo guardrail tone between baseline and focused variants.
+    enabled: true
+    bucket_count: 1000
+    variants:
+      - key: control
+        description: Baseline memo copy emphasizing steady hygiene.
+        weight: 1
+        metadata:
+          memo_tone: baseline
+      - key: focused
+        description: Focused memo copy highlighting urgency for violations.
+        weight: 1
+        metadata:
+          memo_tone: focused

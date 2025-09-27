@@ -8,5 +8,17 @@
   "lessons": [],
   "guardrails": [],
   "checklist": [],
-  "labels": []
+  "labels": [],
+  "experiments": [
+    {
+      "key": "memo_tone",
+      "variant": "focused",
+      "bucket": 421,
+      "description": "Compare memo guardrail tone between baseline and focused variants.",
+      "variant_description": "Focused memo copy highlighting urgency for violations.",
+      "metadata": {
+        "memo_tone": "focused"
+      }
+    }
+  ]
 }

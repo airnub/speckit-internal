@@ -4,6 +4,9 @@
 - Source logs: sample-logs/run.log
 - Events analyzed: 9
 
+## Experiments
+- memo_tone: focused (bucket 421) — Focused memo copy highlighting urgency for violations. — memo_tone: focused
+
 ## Metrics
 | Metric | Value |
 |--------|-------|
